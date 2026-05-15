@@ -10,10 +10,10 @@
  *
  * // TODO: Backend integration required
  */
-import { SCREEN_REGISTRY_URL } from '../../constants/apiConfig'
-import type { ScreenRegistry, ScreenRegistryEntry } from '../../types/shared/ScreenRegistryEntry'
-import type { ScreenKey } from '../../constants/screenKeys'
-import type { ServiceError } from '../../types/shared/errors/ServiceError'
+import { SCREEN_REGISTRY_URL } from '../constants/apiConfig'
+import type { ScreenRegistry, ScreenRegistryEntry } from '../types/shared/ScreenRegistryEntry'
+import type { ScreenKey } from '../constants/screenKeys'
+import type { ServiceError } from '../types/shared/errors/ServiceError'
 
 // ─── In-memory cache ──────────────────────────────────────────────────────────
 let _cachedRegistry: ScreenRegistry | null = null
@@ -53,7 +53,7 @@ export function clearRegistryCache(): void {
  */
 export function getRegistryEntry(screenKey: ScreenKey): ScreenRegistryEntry | null {
   if (!_cachedRegistry) return null
-  return _cachedRegistry.entries.find(e => e.screenKey === screenKey) ?? null
+  return _cachedRegistry.entries.find((e: ScreenRegistryEntry) => e.screenKey === screenKey) ?? null
 }
 
 /**
@@ -79,8 +79,8 @@ export function isScreenEnabled(screenKey: ScreenKey): boolean {
 export function getEnabledScreenKeys(): ScreenKey[] {
   if (!_cachedRegistry) return []
   return _cachedRegistry.entries
-    .filter(e => e.isEnabled)
-    .map(e => e.screenKey)
+    .filter((e: ScreenRegistryEntry) => e.isEnabled)
+    .map((e: ScreenRegistryEntry) => e.screenKey as ScreenKey)
 }
 
 /**

@@ -18,7 +18,7 @@
  * screen-level access control. Never bypass it by rendering pages directly.
  */
 import React from 'react'
-import { isScreenEnabled, getRequiredRoles } from '../../services/auth/screenRegistryService'
+import { isScreenEnabled, getRequiredRoles } from '../../services/screenRegistryService'
 import type { ScreenKey } from '../../constants/screenKeys'
 
 interface ScreenGateProps {

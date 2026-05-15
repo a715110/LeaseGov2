@@ -23,7 +23,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { Route, Switch } from 'wouter'
 import ErrorBoundary from './components/ErrorBoundary'
 import { AppShell } from './components/layout/AppShell'
-import { ScreenGate } from './components/layout/ScreenGate'
+import { ScreenGate } from './components/shared/ScreenGate'
 import { LeaseGovThemeProvider } from './contexts/LeaseGovThemeProvider'
 import { TenantProvider } from './contexts/TenantContext'
 import { SCREEN_KEYS } from './constants/screenKeys'
@@ -96,13 +96,17 @@ import SuperAdminTenantListPage from './pages/superadmin/SuperAdminTenantList'
 import SuperAdminTenantDetailPage from './pages/superadmin/SuperAdminTenantDetail'
 import SuperAdminSystemHealthPage from './pages/superadmin/SuperAdminSystemHealth'
 
-// ─── Phase 2 — Equipment Lease ────────────────────────────────────────────────
+// ─── Phase 2 — Equipment Lease (FUTURE SLOT — not yet active) ───────────────
+// TO ACTIVATE: add EQUIPMENT_LEASE to ACTIVE_CONTRACT_TYPES in constants/contractTypes.ts
+// and remove the /* FUTURE_SLOT */ comments below.
 import EquipmentLeaseListPage from './pages/contracts/equipmentLease/EquipmentLeaseList'
 import EquipmentLeaseRecordOverviewPage from './pages/contracts/equipmentLease/EquipmentLeaseRecordOverview'
 import EquipmentLeaseRecordTermsPage from './pages/contracts/equipmentLease/EquipmentLeaseRecordTerms'
 import EquipmentLeaseRecordWorkflowPage from './pages/contracts/equipmentLease/EquipmentLeaseRecordWorkflow'
 
-// ─── Phase 2 — Service Contract ───────────────────────────────────────────────
+// ─── Phase 2 — Service Contract (FUTURE SLOT — not yet active) ───────────────
+// TO ACTIVATE: add SERVICE_CONTRACT to ACTIVE_CONTRACT_TYPES in constants/contractTypes.ts
+// and remove the /* FUTURE_SLOT */ comments below.
 import ServiceContractListPage from './pages/contracts/serviceContract/ServiceContractList'
 import ServiceContractRecordOverviewPage from './pages/contracts/serviceContract/ServiceContractRecordOverview'
 import ServiceContractRecordTermsPage from './pages/contracts/serviceContract/ServiceContractRecordTerms'
@@ -464,65 +468,71 @@ function Router() {
         </AuthenticatedLayout>
       </Route>
 
-      {/* ── Phase 2 — Equipment Lease ─────────────────────────────────── */}
-      <Route path="/contracts/equipment-leases">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.EQUIPMENT_LEASE_LIST}>
-            <EquipmentLeaseListPage />
-          </Gate>
-        </AuthenticatedLayout>
-      </Route>
-      <Route path="/contracts/equipment-leases/:leaseId/overview">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.EQUIPMENT_LEASE_RECORD_OVERVIEW}>
-            <EquipmentLeaseRecordOverviewPage />
-          </Gate>
-        </AuthenticatedLayout>
-      </Route>
-      <Route path="/contracts/equipment-leases/:leaseId/terms">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.EQUIPMENT_LEASE_RECORD_TERMS}>
-            <EquipmentLeaseRecordTermsPage />
-          </Gate>
-        </AuthenticatedLayout>
-      </Route>
-      <Route path="/contracts/equipment-leases/:leaseId/workflow">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.EQUIPMENT_LEASE_RECORD_WORKFLOW}>
-            <EquipmentLeaseRecordWorkflowPage />
-          </Gate>
-        </AuthenticatedLayout>
-      </Route>
+      {/* ── Phase 2 — Equipment Lease (FUTURE SLOT — inactive until domain activated) ── */}
+      {/* FUTURE_SLOT: Remove fragment wrapper when activating Equipment Lease domain */}
+      {false && <>
+        <Route path="/contracts/equipment-leases">
+          <AuthenticatedLayout>
+            <Gate screenKey={SCREEN_KEYS.EQUIPMENT_LEASE_LIST}>
+              <EquipmentLeaseListPage />
+            </Gate>
+          </AuthenticatedLayout>
+        </Route>
+        <Route path="/contracts/equipment-leases/:leaseId/overview">
+          <AuthenticatedLayout>
+            <Gate screenKey={SCREEN_KEYS.EQUIPMENT_LEASE_RECORD_OVERVIEW}>
+              <EquipmentLeaseRecordOverviewPage />
+            </Gate>
+          </AuthenticatedLayout>
+        </Route>
+        <Route path="/contracts/equipment-leases/:leaseId/terms">
+          <AuthenticatedLayout>
+            <Gate screenKey={SCREEN_KEYS.EQUIPMENT_LEASE_RECORD_TERMS}>
+              <EquipmentLeaseRecordTermsPage />
+            </Gate>
+          </AuthenticatedLayout>
+        </Route>
+        <Route path="/contracts/equipment-leases/:leaseId/workflow">
+          <AuthenticatedLayout>
+            <Gate screenKey={SCREEN_KEYS.EQUIPMENT_LEASE_RECORD_WORKFLOW}>
+              <EquipmentLeaseRecordWorkflowPage />
+            </Gate>
+          </AuthenticatedLayout>
+        </Route>
+      </>}{/* end FUTURE_SLOT equipment-leases */}
 
-      {/* ── Phase 2 — Service Contract ────────────────────────────────── */}
-      <Route path="/contracts/service-contracts">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.SERVICE_CONTRACT_LIST}>
-            <ServiceContractListPage />
-          </Gate>
-        </AuthenticatedLayout>
-      </Route>
-      <Route path="/contracts/service-contracts/:contractId/overview">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.SERVICE_CONTRACT_RECORD_OVERVIEW}>
-            <ServiceContractRecordOverviewPage />
-          </Gate>
-        </AuthenticatedLayout>
-      </Route>
-      <Route path="/contracts/service-contracts/:contractId/terms">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.SERVICE_CONTRACT_RECORD_TERMS}>
-            <ServiceContractRecordTermsPage />
-          </Gate>
-        </AuthenticatedLayout>
-      </Route>
-      <Route path="/contracts/service-contracts/:contractId/workflow">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.SERVICE_CONTRACT_RECORD_WORKFLOW}>
-            <ServiceContractRecordWorkflowPage />
-          </Gate>
-        </AuthenticatedLayout>
-      </Route>
+      {/* ── Phase 2 — Service Contract (FUTURE SLOT — inactive until domain activated) ── */}
+      {/* FUTURE_SLOT: Remove fragment wrapper when activating Service Contract domain */}
+      {false && <>
+        <Route path="/contracts/service-contracts">
+          <AuthenticatedLayout>
+            <Gate screenKey={SCREEN_KEYS.SERVICE_CONTRACT_LIST}>
+              <ServiceContractListPage />
+            </Gate>
+          </AuthenticatedLayout>
+        </Route>
+        <Route path="/contracts/service-contracts/:contractId/overview">
+          <AuthenticatedLayout>
+            <Gate screenKey={SCREEN_KEYS.SERVICE_CONTRACT_RECORD_OVERVIEW}>
+              <ServiceContractRecordOverviewPage />
+            </Gate>
+          </AuthenticatedLayout>
+        </Route>
+        <Route path="/contracts/service-contracts/:contractId/terms">
+          <AuthenticatedLayout>
+            <Gate screenKey={SCREEN_KEYS.SERVICE_CONTRACT_RECORD_TERMS}>
+              <ServiceContractRecordTermsPage />
+            </Gate>
+          </AuthenticatedLayout>
+        </Route>
+        <Route path="/contracts/service-contracts/:contractId/workflow">
+          <AuthenticatedLayout>
+            <Gate screenKey={SCREEN_KEYS.SERVICE_CONTRACT_RECORD_WORKFLOW}>
+              <ServiceContractRecordWorkflowPage />
+            </Gate>
+          </AuthenticatedLayout>
+        </Route>
+      </>}{/* end FUTURE_SLOT service-contracts */}
 
       {/* ── Phase 2 — Reporting ───────────────────────────────────────── */}
       <Route path="/reporting/portfolio">
