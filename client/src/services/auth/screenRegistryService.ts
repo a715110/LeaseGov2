@@ -58,9 +58,16 @@ export function getRegistryEntry(screenKey: ScreenKey): ScreenRegistryEntry | nu
 
 /**
  * Returns true if the screen is enabled in the registry.
- * Returns false if the registry has not been fetched (fail-closed).
+ *
+ * SCAFFOLD MODE: When the registry has not been fetched yet (no backend),
+ * all screens are enabled by default so page stubs are visible during development.
+ * Replace with fail-closed behaviour (return false) once backend is integrated.
  */
 export function isScreenEnabled(screenKey: ScreenKey): boolean {
+  if (!_cachedRegistry) {
+    // Scaffold mode: no registry loaded — allow all screens for development
+    return true
+  }
   const entry = getRegistryEntry(screenKey)
   if (!entry) return false
   return entry.isEnabled
