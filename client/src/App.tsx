@@ -30,10 +30,10 @@ import { SCREEN_KEYS } from './constants/screenKeys'
 import NotFound from './pages/NotFound'
 
 // ─── Auth pages (no AppShell) ─────────────────────────────────────────────────
-import LoginPage from './pages/Login'
-import SuperAdminLoginPage from './pages/SuperAdminLogin'
-import MfaChallengePage from './pages/MfaChallenge'
-import PasswordResetPage from './pages/PasswordReset'
+import LoginPage from './pages/auth/Login'
+import SuperAdminLoginPage from './pages/auth/SuperAdminLogin'
+import MfaChallengePage from './pages/auth/MfaChallenge'
+import PasswordResetPage from './pages/auth/PasswordReset'
 
 // ─── Portfolio ────────────────────────────────────────────────────────────────
 import PortfolioDashboardPage from './pages/portfolio/PortfolioDashboard'
@@ -79,11 +79,11 @@ import SurveyDetailPage from './pages/surveys/SurveyDetail'
 import SurveyResponseFormPage from './pages/surveys/SurveyResponseForm'
 
 // ─── Checkpoints ──────────────────────────────────────────────────────────────
-import CheckpointQueuePage from './pages/CheckpointQueue'
-import CheckpointDetailPage from './pages/CheckpointDetail'
+import CheckpointQueuePage from './pages/workflows/CheckpointQueue'
+import CheckpointDetailPage from './pages/workflows/CheckpointDetail'
 
 // ─── Notifications ────────────────────────────────────────────────────────────
-import NotificationCentrePage from './pages/NotificationCentre'
+import NotificationCentrePage from './pages/notifications/NotificationCentre'
 
 // ─── Settings ─────────────────────────────────────────────────────────────────
 import SettingsProfilePage from './pages/settings/SettingsProfile'
@@ -114,10 +114,10 @@ import ReportingAutomationEfficiencyPage from './pages/settings/ReportingAutomat
 import ReportingAuditExportPage from './pages/settings/ReportingAuditExport'
 
 // ─── Phase 2 — Counterparties & Properties ────────────────────────────────────
-import CounterpartyListPage from './pages/CounterpartyList'
-import CounterpartyDetailPage from './pages/CounterpartyDetail'
-import PropertyListPage from './pages/PropertyList'
-import PropertyDetailPage from './pages/PropertyDetail'
+import CounterpartyListPage from './pages/counterparties/CounterpartyList'
+import CounterpartyDetailPage from './pages/counterparties/CounterpartyDetail'
+import PropertyListPage from './pages/properties/PropertyList'
+import PropertyDetailPage from './pages/properties/PropertyDetail'
 
 // ─── Phase 2 — SuperAdmin additions ──────────────────────────────────────────
 import SuperAdminScreenRegistryPage from './pages/superadmin/SuperAdminScreenRegistry'

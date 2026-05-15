@@ -12,6 +12,7 @@
  * 3. Nothing else needs to change
  */
 
+// ─── Property Lease ───────────────────────────────────────────────────────────
 export {
   getPropertyLease,
   listPropertyLeases,
@@ -33,6 +34,24 @@ export type {
   ScheduleReassessmentInput, ScheduleReassessmentResult,
   ArchivePropertyLeaseInput, ArchivePropertyLeaseResult,
 } from '../../types/serviceOperations/contracts/propertyLeaseOperations'
+
+// ─── Contract Registry — domain expansion control point ───────────────────────
+export {
+  getContractRegistry,
+  isContractTypeEnabled,
+  getEnabledContractTypes,
+  updateContractRegistryEntry,
+  clearContractRegistryCache,
+} from './contractRegistryService'
+
+export type {
+  ContractRegistryEntry,
+  ContractRegistry,
+  GetContractRegistryInput,
+  GetContractRegistryResult,
+  UpdateContractRegistryEntryInput,
+  UpdateContractRegistryEntryResult,
+} from './contractRegistryService'
 
 // Equipment Lease operations — future
 // export { ... } from './equipmentLeaseService'
