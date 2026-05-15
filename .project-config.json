@@ -1,0 +1,35 @@
+{
+  "build_command": "pnpm run build",
+  "capabilities": [],
+  "dev_command": "pnpm run dev",
+  "env_vars": {},
+  "experiments": null,
+  "git_remote": {
+    "repo_url": "s3://vida-prod-gitrepo/webdev-git/310419663030282529/HjbJHJGyJuTjupG8t2nA9y",
+    "access_key_id": "ASIAZV3A2ECZFLKVHZRY",
+    "secret_access_key": "D/wMTvOMuNA5RY9p4pLWEDOQYF3iVWdQIqPOCZle",
+    "session_token": "IQoJb3JpZ2luX2VjELX//////////wEaCXVzLWVhc3QtMSJGMEQCIDpZ6Tb9LyZU3RYxFutcTRMpztcVXfEOfc/PvkNt475vAiB6C8t+3HQCEvqZDvBac2MpjzZdNBdRrndBMUkb97KZOCr2Awh9EAQaDDY2NTM4NjA5ODg2NiIMvTc5t/30uv5Q1ejuKtMDygMPScAtNDttUshCk8vfdcv7Tsi6Miri/fMhkM4lMRYqAiuFCZ9+E58KZgTFS5/S9dCnpc6GpYMcYtRYbTfbAaCNHe6+0LJDH/5IrkgRWag1tdfWULC6MOUrFDjSnbk1CSas6pgV6nnblmHVM7MN+9D6H/MnaYQ5qlpe64+SdK1+7YBG/1xSJQ8LTnSU59GBoDy9zITX7Lm3+4xELxMMIf/ZzFtqJnoC+sCS0F+IFNh0kYfJJj3GOn1prKD/MeUgR9qW+TBRE3MiMgWg2UCzt+zWLbJFzMnQJ87TBCl0Kpr0qa+0k+GcI4z4jfx6Q0I5Ky8dFIMFnrHqMHubr5td8tZQ3enH9Srssaou32XFkGgNBtsePhWDmVuqkagq1o4cG8F4As3MfY9wTasD1KJfWZ5CBiIzUfmqDgRu+2oD/kEaZG/tli9Ud57rREWJHaX4UfZODHsDEYYnHoyg4HTkN8C6rDaKJQvHmE/6bC3J1oLSoq//VnGRcmvX9M+0atjATDXTpLns2NDvyR3JmAqg7yC7C5PiowH/ZNdl08/lBldjw4akrsq7NgaveJNxRitnGkPtfwrKylphW2PQYg6zzc17T1Gr9zVSl/d1ZDIQ5dN1HSkw+vud0AY6ngE9wz0OvUyLTMQuXrrllDYp3G2mLjyoRMJFxVyPlyCshR5RIPrf+5e1/QZg6zjuxrp1/WqFT3mlXV4YGY1M8yKGaVPJ/cfEm/+lyDQH60OUaJ24anDtu7Le6UffIYWK4BxVRKkLoY6V37Fh3G8JQazU/+IpuDcH31xGNvHc9H5d9vNezWpkdL9h5GCKi7Z6Sd+QNGfR5pxGUxcCsf+qjw==",
+    "expiration": "2026-05-16T08:11:38.000Z"
+  },
+  "name": "leasegov",
+  "path": "/home/ubuntu/leasegov",
+  "port": 3000,
+  "secrets": {
+    "BUILT_IN_FORGE_API_KEY": "6zPGziX3pwN8X65FQ5fSFP",
+    "BUILT_IN_FORGE_API_URL": "https://forge.manus.ai",
+    "JWT_SECRET": "BFckNG4npUcfLBugkcLY8p",
+    "OAUTH_SERVER_URL": "https://api.manus.im",
+    "OWNER_NAME": "Peter Wan",
+    "OWNER_OPEN_ID": "g8SCcJXzn5WhT6vGtUmisS",
+    "VITE_ANALYTICS_ENDPOINT": "https://manus-analytics.com",
+    "VITE_ANALYTICS_WEBSITE_ID": "7ce2030c-0a8f-49c3-bd88-b951fe5cbd8b",
+    "VITE_APP_ID": "HjbJHJGyJuTjupG8t2nA9y",
+    "VITE_APP_LOGO": "",
+    "VITE_APP_TITLE": "LeaseGov — Enterprise Contract Management Platform",
+    "VITE_FRONTEND_FORGE_API_KEY": "jcbVo5D32XmfnEG74rLaEU",
+    "VITE_FRONTEND_FORGE_API_URL": "https://forge.manus.ai",
+    "VITE_OAUTH_PORTAL_URL": "https://manus.im"
+  },
+  "template_id": "web-static",
+  "test_command": "pnpm test"
+}
