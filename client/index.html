@@ -6,12 +6,44 @@
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1" />
-    <title>{{project_title}}</title>    
-    <!-- THIS IS THE START OF A COMMENT BLOCK, BLOCK TO BE DELETED: Google Fonts here, example:
+    <title>LeaseGov — Enterprise Contract Management</title>
+
+    <!-- Google Fonts: IBM Plex Sans (body) + IBM Plex Mono (code) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    THIS IS THE END OF A COMMENT BLOCK, BLOCK TO BE DELETED -->
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+    <!--
+      Flash Prevention Script — V4 Theme System.
+      This script runs synchronously before React hydrates to prevent
+      a flash of incorrect color mode on page load.
+
+      Priority chain:
+      1. leasegov_color_mode (user preference stored in localStorage)
+      2. prefers-color-scheme (system preference)
+      3. Default: 'light'
+
+      The .dark class is applied to <html> before any paint.
+      ThemeProvider will take over and manage the class reactively.
+    -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('leasegov_color_mode');
+          var mode = stored;
+          if (!mode || mode === 'system') {
+            mode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          }
+          if (mode === 'dark') {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        } catch (e) {
+          // localStorage unavailable — default to light
+        }
+      })();
+    </script>
   </head>
 
   <body>
