@@ -42,19 +42,18 @@ interface AppShellProps {
 function SidebarNavItem({ item, isActive }: { item: NavItem; isActive: boolean }) {
   const Icon = ICON_MAP[item.icon] ?? ChevronRight
   return (
-    <Link href={item.path}>
-      <a
-        className={cn(
-          'flex items-center gap-2.5 rounded px-3 py-2 text-sm font-medium transition-colors duration-150',
-          isActive
-            ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-            : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
-        )}
-        aria-current={isActive ? 'page' : undefined}
-      >
-        <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-        <span className="truncate">{item.label}</span>
-      </a>
+    <Link
+      href={item.path}
+      className={cn(
+        'flex items-center gap-2.5 rounded px-3 py-2 text-sm font-medium transition-colors duration-150 no-underline',
+        isActive
+          ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+          : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
+      )}
+      aria-current={isActive ? 'page' : undefined}
+    >
+      <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+      <span className="truncate">{item.label}</span>
     </Link>
   )
 }
@@ -100,21 +99,22 @@ export function AppShell({
       >
         {/* Logo */}
         <div className="flex h-14 items-center border-b px-4" style={{ borderColor: 'var(--sidebar-border)' }}>
-          <Link href="/portfolio">
-            <a className="flex items-center gap-2.5 no-underline">
-              <div
-                className="flex h-7 w-7 items-center justify-center rounded text-xs font-bold"
-                style={{ background: 'var(--sidebar-primary)', color: 'var(--sidebar-primary-foreground)' }}
-              >
-                LG
-              </div>
-              <span
-                className="text-sm font-semibold tracking-tight"
-                style={{ color: 'var(--sidebar-foreground)' }}
-              >
-                {organizationName}
-              </span>
-            </a>
+          <Link
+            href="/portfolio"
+            className="flex items-center gap-2.5 no-underline"
+          >
+            <div
+              className="flex h-7 w-7 items-center justify-center rounded text-xs font-bold"
+              style={{ background: 'var(--sidebar-primary)', color: 'var(--sidebar-primary-foreground)' }}
+            >
+              LG
+            </div>
+            <span
+              className="text-sm font-semibold tracking-tight"
+              style={{ color: 'var(--sidebar-foreground)' }}
+            >
+              {organizationName}
+            </span>
           </Link>
         </div>
 
@@ -171,13 +171,12 @@ export function AppShell({
           <div />
           <div className="flex items-center gap-3">
             <ColorModeToggle />
-            <Link href="/notifications">
-              <a
-                className="flex h-8 w-8 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                aria-label="Notifications"
-              >
-                <Bell className="h-4 w-4" />
-              </a>
+            <Link
+              href="/notifications"
+              className="flex h-8 w-8 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              aria-label="Notifications"
+            >
+              <Bell className="h-4 w-4" />
             </Link>
           </div>
         </header>
