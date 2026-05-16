@@ -15,8 +15,12 @@
  *   is_compound_case, rationale, reviewer_id)
  */
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useLocation } from "wouter";
+import { ContractCheckpointCard } from '@/components/checkpoints/ContractCheckpointCard';
+import { AutomationPolicyBadge } from '@/components/automation/AutomationPolicyBadge';
+import { GracefulDegradationBanner } from '@/components/automation/GracefulDegradationBanner';
+import { useCheckpoints } from '@/hooks/useCheckpoints';
 import {
   CheckCircle2, AlertTriangle, ChevronRight, Info, Bot, Users, User
 } from "lucide-react";
@@ -38,6 +42,7 @@ const MOCK_CASE = {
   path_type: "modification",
   concurrent_case_ids: [] as string[],
   automation_level: "collaborative" as AutoLevel,
+  contract_record_id: 'r1',
 };
 
 const MOD_TYPES = [
@@ -62,6 +67,11 @@ export default function ReassessmentClassification() {
   const [, navigate] = useLocation();
 
   const autoLevel: AutoLevel = MOCK_CASE.automation_level;
+
+  // FC-9: Map reassessment AutoLevel to AutomationPolicyBadge level
+  const contractRecordId = MOCK_CASE.contract_record_id ?? 'r1';
+  const badgeLevel = autoLevel === 'autonomous' ? 'full_autonomous' : autoLevel === 'collaborative' ? 'collaborative' : 'full_manual';
+  const { activeCheckpoint } = useCheckpoints(contractRecordId, { checkpointType: 'classification_confirm' });
 
   // Step state
   const [step, setStep] = useState(1); // 1, 2, 3, or 4 (result)
@@ -153,25 +163,24 @@ export default function ReassessmentClassification() {
           <h1 className="page-title">Classification Decision Gate</h1>
           <p className="page-subtitle">{MOCK_CASE.title}</p>
         </div>
-        {/* Automation level badge */}
-        <div className="flex items-center gap-2">
-          {autoLevel === "autonomous" && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium" style={{ background:"var(--color-lg-accent-subtle)", color:"var(--color-lg-primary)" }}>
-              <Bot className="w-3.5 h-3.5" /> Fully Autonomous
-            </div>
-          )}
-          {autoLevel === "collaborative" && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium" style={{ background:"#f5f3ff", color:"#7c3aed" }}>
-              <Users className="w-3.5 h-3.5" /> Collaborative
-            </div>
-          )}
-          {autoLevel === "manual" && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium bg-muted text-muted-foreground">
-              <User className="w-3.5 h-3.5" /> Full Manual
-            </div>
-          )}
-        </div>
+        {/* FC-9: AutomationPolicyBadge */}
+        <AutomationPolicyBadge level={badgeLevel} size="sm" />
       </div>
+
+      {/* FC-9: Graceful degradation banner */}
+      <GracefulDegradationBanner />
+
+      {/* FC-9: Checkpoint card — collaborative mode */}
+      {autoLevel === 'collaborative' && activeCheckpoint && (
+        <div className="px-6 pb-2">
+          <ContractCheckpointCard
+            checkpoint={activeCheckpoint}
+            onApprove={() => {}}
+            onModify={() => {}}
+            onReject={() => {}}
+          />
+        </div>
+      )}
 
       <div className="px-6 pb-8 flex gap-6">
         {/* Main wizard */}

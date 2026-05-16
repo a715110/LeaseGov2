@@ -17,6 +17,9 @@
 
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { AutomationPolicyBadge } from '@/components/automation/AutomationPolicyBadge';
+import { GracefulDegradationBanner } from '@/components/automation/GracefulDegradationBanner';
+import { useCheckpoints } from '@/hooks/useCheckpoints';
 import {
   CheckCircle2, ChevronDown, ChevronRight, Bot, Users, User
 } from "lucide-react";
@@ -102,6 +105,9 @@ export default function ReassessmentAssessment() {
   const [, navigate] = useLocation();
 
   const autoLevel: AutoLevel = MOCK_CASE.automation_level;
+  const badgeLevel = autoLevel === 'autonomous' ? 'full_autonomous' : autoLevel === 'collaborative' ? 'collaborative' : 'full_manual';
+  const contractRecordId = 'r1'; // TODO: from MOCK_CASE.contract_record_id
+  const { activeCheckpoint: _checkpoint } = useCheckpoints(contractRecordId, { checkpointType: 'assessment_confirm' });
 
   const [tier1Answers, setTier1Answers] = useState<Record<string, boolean | null>>({
     below_market: null,
@@ -197,24 +203,11 @@ export default function ReassessmentAssessment() {
           <h1 className="page-title">Option Exercise Assessment</h1>
           <p className="page-subtitle">{MOCK_CASE.title} — {MOCK_CASE.option_type} option, {MOCK_CASE.option_exercise_date}</p>
         </div>
-        <div className="flex items-center gap-2">
-          {autoLevel === "collaborative" && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium" style={{ background:"#f5f3ff", color:"#7c3aed" }}>
-              <Users className="w-3.5 h-3.5" /> Collaborative
-            </div>
-          )}
-          {autoLevel === "autonomous" && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium" style={{ background:"var(--color-lg-accent-subtle)", color:"var(--color-lg-primary)" }}>
-              <Bot className="w-3.5 h-3.5" /> Fully Autonomous
-            </div>
-          )}
-          {autoLevel === "manual" && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium bg-muted text-muted-foreground">
-              <User className="w-3.5 h-3.5" /> Full Manual
-            </div>
-          )}
-        </div>
+        <AutomationPolicyBadge level={badgeLevel} size="sm" />
       </div>
+
+      {/* FC-9: Graceful degradation banner */}
+      <GracefulDegradationBanner />
 
       <div className="px-6 pb-8 flex gap-6">
         {/* Main content */}

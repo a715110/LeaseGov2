@@ -20,8 +20,13 @@
  *   ContractRecord (automation_level, rework_iteration)
  */
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useLocation } from "wouter";
+import { ContractAgentProgressPanel } from '@/components/agents/ContractAgentProgressPanel';
+import { ContractCheckpointCard } from '@/components/checkpoints/ContractCheckpointCard';
+import { AutomationPolicyBadge } from '@/components/automation/AutomationPolicyBadge';
+import { GracefulDegradationBanner } from '@/components/automation/GracefulDegradationBanner';
+import { useCheckpoints } from '@/hooks/useCheckpoints';
 import {
   X, ChevronDown, ChevronUp, Shield, ShieldAlert,
   CheckCircle2, AlertTriangle, Edit3, MessageSquare,
@@ -111,7 +116,33 @@ export default function ApprovalsReview() {
   const _screenKey = SCREEN_KEYS.APPROVALS_REVIEW;
   const [, navigate] = useLocation();
 
-  const automationLevel: AutomationLevel = "collaborative";
+  const contractRecordId = 'r1'; // TODO: derive from route params
+  const [automationLevel] = useState<AutomationLevel>('collaborative'); // TODO: from contractRecord?.automation_level
+
+  const { activeCheckpoint } = useCheckpoints(contractRecordId, {
+    checkpointType: 'extraction_review',
+  });
+
+  const mockAgentTask = useMemo(() => ({
+    id: `task-review-${contractRecordId}`,
+    agent_type: 'review',
+    workflow_id: `wf-${contractRecordId}`,
+    contract_id: contractRecordId,
+    agent_name: 'Review Agent',
+    automation_level: 'full_autonomous' as const,
+    status: 'completed' as const,
+    current_step: 'Review Complete',
+    steps: [
+      { id: 's1', label: 'Field Verification', status: 'completed' as const, timestamp: '10:02', duration: '3m 14s' },
+      { id: 's2', label: 'Critical Field Check', status: 'completed' as const, timestamp: '10:05', duration: '1m 08s' },
+      { id: 's3', label: 'SoD Validation', status: 'completed' as const, timestamp: '10:06', duration: '0m 22s' },
+      { id: 's4', label: 'Approval Recommendation', status: 'completed' as const, timestamp: '10:07', duration: '0m 15s' },
+    ],
+    decisions: [
+      { id: 'd1', label: 'All critical fields verified', decision_type: 'field_check', confidence: 0.97, summary: '22/22 critical fields confirmed', reasoning: 'All critical fields have been verified against source documents.', requires_human_approval: false, timestamp: '10:07' },
+    ],
+    progress: { current: 4, total: 4, label: 'Complete' },
+  }), [contractRecordId]);
   const sodViolation = false;
   const reworkIteration = 0;
 
@@ -243,25 +274,29 @@ export default function ApprovalsReview() {
         </div>
       </div>
 
-      {/* Automation banner */}
-      {automationLevel === "collaborative" && (
-        <div className="flex items-center gap-3 px-6 py-2.5 border-b border-border bg-[var(--color-lg-accent-subtle)] shrink-0">
-          <Zap className="w-4 h-4 text-[var(--color-lg-info)]" />
-          <span className="text-[13px] text-[var(--color-lg-info)]">
-            <strong>Collaborative Review:</strong> The Contract Agent has prepared a review summary. You may Approve, Modify, or Reject the agent's assessment.
-          </span>
-          <div className="ml-auto flex gap-2">
-            <Button size="sm" variant="outline" className="h-7 text-[12px]">Modify</Button>
-            <Button size="sm" variant="outline" className="h-7 text-[12px] border-[var(--color-lg-error)] text-[var(--color-lg-error)]">Reject Assessment</Button>
-          </div>
+      {/* FC-9: Graceful degradation banner */}
+      <GracefulDegradationBanner />
+
+      {/* FC-9: Agent progress panel — full_autonomous */}
+      {automationLevel === 'full_autonomous' && (
+        <div className="shrink-0 border-b border-border">
+          <ContractAgentProgressPanel
+            task={mockAgentTask}
+            onIntervene={() => {}}
+            onResume={() => {}}
+          />
         </div>
       )}
-      {(automationLevel as AutomationLevel) === "full_autonomous" && (
-        <div className="flex items-center gap-3 px-6 py-2.5 border-b border-border bg-purple-50 shrink-0">
-          <Bot className="w-4 h-4 text-purple-600" />
-          <span className="text-[13px] text-purple-700">
-            <strong>Full Autonomous:</strong> Contract Agent completed a full review pass. Human approval is still required.
-          </span>
+
+      {/* FC-9: Checkpoint card — collaborative */}
+      {automationLevel === 'collaborative' && activeCheckpoint && (
+        <div className="shrink-0">
+          <ContractCheckpointCard
+            checkpoint={activeCheckpoint}
+            onApprove={() => {}}
+            onModify={() => {}}
+            onReject={() => {}}
+          />
         </div>
       )}
 

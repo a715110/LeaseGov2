@@ -15,8 +15,15 @@
  *                  disposition, evidence_anchor_id), EvidenceAnchor
  */
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useLocation } from "wouter";
+import { ContractAgentProgressPanel } from '@/components/agents/ContractAgentProgressPanel';
+import { ContractCheckpointCard } from '@/components/checkpoints/ContractCheckpointCard';
+import { AutomationPolicyBadge } from '@/components/automation/AutomationPolicyBadge';
+import { InterventionButton } from '@/components/automation/InterventionButton';
+import { GracefulDegradationBanner } from '@/components/automation/GracefulDegradationBanner';
+import { LeaseManualTaskCard } from '@/components/automation/LeaseManualTaskCard';
+import { useCheckpoints } from '@/hooks/useCheckpoints';
 import {
   Shield, CheckCircle2, AlertTriangle, Link2, Link2Off,
   ChevronDown, ChevronUp, ZoomIn, ZoomOut, Layers,
@@ -196,6 +203,49 @@ export default function ExtractionAiWorkspace() {
     setFields(prev => prev.map(f => f.id === id ? { ...f, confirmed: true, disposition: "accepted" } : f));
   }
 
+  // ─── Automation level ──────────────────────────────────────────────────────
+  const contractRecordId = 'r1'; // TODO: derive from route params
+  // TODO: replace with contractRecord?.automation_level ?? tenantConfig?.automationPolicy?.documentExtractionLevel ?? 'collaborative'
+  type AutomationLevelType = 'full_autonomous' | 'collaborative' | 'full_manual';
+  const [automationLevel] = useState<AutomationLevelType>('full_autonomous');
+  const isFullAutonomous = automationLevel === 'full_autonomous';
+  const isCollaborative  = automationLevel === 'collaborative';
+  const isFullManual     = automationLevel === 'full_manual';
+
+  // ─── Checkpoint ─────────────────────────────────────────────────────────────
+  const { activeCheckpoint } = useCheckpoints(contractRecordId, {
+    checkpointType: 'extraction_review',
+  });
+
+  // ─── Mock agent task for ContractAgentProgressPanel ─────────────────────────
+  const mockAgentTask = useMemo(() => ({
+    id: `task-extraction-${contractRecordId}`,
+    agent_type: 'extraction',
+    workflow_id: `wf-${contractRecordId}`,
+    contract_id: contractRecordId,
+    agent_name: 'Extraction Agent',
+    automation_level: 'full_autonomous' as const,
+    status: 'running' as const,
+    current_step: 'Confidence Scoring',
+    steps: [
+      { id: 's1', label: 'OCR Processing', status: 'completed' as const, timestamp: '09:14', duration: '1m 22s' },
+      { id: 's2', label: 'Field Extraction', status: 'completed' as const, timestamp: '09:15', duration: '2m 04s' },
+      { id: 's3', label: 'Confidence Scoring', status: 'active' as const },
+      { id: 's4', label: 'Evidence Anchoring', status: 'upcoming' as const },
+    ],
+    decisions: [],
+    progress: { current: 2, total: 4, label: 'Confidence Scoring' },
+  }), [contractRecordId]);
+
+  // ─── Manual task steps for LeaseManualTaskCard ───────────────────────────────
+  const manualExtractionSteps = useMemo(() => [
+    { id: 'ms1', label: 'Review each document page', assigned_role: 'preparer' },
+    { id: 'ms2', label: 'Enter core metadata fields', assigned_role: 'preparer' },
+    { id: 'ms3', label: 'Enter financial terms', assigned_role: 'preparer' },
+    { id: 'ms4', label: 'Enter option and renewal terms', assigned_role: 'preparer' },
+    { id: 'ms5', label: 'Confirm all critical fields', assigned_role: 'preparer' },
+  ], []);
+
   return (
     <div className="flex flex-col" style={{ height: "100vh" }}>
       {/* Header */}
@@ -205,12 +255,12 @@ export default function ExtractionAiWorkspace() {
           <p className="page-subtitle">Office-Tower-Amendment-3.pdf · JOB-2026-0442</p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded bg-accent border border-border text-[12px] font-semibold text-primary">
-            <Cpu className="w-3.5 h-3.5" />
-            Full Autonomous
-          </span>
+          <AutomationPolicyBadge level={automationLevel} size="sm" />
         </div>
       </div>
+
+      {/* Graceful degradation banner — self-hiding when not needed */}
+      <GracefulDegradationBanner />
 
       {/* Summary bar */}
       <div className="shrink-0 flex items-center gap-6 px-6 py-2.5 bg-muted/40 border-b border-border text-[13px]">
@@ -234,7 +284,37 @@ export default function ExtractionAiWorkspace() {
         {/* Left panel */}
         <div className="split-panel-left flex flex-col" style={{ width: "50%" }}>
 
-          {/* Automation panel */}
+          {/* FC-9 Agent / Checkpoint / Manual panel */}
+          {isFullAutonomous && (
+            <div className="border-b border-border">
+              <ContractAgentProgressPanel
+                task={mockAgentTask}
+                onIntervene={() => {}}
+                onResume={() => {}}
+              />
+            </div>
+          )}
+          {isCollaborative && activeCheckpoint && (
+            <div className="border-b border-border">
+              <ContractCheckpointCard
+                checkpoint={activeCheckpoint}
+                onApprove={() => {}}
+                onModify={() => {}}
+                onReject={() => {}}
+              />
+            </div>
+          )}
+          {isFullManual && (
+            <div className="border-b border-border">
+              <LeaseManualTaskCard
+                steps={manualExtractionSteps}
+                workflowLabel="Manual Extraction"
+                contractId={contractRecordId}
+              />
+            </div>
+          )}
+
+          {/* Automation panel (legacy — kept for full_autonomous mode) */}
           <div className="border-b border-border bg-muted/20">
             <button
               onClick={() => setAutomationPanelOpen(v => !v)}
@@ -262,6 +342,18 @@ export default function ExtractionAiWorkspace() {
               </div>
             )}
           </div>
+
+          {/* Intervention button — full autonomous only */}
+          {isFullAutonomous && (
+            <div className="px-5 py-2 border-b border-border bg-muted/10">
+              <InterventionButton
+                status="running"
+                onIntervene={() => {}}
+                onResume={() => {}}
+                size="sm"
+              />
+            </div>
+          )}
 
           {/* Category accordions */}
           <div className="flex-1 overflow-y-auto">

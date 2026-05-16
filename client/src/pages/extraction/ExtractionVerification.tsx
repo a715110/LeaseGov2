@@ -18,8 +18,11 @@
  *   ai_confidence, rework_flagged), EvidenceAnchor
  */
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useLocation } from "wouter";
+import { ContractCheckpointCard } from '@/components/checkpoints/ContractCheckpointCard';
+import { GracefulDegradationBanner } from '@/components/automation/GracefulDegradationBanner';
+import { useCheckpoints } from '@/hooks/useCheckpoints';
 import {
   Shield, CheckCircle2, AlertTriangle, Link2, Link2Off,
   ChevronDown, ChevronUp, ZoomIn, ZoomOut, Layers,
@@ -111,6 +114,15 @@ export default function ExtractionVerification() {
     setFields(prev => prev.map(f => f.id === id ? { ...f, confirmed: true } : f));
   }
 
+  // ─── Automation level ──────────────────────────────────────────────────────
+  const contractRecordId = 'r1'; // TODO: derive from route params
+  const automationLevel = 'collaborative' as const; // TODO: from contractRecord?.automation_level
+  const isCollaborative = automationLevel === 'collaborative';
+
+  const { activeCheckpoint } = useCheckpoints(contractRecordId, {
+    checkpointType: 'extraction_review',
+  });
+
   return (
     <div className="flex flex-col" style={{ height: "100vh" }}>
       <div className="page-header shrink-0">
@@ -119,6 +131,21 @@ export default function ExtractionVerification() {
           <p className="page-subtitle">Office-Tower-Amendment-3.pdf · JOB-2026-0442</p>
         </div>
       </div>
+
+      {/* FC-9: Checkpoint card — collaborative mode */}
+      {isCollaborative && activeCheckpoint && (
+        <div className="shrink-0">
+          <ContractCheckpointCard
+            checkpoint={activeCheckpoint}
+            onApprove={() => {}}
+            onModify={() => {}}
+            onReject={() => {}}
+          />
+        </div>
+      )}
+
+      {/* FC-9: Graceful degradation banner */}
+      <GracefulDegradationBanner />
 
       <div className="flex flex-1 overflow-hidden">
         {/* Left panel */}

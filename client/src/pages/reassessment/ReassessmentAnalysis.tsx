@@ -18,6 +18,8 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { FileText, Download, CheckCircle2, AlertTriangle } from "lucide-react";
+import { AutomationPolicyBadge } from '@/components/automation/AutomationPolicyBadge';
+import { GracefulDegradationBanner } from '@/components/automation/GracefulDegradationBanner';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
@@ -110,7 +112,12 @@ export default function ReassessmentAnalysis() {
           <h1 className="page-title">Analysis & Memo</h1>
           <p className="page-subtitle">{MOCK_CASE.title}</p>
         </div>
+        {/* FC-9: AutomationPolicyBadge */}
+        <AutomationPolicyBadge level="collaborative" size="sm" />
       </div>
+
+      {/* FC-9: Graceful degradation banner */}
+      <GracefulDegradationBanner />
 
       {/* Tabs */}
       <div className="flex items-center gap-0 px-6 border-b border-border bg-card">

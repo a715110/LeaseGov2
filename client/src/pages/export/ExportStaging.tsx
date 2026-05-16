@@ -21,6 +21,8 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { Shield, AlertTriangle, CheckCircle2, ChevronRight, FileText } from "lucide-react";
+import { AutomationPolicyBadge } from '@/components/automation/AutomationPolicyBadge';
+import { GracefulDegradationBanner } from '@/components/automation/GracefulDegradationBanner';
 import { Button } from "@/components/ui/button";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
 
@@ -123,7 +125,12 @@ export default function ExportStaging() {
             )}
           </div>
         </div>
+        {/* FC-9: AutomationPolicyBadge */}
+        <AutomationPolicyBadge level="collaborative" size="sm" />
       </div>
+
+      {/* FC-9: Graceful degradation banner */}
+      <GracefulDegradationBanner />
 
       {/* Triple-view panels */}
       <div className="flex-1 flex overflow-hidden mx-6 mb-0 gap-3 min-h-[600px]">

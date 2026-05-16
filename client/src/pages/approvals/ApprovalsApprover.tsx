@@ -20,6 +20,9 @@
 
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { ContractCheckpointCard } from '@/components/checkpoints/ContractCheckpointCard';
+import { AutomationPolicyBadge } from '@/components/automation/AutomationPolicyBadge';
+import { useCheckpoints } from '@/hooks/useCheckpoints';
 import {
   Shield, ShieldAlert, CheckCircle2, X, ChevronDown, ChevronUp,
   DollarSign, Calendar, MapPin, Users, Clock
@@ -81,6 +84,13 @@ export default function ApprovalsApprover() {
   const s = MOCK_SUMMARY;
   const canApprove = !s.sod_violation && (!s.has_deferred || deferredAcknowledged);
 
+  // FC-9: Checkpoint wiring
+  const contractRecordId = 'r1'; // TODO: derive from route params
+  const automationLevel: 'full_autonomous' | 'collaborative' | 'full_manual' = 'collaborative'; // TODO: from contractRecord
+  const { activeCheckpoint } = useCheckpoints(contractRecordId, {
+    checkpointType: 'onboarding_approval',
+  });
+
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-6 overflow-y-auto">
       <div className="bg-card rounded-xl shadow-2xl w-[680px] max-h-[90vh] overflow-y-auto my-auto">
@@ -93,12 +103,25 @@ export default function ApprovalsApprover() {
             </div>
             <p className="text-[13px] text-muted-foreground">{s.record_title}</p>
           </div>
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => navigate("/approvals/queue")}>
-            <X className="w-4 h-4" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <AutomationPolicyBadge level={automationLevel} size="sm" />
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => navigate("/approvals/queue")}>
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
 
         <div className="px-6 py-5 flex flex-col gap-5">
+          {/* FC-9: Checkpoint card — collaborative mode */}
+          {automationLevel === 'collaborative' && activeCheckpoint && (
+            <ContractCheckpointCard
+              checkpoint={activeCheckpoint}
+              onApprove={() => {}}
+              onModify={() => {}}
+              onReject={() => {}}
+            />
+          )}
+
           {/* SoD indicator */}
           {s.sod_violation ? (
             <div className="flex items-center gap-3 px-4 py-3 rounded-lg border border-[var(--color-lg-error)] bg-[var(--color-lg-error-subtle)]">
