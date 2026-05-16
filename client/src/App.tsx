@@ -18,6 +18,7 @@ import { Route, Switch, Redirect } from 'wouter'
 import ErrorBoundary from './components/ErrorBoundary'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { ScreenGate } from './components/shared/ScreenGate'
+import { RegistryProvider } from './contexts/RegistryContext'
 import { SCREEN_KEYS } from './constants/screenKeys'
 import AppShell from './components/layout/AppShell'
 import NotFound from './pages/NotFound'
@@ -501,12 +502,21 @@ function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
-        <TooltipProvider>
-          <Toaster />
-          <AppShell>
-            <Router />
-          </AppShell>
-        </TooltipProvider>
+        {/*
+          RegistryProvider — scaffold mode: immediately marks registry as loaded.
+          isScreenEnabled() already fail-opens when no registry is cached, so
+          all screens render correctly during development without a backend fetch.
+          When the backend registry endpoint is ready, set scaffoldMode={false}
+          and wire fetchScreenRegistry() inside RegistryProvider.
+        */}
+        <RegistryProvider scaffoldMode={true}>
+          <TooltipProvider>
+            <Toaster />
+            <AppShell>
+              <Router />
+            </AppShell>
+          </TooltipProvider>
+        </RegistryProvider>
       </ThemeProvider>
     </ErrorBoundary>
   )

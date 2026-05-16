@@ -19,11 +19,17 @@
  */
 import React from 'react'
 import { isScreenEnabled, getRequiredRoles } from '../../services/screenRegistryService'
+import { useRegistry } from '../../contexts/RegistryContext'
 import type { ScreenKey } from '../../constants/screenKeys'
 
 interface ScreenGateProps {
   screenKey: ScreenKey
   userRoles?: string[]
+  /**
+   * @deprecated Pass isRegistryLoaded via RegistryProvider instead.
+   * This prop is kept for backward compatibility and overrides the context
+   * value when explicitly provided.
+   */
   isRegistryLoaded?: boolean
   children: React.ReactNode
   /** Rendered when screen is inactive in the registry (Layer 1 failure). Default: <ScreenDisabledFallback /> */
@@ -106,11 +112,15 @@ function AccessDeniedFallback({ screenKey }: { screenKey: ScreenKey }) {
 export function ScreenGate({
   screenKey,
   userRoles = [],
-  isRegistryLoaded = false,
+  isRegistryLoaded: isRegistryLoadedProp,
   children,
   fallback,
   loadingFallback,
 }: ScreenGateProps) {
+  // Read from context; prop override takes precedence if explicitly provided
+  const { isRegistryLoaded: isRegistryLoadedCtx } = useRegistry()
+  const isRegistryLoaded = isRegistryLoadedProp ?? isRegistryLoadedCtx
+
   // Show loader while registry is being fetched
   if (!isRegistryLoaded) {
     return <>{loadingFallback ?? <ScreenGateLoader />}</>
