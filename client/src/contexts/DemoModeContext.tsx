@@ -60,7 +60,7 @@ export const DEMO_STEPS: DemoStep[] = [
     title: 'Review & Group Documents',
     description: 'Valid documents are grouped into contract packages. The operator assigns each document to a workspace and verifies the grouping before submission.',
     instruction: 'Review the document groupings. Each group maps to a contract package that will flow to the Preparer.',
-    route: '/pipeline/grouping', tabHint: 'Tab 1 — Document Submitter',
+    route: '/pipeline/review', tabHint: 'Tab 1 — Document Submitter',
   },
   {
     id: 'step-4', stepNumber: 4, role: 'document_submitter',
@@ -69,7 +69,7 @@ export const DEMO_STEPS: DemoStep[] = [
     title: 'Submit Batch — Handoff to Preparer',
     description: "The operator submits the validated batch. This triggers the cross-tab handoff — the Preparer's Processing Queue will receive the new jobs immediately.",
     instruction: 'Click "Submit Batch" to send the documents to the Preparer. Watch Tab 2 receive the new jobs in real time.',
-    route: '/pipeline/submit',
+    route: '/pipeline/confirm',
     eventToPublish: { type: 'BATCH_SUBMITTED', payload: { batchId: 'BATCH-DEMO-001', documentCount: 12, workspaceTag: 'Q1-2026-Retail', submittedBy: 'Document Submitter' } },
     isHandoff: true, handoffTo: 'preparer',
     handoffLabel: 'Batch submitted → Preparer receives 12 new jobs in Processing Queue',
@@ -129,7 +129,7 @@ export const DEMO_STEPS: DemoStep[] = [
     title: 'Extractions Table — Completed & In-Progress Packages',
     description: 'The Extractions Table shows all packages: Completed, In-Progress, and Submitted. Flagged rows display per-category flag icons (Data, Classification, Compliance, Other). The Preparer can open a flag panel or submit a Completed package for review.',
     instruction: 'Navigate to the Extractions Table. Point out the status badges, flag icons on flagged rows, and the Submit button on Completed packages.',
-    route: '/extraction/table', tabHint: 'Tab 2 — Preparer',
+    route: '/extraction/verify', tabHint: 'Tab 2 — Preparer',
   },
   {
     id: 'step-11', stepNumber: 11, role: 'preparer',
@@ -138,7 +138,7 @@ export const DEMO_STEPS: DemoStep[] = [
     title: 'Flag Review Panel — Inline Resolution',
     description: 'Clicking the flag icon on a flagged row opens the Flag Sliding Panel (Screen 3.1.1): a 600px right drawer showing all flags grouped by category with severity badges. Opening a flag opens the nested Resolution Panel (Screen 3.2.1) where the Preparer can select a resolution type, add rationale, and mark the flag as Resolved.',
     instruction: 'Click the flag icon on a flagged row to open the Flag Panel. Expand a flag and click "Open Resolution Panel". Show the resolution options and Mark as Resolved.',
-    route: '/extraction/table', tabHint: 'Tab 2 — Preparer',
+    route: '/extraction/verify', tabHint: 'Tab 2 — Preparer',
   },
   {
     id: 'step-12', stepNumber: 12, role: 'preparer',
@@ -147,7 +147,7 @@ export const DEMO_STEPS: DemoStep[] = [
     title: 'Submit for Review — Handoff to Reviewer',
     description: "The Preparer submits the verified, flag-resolved package for Reviewer approval. This triggers the cross-tab handoff — the Reviewer's Approval Queue will receive the new item immediately.",
     instruction: 'Click "Submit" on a Completed package in the Extractions Table. Watch Tab 3 receive the new approval task in real time.',
-    route: '/extraction/table',
+    route: '/extraction/verify',
     eventToPublish: { type: 'SUBMIT_FOR_REVIEW', payload: { jobId: 'JOB-DEMO-001', documentName: 'Retail-Lease-HQ-2026.pdf', preparedBy: 'Preparer', confidence: 94 } },
     isHandoff: true, handoffTo: 'reviewer',
     handoffLabel: 'Submitted for review → Reviewer receives new approval task in Approval Queue',
@@ -228,7 +228,7 @@ export const DEMO_STEPS: DemoStep[] = [
     title: 'Export Queue — New Task Received',
     description: "The Accountant sees the newly approved record in their Export Queue. The task shows the target template (ASC 842 Finance Standard), the record name, and the approval chain.",
     instruction: 'Notice the new export task from the approved record. The template and destination are pre-selected based on the lease classification.',
-    route: '/export/queue', tabHint: 'Tab 5 — Accountant',
+    route: '/export/templates', tabHint: 'Tab 5 — Accountant',
   },
   {
     id: 'step-20', stepNumber: 20, role: 'accountant',

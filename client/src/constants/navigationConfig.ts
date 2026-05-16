@@ -34,8 +34,9 @@ export const NAV_GROUPS: NavGroupConfig[] = [
   { key: 'records',           label: 'Records',           icon: 'Folder',        sortOrder: 5, phase: 'mvp'     },
   { key: 'export',            label: 'Governed Export',   icon: 'CloudUpload',   sortOrder: 6, phase: 'mvp'     },
   { key: 'admin',             label: 'Admin',             icon: 'Settings',      sortOrder: 7, phase: 'mvp'     },
-  { key: 'reassessment',      label: 'Reassessment',      icon: 'RefreshCw',     sortOrder: 8, phase: 'phase_2' },
-  { key: 'superadmin',        label: 'SuperAdmin',        icon: 'Shield',        sortOrder: 9, phase: 'mvp'     },
+  { key: 'reassessment',      label: 'Reassessment',      icon: 'RefreshCw',     sortOrder: 8, phase: 'mvp'     },
+  { key: 'agents',            label: 'Agents',            icon: 'Bot',           sortOrder: 9, phase: 'mvp'     },
+  { key: 'superadmin',        label: 'SuperAdmin',        icon: 'Shield',        sortOrder: 10, phase: 'mvp'    },
 ]
 
 // ─── Static Nav Item Type ─────────────────────────────────────────────────────

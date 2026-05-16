@@ -20,6 +20,8 @@ import { ThemeProvider } from './contexts/ThemeContext'
 import { ScreenGate } from './components/shared/ScreenGate'
 import { RegistryProvider } from './contexts/RegistryContext'
 import { RoleProvider } from './contexts/RoleContext'
+import { DemoModeProvider } from './contexts/DemoModeContext'
+import { DemoOverlay } from './components/layout/DemoOverlay'
 import { SCREEN_KEYS } from './constants/screenKeys'
 import AppShell from './components/layout/AppShell'
 import NotFound from './pages/NotFound'
@@ -512,12 +514,20 @@ function App() {
           and wire fetchScreenRegistry() inside RegistryProvider.
         */}
         <RegistryProvider scaffoldMode={true}>
-          <TooltipProvider>
-            <Toaster />
-            <AppShell>
-              <Router />
-            </AppShell>
-          </TooltipProvider>
+          {/* DemoModeProvider must be inside Router context (wouter) so DemoOverlay
+              can call useLocation for navigation. Wouter's Router is implicit at
+              the top level, so this placement is safe. */}
+          <DemoModeProvider>
+            <TooltipProvider>
+              <Toaster />
+              <AppShell>
+                <Router />
+              </AppShell>
+              {/* DemoOverlay renders as a fixed-position floating panel outside
+                  the AppShell scroll container so it is never clipped. */}
+              <DemoOverlay />
+            </TooltipProvider>
+          </DemoModeProvider>
         </RegistryProvider>
       </ThemeProvider>
       </RoleProvider>

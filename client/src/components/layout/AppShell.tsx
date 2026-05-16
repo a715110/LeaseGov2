@@ -19,7 +19,7 @@ import { Link, useLocation } from 'wouter'
 import {
   UploadCloud, Scan, Layers, CheckCircle, Folder,
   CloudUpload, Settings, Shield, Bell, ChevronRight,
-  RefreshCw, UserCog, ChevronDown,
+  RefreshCw, UserCog, ChevronDown, Bot,
 } from 'lucide-react'
 import { ColorModeToggle } from './ColorModeToggle'
 import { cn } from '../../lib/utils'
@@ -39,7 +39,7 @@ import {
 // ─── Icon map ────────────────────────────────────────────────────────────────
 const ICON_MAP: Record<string, React.ElementType> = {
   UploadCloud, Scan, Layers, CheckCircle, Folder,
-  CloudUpload, Settings, Shield, RefreshCw,
+  CloudUpload, Settings, Shield, RefreshCw, Bot,
 }
 
 // ─── All 9 V4 roles for the demo switcher ────────────────────────────────────
@@ -87,9 +87,14 @@ const STATIC_NAV: StaticNavEntry[] = [
   { label: 'Tenants',             path: ROUTE_PATHS.superadminTenants,    navGroup: 'superadmin',        phase: 'mvp' },
   { label: 'System Health',       path: ROUTE_PATHS.superadminHealth,     navGroup: 'superadmin',        phase: 'mvp' },
   { label: 'Screen Registry',     path: ROUTE_PATHS.superadminScreenRegistry, navGroup: 'superadmin',   phase: 'mvp' },
-  // FC-6 Phase 2
-  { label: 'Dashboard',           path: ROUTE_PATHS.reassessmentDashboard, navGroup: 'reassessment',    phase: 'phase_2' },
-  { label: 'Cases',               path: ROUTE_PATHS.reassessmentCases,    navGroup: 'reassessment',     phase: 'phase_2' },
+  // FC-6 Reassessment
+  { label: 'Dashboard',           path: ROUTE_PATHS.reassessmentDashboard,  navGroup: 'reassessment', phase: 'mvp' },
+  { label: 'Cases',               path: ROUTE_PATHS.reassessmentCases,      navGroup: 'reassessment', phase: 'mvp' },
+  { label: 'Watchlist',           path: ROUTE_PATHS.reassessmentWatchlist,  navGroup: 'reassessment', phase: 'mvp' },
+  { label: 'Projects',            path: ROUTE_PATHS.reassessmentSurveys,    navGroup: 'reassessment', phase: 'mvp' },
+  // FC-9 Agents
+  { label: 'Checkpoint Queue',    path: ROUTE_PATHS.agentCheckpoints,       navGroup: 'agents',       phase: 'mvp' },
+  { label: 'Activity Monitor',    path: ROUTE_PATHS.agentMonitor,           navGroup: 'agents',       phase: 'mvp' },
 ]
 
 interface AppShellProps {
