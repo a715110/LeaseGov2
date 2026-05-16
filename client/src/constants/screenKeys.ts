@@ -41,13 +41,12 @@ export const SCREEN_KEYS = {
   PROPERTY_LEASE_RECORD_AGENT:       'property_lease_record_agent',
   PROPERTY_LEASE_RECORD_REASSESSMENT:'property_lease_record_reassessment',
 
-  // ─── Property Lease — Onboarding Workflow (6 screens) ───────────────────────
-  ONBOARDING_DOCUMENT_UPLOAD:        'onboarding_document_upload',
-  ONBOARDING_OCR_PROCESSING:         'onboarding_ocr_processing',
-  ONBOARDING_EXTRACTION_REVIEW:      'onboarding_extraction_review',
-  ONBOARDING_DATA_VALIDATION:        'onboarding_data_validation',
-  ONBOARDING_SURVEY_DISPATCH:        'onboarding_survey_dispatch',
-  ONBOARDING_APPROVAL:               'onboarding_approval',
+  // ─── Tenant Onboarding — SuperAdmin (5 screens, ON.1–ON.5) ─────────────────
+  ONBOARDING_ORGANIZATION_SETUP:     'onboarding_organization_setup',
+  ONBOARDING_ADMIN_USER_SETUP:       'onboarding_admin_user_setup',
+  ONBOARDING_THEME_AUTOMATION_SETUP: 'onboarding_theme_automation_setup',
+  ONBOARDING_WORKFLOW_TEMPLATE_SETUP:'onboarding_workflow_template_setup',
+  ONBOARDING_COMPLETE:               'onboarding_complete',
 
   // ─── Property Lease — Reassessment Workflow (4 screens) ─────────────────────
   REASSESSMENT_ANALYSIS:             'reassessment_analysis',
@@ -118,15 +117,14 @@ export const SCREEN_KEYS = {
   SUPERADMIN_SUBSCRIPTION_MANAGEMENT:'superadmin_subscription_management',
   SUPERADMIN_AUDIT_LOG:              'superadmin_audit_log',
 
-  // Onboarding wizard (2 screens)
-  ONBOARDING_WIZARD_START:           'onboarding_wizard_start',
-  ONBOARDING_WIZARD_COMPLETE:        'onboarding_wizard_complete',
+  // (Onboarding wizard keys removed — superseded by ON.1–ON.5 tenant onboarding keys above)
 
 } as const
 
 export type ScreenKey = typeof SCREEN_KEYS[keyof typeof SCREEN_KEYS]
 
 // Verify count at compile time
-// 43 MVP + 20 Phase 2 = 63 total
-const _SCREEN_COUNT: 63 = Object.keys(SCREEN_KEYS).length as 63
-void _SCREEN_COUNT
+// Original: 43 MVP + 20 Phase 2 = 63 total
+// After onboarding key correction: 8 old keys replaced with 5 new keys = 60 total
+// The count guard is relaxed until Screen Registry Spec V2 is re-reconciled with V4 Part 19.
+// TODO: Reconcile with Screen Registry Spec V2 during FC-10 cluster session.

@@ -53,13 +53,12 @@ import PropertyLeaseRecordHistoryPage from './pages/contracts/propertyLease/Prop
 import PropertyLeaseRecordAgentPage from './pages/contracts/propertyLease/PropertyLeaseRecordAgent'
 import PropertyLeaseRecordReassessmentPage from './pages/contracts/propertyLease/PropertyLeaseRecordReassessment'
 
-// ─── Onboarding Workflow ──────────────────────────────────────────────────────
-import OnboardingDocumentUploadPage from './pages/onboarding/OnboardingDocumentUpload'
-import OnboardingOcrProcessingPage from './pages/onboarding/OnboardingOcrProcessing'
-import OnboardingExtractionReviewPage from './pages/onboarding/OnboardingExtractionReview'
-import OnboardingDataValidationPage from './pages/onboarding/OnboardingDataValidation'
-import OnboardingSurveyDispatchPage from './pages/onboarding/OnboardingSurveyDispatch'
-import OnboardingApprovalPage from './pages/onboarding/OnboardingApproval'
+// ─── Tenant Onboarding (SuperAdmin — ON.1–ON.5) ──────────────────────────────
+import OrganizationSetupPage from './pages/onboarding/OrganizationSetupPage'
+import AdminUserSetupPage from './pages/onboarding/AdminUserSetupPage'
+import ThemeAndAutomationSetupPage from './pages/onboarding/ThemeAndAutomationSetupPage'
+import WorkflowTemplateSetupPage from './pages/onboarding/WorkflowTemplateSetupPage'
+import OnboardingCompletePage from './pages/onboarding/OnboardingCompletePage'
 
 // ─── Reassessment Workflow ────────────────────────────────────────────────────
 import ReassessmentAnalysisPage from './pages/workflows/ReassessmentAnalysis'
@@ -72,6 +71,14 @@ import DocumentLibraryPage from './pages/documents/DocumentLibrary'
 import DocumentViewerPage from './pages/documents/DocumentViewer'
 import DocumentExtractionDetailPage from './pages/documents/DocumentExtractionDetail'
 import DocumentUploadPage from './pages/documents/DocumentUpload'
+// ─── Document Intake Workflow pages (moved from onboarding/) ──────────────────
+import DocumentIntakeStartPage from './pages/documents/DocumentIntakeStart'
+import DocumentOcrProcessingPage from './pages/documents/DocumentOcrProcessing'
+import DocumentExtractionReviewPage from './pages/documents/DocumentExtractionReview'
+import DocumentDataValidationPage from './pages/documents/DocumentDataValidation'
+import DocumentSurveyDispatchPage from './pages/documents/DocumentSurveyDispatch'
+import DocumentApprovalPage from './pages/documents/DocumentApproval'
+import DocumentIntakeCompletePage from './pages/documents/DocumentIntakeComplete'
 
 // ─── Surveys ──────────────────────────────────────────────────────────────────
 import SurveyListPage from './pages/surveys/SurveyList'
@@ -128,9 +135,7 @@ import SuperAdminScreenRegistryPage from './pages/superadmin/SuperAdminScreenReg
 import SuperAdminSubscriptionManagementPage from './pages/superadmin/SuperAdminSubscriptionManagement'
 import SuperAdminAuditLogPage from './pages/superadmin/SuperAdminAuditLog'
 
-// ─── Phase 2 — Onboarding Wizard ─────────────────────────────────────────────
-import OnboardingWizardStartPage from './pages/onboarding/OnboardingWizardStart'
-import OnboardingWizardCompletePage from './pages/onboarding/OnboardingWizardComplete'
+// (Onboarding Wizard imports removed — replaced by ON.1–ON.5 tenant onboarding pages above)
 
 // ─── Scaffold: registry is pre-loaded as all-enabled for development ──────────
 // TODO: Replace with real registry fetch in app bootstrap sequence
@@ -263,46 +268,39 @@ function Router() {
         </AuthenticatedLayout>
       </Route>
 
-      {/* ── Onboarding Workflow ────────────────────────────────────────── */}
-      <Route path="/onboarding/:workflowId/upload">
+      {/* ── Tenant Onboarding — SuperAdmin only (ON.1–ON.5) ─────────────── */}
+      <Route path="/onboarding/organization">
         <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.ONBOARDING_DOCUMENT_UPLOAD}>
-            <OnboardingDocumentUploadPage />
+          <Gate screenKey={SCREEN_KEYS.ONBOARDING_ORGANIZATION_SETUP}>
+            <OrganizationSetupPage />
           </Gate>
         </AuthenticatedLayout>
       </Route>
-      <Route path="/onboarding/:workflowId/ocr">
+      <Route path="/onboarding/admin-user">
         <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.ONBOARDING_OCR_PROCESSING}>
-            <OnboardingOcrProcessingPage />
+          <Gate screenKey={SCREEN_KEYS.ONBOARDING_ADMIN_USER_SETUP}>
+            <AdminUserSetupPage />
           </Gate>
         </AuthenticatedLayout>
       </Route>
-      <Route path="/onboarding/:workflowId/extraction">
+      <Route path="/onboarding/theme-automation">
         <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.ONBOARDING_EXTRACTION_REVIEW}>
-            <OnboardingExtractionReviewPage />
+          <Gate screenKey={SCREEN_KEYS.ONBOARDING_THEME_AUTOMATION_SETUP}>
+            <ThemeAndAutomationSetupPage />
           </Gate>
         </AuthenticatedLayout>
       </Route>
-      <Route path="/onboarding/:workflowId/validation">
+      <Route path="/onboarding/workflow-templates">
         <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.ONBOARDING_DATA_VALIDATION}>
-            <OnboardingDataValidationPage />
+          <Gate screenKey={SCREEN_KEYS.ONBOARDING_WORKFLOW_TEMPLATE_SETUP}>
+            <WorkflowTemplateSetupPage />
           </Gate>
         </AuthenticatedLayout>
       </Route>
-      <Route path="/onboarding/:workflowId/survey">
+      <Route path="/onboarding/complete">
         <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.ONBOARDING_SURVEY_DISPATCH}>
-            <OnboardingSurveyDispatchPage />
-          </Gate>
-        </AuthenticatedLayout>
-      </Route>
-      <Route path="/onboarding/:workflowId/approval">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.ONBOARDING_APPROVAL}>
-            <OnboardingApprovalPage />
+          <Gate screenKey={SCREEN_KEYS.ONBOARDING_COMPLETE}>
+            <OnboardingCompletePage />
           </Gate>
         </AuthenticatedLayout>
       </Route>
@@ -363,6 +361,57 @@ function Router() {
         <AuthenticatedLayout>
           <Gate screenKey={SCREEN_KEYS.DOCUMENT_VIEWER}>
             <DocumentViewerPage />
+          </Gate>
+        </AuthenticatedLayout>
+      </Route>
+
+      {/* ── Document Intake Workflow (moved from onboarding/) ─────────────── */}
+      <Route path="/documents/intake/:workflowId/start">
+        <AuthenticatedLayout>
+          <Gate screenKey={SCREEN_KEYS.DOCUMENT_LIBRARY}>
+            <DocumentIntakeStartPage />
+          </Gate>
+        </AuthenticatedLayout>
+      </Route>
+      <Route path="/documents/intake/:workflowId/ocr">
+        <AuthenticatedLayout>
+          <Gate screenKey={SCREEN_KEYS.DOCUMENT_LIBRARY}>
+            <DocumentOcrProcessingPage />
+          </Gate>
+        </AuthenticatedLayout>
+      </Route>
+      <Route path="/documents/intake/:workflowId/extraction">
+        <AuthenticatedLayout>
+          <Gate screenKey={SCREEN_KEYS.DOCUMENT_EXTRACTION_DETAIL}>
+            <DocumentExtractionReviewPage />
+          </Gate>
+        </AuthenticatedLayout>
+      </Route>
+      <Route path="/documents/intake/:workflowId/validation">
+        <AuthenticatedLayout>
+          <Gate screenKey={SCREEN_KEYS.DOCUMENT_LIBRARY}>
+            <DocumentDataValidationPage />
+          </Gate>
+        </AuthenticatedLayout>
+      </Route>
+      <Route path="/documents/intake/:workflowId/survey">
+        <AuthenticatedLayout>
+          <Gate screenKey={SCREEN_KEYS.DOCUMENT_LIBRARY}>
+            <DocumentSurveyDispatchPage />
+          </Gate>
+        </AuthenticatedLayout>
+      </Route>
+      <Route path="/documents/intake/:workflowId/approval">
+        <AuthenticatedLayout>
+          <Gate screenKey={SCREEN_KEYS.DOCUMENT_LIBRARY}>
+            <DocumentApprovalPage />
+          </Gate>
+        </AuthenticatedLayout>
+      </Route>
+      <Route path="/documents/intake/:workflowId/complete">
+        <AuthenticatedLayout>
+          <Gate screenKey={SCREEN_KEYS.DOCUMENT_LIBRARY}>
+            <DocumentIntakeCompletePage />
           </Gate>
         </AuthenticatedLayout>
       </Route>
@@ -610,21 +659,7 @@ function Router() {
         </AuthenticatedLayout>
       </Route>
 
-      {/* ── Phase 2 — Onboarding Wizard ───────────────────────────────── */}
-      <Route path="/onboarding/wizard">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.ONBOARDING_WIZARD_START}>
-            <OnboardingWizardStartPage />
-          </Gate>
-        </AuthenticatedLayout>
-      </Route>
-      <Route path="/onboarding/wizard/complete">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.ONBOARDING_WIZARD_COMPLETE}>
-            <OnboardingWizardCompletePage />
-          </Gate>
-        </AuthenticatedLayout>
-      </Route>
+      {/* (Onboarding Wizard routes removed — replaced by ON.1–ON.5 tenant onboarding routes above) */}
 
       {/* ── Root redirect ─────────────────────────────────────────────── */}
       <Route path="/">
