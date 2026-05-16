@@ -14,7 +14,7 @@
 
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import { Route, Switch } from 'wouter'
+import { Route, Switch, Redirect } from 'wouter'
 import ErrorBoundary from './components/ErrorBoundary'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { ScreenGate } from './components/shared/ScreenGate'
@@ -483,6 +483,11 @@ function Router() {
           {/* Service Contract — activate when SERVICE_CONTRACT domain is enabled */}
         </>
       )}
+
+      {/* ── Root redirect ───────────────────────────────────────────────── */}
+      <Route path="/">
+        <Redirect to="/pipeline/dashboard" />
+      </Route>
 
       {/* ── Default / 404 ───────────────────────────────────────────────── */}
       <Route path="/404" component={NotFound} />
