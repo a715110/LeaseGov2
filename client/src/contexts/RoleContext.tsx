@@ -46,7 +46,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
   const [activeRole, setActiveRoleState] = useState<UserRole>(() => {
     // sessionStorage is scoped to this tab only — other tabs are unaffected
     const stored = sessionStorage.getItem(ROLE_STORAGE_KEY);
-    return (stored as UserRole) || 'DOCUMENT_SUBMITTER';
+    return (stored as UserRole) || 'document_submitter';
   });
 
   const setActiveRole = (role: UserRole) => {

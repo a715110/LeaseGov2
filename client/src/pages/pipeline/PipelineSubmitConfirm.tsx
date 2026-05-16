@@ -1,21 +1,241 @@
 /**
- * Submission Confirmation
+ * PipelineSubmitConfirm — FC-1 Screen 1.6
  * Screen key: pipeline-submit-confirm
  * Route: /pipeline/confirm
- * Feature cluster: FC — see Screen Registry Specification V2 Part 6
+ * Role: Document Submitter
  *
- * STATUS: Stub — not yet implemented
- * Build session: TBD
+ * Design: Structured Authority
+ * Prompt 1.6: Submission confirmation screen.
+ *   Pre-submission state: centered card 600px, mode badge, file count,
+ *   batch ID (JetBrains Mono), file table with Valid/Warning badges,
+ *   green pre-check, amber read-only warning, Confirm + Back buttons.
+ *   Success state: large success icon, "Submission Complete", Batch ID,
+ *   "View in Processing Queue" link.
+ * Data model refs: IntakeBatch (batch_reference, submission_mode, document_count, status),
+ *                  StagedDocument (display_name, status, document_role)
  */
 
+import { useState } from 'react';
+import { useLocation } from 'wouter';
+import {
+  CheckCircle2, AlertTriangle, ArrowLeft, Send,
+  FileText, Layers, Lock, ExternalLink
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { SCREEN_KEYS } from '@/constants/screenKeys';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface ConfirmFile {
+  id: string;
+  display_name: string;
+  document_role: string;
+  status: 'valid' | 'warning';
+  page_count: number;
+  file_size_bytes: number;
+}
+
+// ─── Mock data — TODO: Backend integration required ───────────────────────────
+
+const MOCK_BATCH = {
+  batch_reference: 'BATCH-2026-0042',
+  submission_mode: 'contract_package' as const,
+  document_count: 4,
+};
+
+const MOCK_FILES: ConfirmFile[] = [
+  { id: 'f1', display_name: 'Retail-HQ-Lease-2026.pdf', document_role: 'Base Contract', status: 'valid', page_count: 24, file_size_bytes: 4_200_000 },
+  { id: 'f2', display_name: 'Office-Tower-Amendment-3.pdf', document_role: 'Amendment', status: 'warning', page_count: 8, file_size_bytes: 1_800_000 },
+  { id: 'f3', display_name: 'Warehouse-Lease-Exhibit-A.tiff', document_role: 'Exhibit', status: 'valid', page_count: 12, file_size_bytes: 6_100_000 },
+  { id: 'f5', display_name: 'Ground-Lease-Base-Contract.pdf', document_role: 'Base Contract', status: 'valid', page_count: 41, file_size_bytes: 9_400_000 },
+];
+
+const MODE_LABELS: Record<string, string> = {
+  single_contract: 'Single Contract',
+  contract_package: 'Contract Package',
+  bulk_batch: 'Bulk Batch',
+};
+
+function formatBytes(bytes: number): string {
+  return `${(bytes / 1_000_000).toFixed(1)} MB`;
+}
+
 export default function PipelineSubmitConfirm() {
+  const _screenKey = SCREEN_KEYS.PIPELINE_SUBMIT_CONFIRM;
+  const [, navigate] = useLocation();
+  const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // TODO: Backend integration required — GET /api/intake-batches/pending
+  const batch = MOCK_BATCH;
+  const files = MOCK_FILES;
+
+  const warningCount = files.filter(f => f.status === 'warning').length;
+
+  function handleConfirm() {
+    setIsSubmitting(true);
+    // TODO: Backend integration required — POST /api/intake-batches/:id/submit
+    setTimeout(() => {
+      setIsSubmitting(false);
+      setSubmitted(true);
+    }, 1200);
+  }
+
+  // ── Success state ──────────────────────────────────────────────────────────
+  if (submitted) {
+    return (
+      <div className="min-h-screen bg-[var(--color-lg-page-bg)] flex items-center justify-center p-6">
+        <div className="w-full max-w-[600px] rounded-xl bg-card border border-border shadow-xl text-center px-8 py-12 animate-fade-in-up">
+          <div className="w-20 h-20 rounded-full bg-green-50 border-2 border-green-200 flex items-center justify-center mx-auto mb-6">
+            <CheckCircle2 className="w-10 h-10 text-[var(--color-lg-success)]" />
+          </div>
+          <h2 className="text-[24px] font-bold text-foreground mb-2">Submission Complete</h2>
+          <p className="text-[14px] text-muted-foreground mb-6">
+            Your documents have been submitted and are now queued for processing.
+          </p>
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-muted border border-border mb-8">
+            <span className="text-[12px] text-muted-foreground">Batch ID</span>
+            <span className="font-mono text-[14px] font-semibold text-primary">{batch.batch_reference}</span>
+          </div>
+          <div className="flex items-center justify-center gap-3">
+            <Button
+              variant="outline"
+              onClick={() => navigate('/pipeline/dashboard')}
+            >
+              Back to Dashboard
+            </Button>
+            <Button
+              className="gap-2"
+              onClick={() => navigate('/extraction/queue')}
+            >
+              <ExternalLink className="w-4 h-4" />
+              View in Processing Queue
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Pre-submission state ───────────────────────────────────────────────────
   return (
-    <div className="p-8">
-      <h1 className="text-2xl font-semibold text-foreground">Submission Confirmation</h1>
-      <p className="mt-2 text-muted-foreground text-sm">
-        Screen key: <code className="font-mono">pipeline-submit-confirm</code>
-      </p>
-      <p className="mt-1 text-muted-foreground text-sm">Route: /pipeline/confirm</p>
+    <div className="min-h-screen bg-[var(--color-lg-page-bg)] flex items-center justify-center p-6">
+      <div className="w-full max-w-[600px] rounded-xl bg-card border border-border shadow-xl overflow-hidden animate-fade-in-up">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-5 border-b border-border">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/pipeline/review')}
+              className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+            <h2 className="text-[18px] font-semibold text-foreground">Confirm Submission</h2>
+          </div>
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded bg-accent border border-border text-[12px] font-semibold text-primary">
+            <Layers className="w-3.5 h-3.5" />
+            {MODE_LABELS[batch.submission_mode]}
+          </span>
+        </div>
+
+        {/* Body */}
+        <div className="px-6 py-5 flex flex-col gap-5">
+
+          {/* Batch summary */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-lg bg-muted/40 border border-border px-4 py-3 text-center">
+              <p className="text-[11px] text-muted-foreground uppercase tracking-[0.05em] font-semibold mb-1">Files</p>
+              <p className="text-[22px] font-bold text-foreground">{files.length}</p>
+            </div>
+            <div className="rounded-lg bg-muted/40 border border-border px-4 py-3 text-center">
+              <p className="text-[11px] text-muted-foreground uppercase tracking-[0.05em] font-semibold mb-1">Mode</p>
+              <p className="text-[13px] font-semibold text-foreground mt-1">{MODE_LABELS[batch.submission_mode]}</p>
+            </div>
+            <div className="rounded-lg bg-muted/40 border border-border px-4 py-3 text-center">
+              <p className="text-[11px] text-muted-foreground uppercase tracking-[0.05em] font-semibold mb-1">Batch ID</p>
+              <p className="font-mono text-[12px] font-semibold text-primary mt-1">{batch.batch_reference}</p>
+            </div>
+          </div>
+
+          {/* File table */}
+          <div className="rounded-lg border border-border overflow-hidden">
+            <table className="w-full text-[13px]">
+              <thead>
+                <tr className="bg-muted/40 border-b border-border">
+                  <th className="text-left px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-muted-foreground">File</th>
+                  <th className="text-left px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-muted-foreground">Role</th>
+                  <th className="text-left px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-muted-foreground">Pages</th>
+                  <th className="text-left px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-muted-foreground">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {files.map(file => (
+                  <tr key={file.id} className="border-b border-border last:border-0">
+                    <td className="px-4 py-2.5">
+                      <div className="flex items-center gap-2">
+                        <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                        <span className="font-medium text-foreground truncate max-w-[180px]" title={file.display_name}>
+                          {file.display_name}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-2.5 text-muted-foreground">{file.document_role}</td>
+                    <td className="px-4 py-2.5 text-muted-foreground">{file.page_count}</td>
+                    <td className="px-4 py-2.5">
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold ${file.status === 'valid' ? 'badge-valid' : 'badge-warning'}`}>
+                        {file.status === 'valid'
+                          ? <CheckCircle2 className="w-3 h-3" />
+                          : <AlertTriangle className="w-3 h-3" />}
+                        {file.status === 'valid' ? 'Valid' : 'Warning'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pre-check */}
+          <div className="flex items-start gap-2 px-4 py-3 rounded-lg bg-green-50 border border-green-200 text-[13px] text-green-800">
+            <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" />
+            <span>All validation checks passed. {warningCount > 0 ? `${warningCount} warning${warningCount > 1 ? 's' : ''} noted — submission is not blocked.` : 'Files are ready for processing.'}</span>
+          </div>
+
+          {/* Read-only warning */}
+          <div className="flex items-start gap-2 px-4 py-3 rounded-lg bg-amber-50 border border-amber-200 text-[13px] text-amber-800">
+            <Lock className="w-4 h-4 mt-0.5 shrink-0" />
+            <span>
+              <strong>After submission, files become read-only.</strong> Document names and roles cannot be changed once submitted.
+            </span>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between px-6 py-4 border-t border-border bg-muted/20">
+          <Button variant="outline" onClick={() => navigate('/pipeline/review')}>
+            <ArrowLeft className="w-4 h-4 mr-1.5" />
+            Back
+          </Button>
+          <Button
+            className="gap-2 min-w-[160px]"
+            onClick={handleConfirm}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Submitting...
+              </>
+            ) : (
+              <>
+                <Send className="w-4 h-4" />
+                Confirm Submission
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
     </div>
-  )
+  );
 }

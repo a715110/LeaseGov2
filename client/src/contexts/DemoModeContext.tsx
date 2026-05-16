@@ -36,7 +36,7 @@ export interface DemoStep {
 export const DEMO_STEPS: DemoStep[] = [
   // ── PIPELINE OPERATOR ──────────────────────────────────────────────────────
   {
-    id: 'step-1', stepNumber: 1, role: 'DOCUMENT_SUBMITTER',
+    id: 'step-1', stepNumber: 1, role: 'document_submitter',
     roleLabel: 'Document Submitter', roleColor: '#64748b',
     screenNumber: '1.1',
     title: 'Pipeline Dashboard',
@@ -45,7 +45,7 @@ export const DEMO_STEPS: DemoStep[] = [
     route: '/pipeline/dashboard', tabHint: 'Tab 1 — Document Submitter',
   },
   {
-    id: 'step-2', stepNumber: 2, role: 'DOCUMENT_SUBMITTER',
+    id: 'step-2', stepNumber: 2, role: 'document_submitter',
     roleLabel: 'Document Submitter', roleColor: '#64748b',
     screenNumber: '1.2',
     title: 'Upload & Validate Documents',
@@ -54,7 +54,7 @@ export const DEMO_STEPS: DemoStep[] = [
     route: '/pipeline/upload', tabHint: 'Tab 1 — Document Submitter',
   },
   {
-    id: 'step-3', stepNumber: 3, role: 'DOCUMENT_SUBMITTER',
+    id: 'step-3', stepNumber: 3, role: 'document_submitter',
     roleLabel: 'Document Submitter', roleColor: '#64748b',
     screenNumber: '1.3',
     title: 'Review & Group Documents',
@@ -63,7 +63,7 @@ export const DEMO_STEPS: DemoStep[] = [
     route: '/pipeline/grouping', tabHint: 'Tab 1 — Document Submitter',
   },
   {
-    id: 'step-4', stepNumber: 4, role: 'DOCUMENT_SUBMITTER',
+    id: 'step-4', stepNumber: 4, role: 'document_submitter',
     roleLabel: 'Document Submitter', roleColor: '#64748b',
     screenNumber: '1.4',
     title: 'Submit Batch — Handoff to Preparer',
@@ -71,14 +71,14 @@ export const DEMO_STEPS: DemoStep[] = [
     instruction: 'Click "Submit Batch" to send the documents to the Preparer. Watch Tab 2 receive the new jobs in real time.',
     route: '/pipeline/submit',
     eventToPublish: { type: 'BATCH_SUBMITTED', payload: { batchId: 'BATCH-DEMO-001', documentCount: 12, workspaceTag: 'Q1-2026-Retail', submittedBy: 'Document Submitter' } },
-    isHandoff: true, handoffTo: 'PREPARER',
+    isHandoff: true, handoffTo: 'preparer',
     handoffLabel: 'Batch submitted → Preparer receives 12 new jobs in Processing Queue',
     tabHint: 'Tab 1 — Document Submitter',
   },
 
   // ── PREPARER ───────────────────────────────────────────────────────────────
   {
-    id: 'step-5', stepNumber: 5, role: 'PREPARER',
+    id: 'step-5', stepNumber: 5, role: 'preparer',
     roleLabel: 'Preparer', roleColor: '#2563eb',
     screenNumber: '2.1',
     title: 'Processing Queue — New Jobs Received',
@@ -87,7 +87,7 @@ export const DEMO_STEPS: DemoStep[] = [
     route: '/extraction/queue', tabHint: 'Tab 2 — Preparer',
   },
   {
-    id: 'step-6', stepNumber: 6, role: 'PREPARER',
+    id: 'step-6', stepNumber: 6, role: 'preparer',
     roleLabel: 'Preparer', roleColor: '#2563eb',
     screenNumber: '2.3.1',
     title: 'Field Mapping Configuration',
@@ -96,7 +96,7 @@ export const DEMO_STEPS: DemoStep[] = [
     route: '/extraction/queue', tabHint: 'Tab 2 — Preparer',
   },
   {
-    id: 'step-7', stepNumber: 7, role: 'PREPARER',
+    id: 'step-7', stepNumber: 7, role: 'preparer',
     roleLabel: 'Preparer', roleColor: '#2563eb',
     screenNumber: '2.4',
     title: 'AI Extraction — Processing in Progress',
@@ -105,7 +105,7 @@ export const DEMO_STEPS: DemoStep[] = [
     route: '/extraction/queue', tabHint: 'Tab 2 — Preparer',
   },
   {
-    id: 'step-8', stepNumber: 8, role: 'PREPARER',
+    id: 'step-8', stepNumber: 8, role: 'preparer',
     roleLabel: 'Preparer', roleColor: '#2563eb',
     screenNumber: '2.5.1',
     title: 'Confidence Review — Heatmap & Threshold',
@@ -114,7 +114,7 @@ export const DEMO_STEPS: DemoStep[] = [
     route: '/extraction/queue', tabHint: 'Tab 2 — Preparer',
   },
   {
-    id: 'step-9', stepNumber: 9, role: 'PREPARER',
+    id: 'step-9', stepNumber: 9, role: 'preparer',
     roleLabel: 'Preparer', roleColor: '#2563eb',
     screenNumber: '2.6.1',
     title: 'Verify & Complete — Save or Submit',
@@ -123,7 +123,7 @@ export const DEMO_STEPS: DemoStep[] = [
     route: '/extraction/queue', tabHint: 'Tab 2 — Preparer',
   },
   {
-    id: 'step-10', stepNumber: 10, role: 'PREPARER',
+    id: 'step-10', stepNumber: 10, role: 'preparer',
     roleLabel: 'Preparer', roleColor: '#2563eb',
     screenNumber: '2.7',
     title: 'Extractions Table — Completed & In-Progress Packages',
@@ -132,7 +132,7 @@ export const DEMO_STEPS: DemoStep[] = [
     route: '/extraction/table', tabHint: 'Tab 2 — Preparer',
   },
   {
-    id: 'step-11', stepNumber: 11, role: 'PREPARER',
+    id: 'step-11', stepNumber: 11, role: 'preparer',
     roleLabel: 'Preparer', roleColor: '#2563eb',
     screenNumber: '3.1.1',
     title: 'Flag Review Panel — Inline Resolution',
@@ -141,7 +141,7 @@ export const DEMO_STEPS: DemoStep[] = [
     route: '/extraction/table', tabHint: 'Tab 2 — Preparer',
   },
   {
-    id: 'step-12', stepNumber: 12, role: 'PREPARER',
+    id: 'step-12', stepNumber: 12, role: 'preparer',
     roleLabel: 'Preparer', roleColor: '#2563eb',
     screenNumber: '2.7',
     title: 'Submit for Review — Handoff to Reviewer',
@@ -149,14 +149,14 @@ export const DEMO_STEPS: DemoStep[] = [
     instruction: 'Click "Submit" on a Completed package in the Extractions Table. Watch Tab 3 receive the new approval task in real time.',
     route: '/extraction/table',
     eventToPublish: { type: 'SUBMIT_FOR_REVIEW', payload: { jobId: 'JOB-DEMO-001', documentName: 'Retail-Lease-HQ-2026.pdf', preparedBy: 'Preparer', confidence: 94 } },
-    isHandoff: true, handoffTo: 'REVIEWER',
+    isHandoff: true, handoffTo: 'reviewer',
     handoffLabel: 'Submitted for review → Reviewer receives new approval task in Approval Queue',
     tabHint: 'Tab 2 — Preparer',
   },
 
   // ── REVIEWER ───────────────────────────────────────────────────────────────
   {
-    id: 'step-13', stepNumber: 13, role: 'REVIEWER',
+    id: 'step-13', stepNumber: 13, role: 'reviewer',
     roleLabel: 'Reviewer', roleColor: '#7c3aed',
     screenNumber: '4.1',
     title: 'Approval Queue — New Item Received',
@@ -165,7 +165,7 @@ export const DEMO_STEPS: DemoStep[] = [
     route: '/approvals/queue', tabHint: 'Tab 3 — Reviewer',
   },
   {
-    id: 'step-14', stepNumber: 14, role: 'REVIEWER',
+    id: 'step-14', stepNumber: 14, role: 'reviewer',
     roleLabel: 'Reviewer', roleColor: '#7c3aed',
     screenNumber: '4.2.1',
     title: 'Review Dialog — Fields, Confidence & Flags',
@@ -174,7 +174,7 @@ export const DEMO_STEPS: DemoStep[] = [
     route: '/approvals/queue', tabHint: 'Tab 3 — Reviewer',
   },
   {
-    id: 'step-15', stepNumber: 15, role: 'REVIEWER',
+    id: 'step-15', stepNumber: 15, role: 'reviewer',
     roleLabel: 'Reviewer', roleColor: '#7c3aed',
     screenNumber: '4.2.1',
     title: 'Inline Flag Resolution & Comment Thread',
@@ -183,7 +183,7 @@ export const DEMO_STEPS: DemoStep[] = [
     route: '/approvals/queue', tabHint: 'Tab 3 — Reviewer',
   },
   {
-    id: 'step-16', stepNumber: 16, role: 'REVIEWER',
+    id: 'step-16', stepNumber: 16, role: 'reviewer',
     roleLabel: 'Reviewer', roleColor: '#7c3aed',
     screenNumber: '4.2.1',
     title: 'Approve for Final — Handoff to Approver',
@@ -191,14 +191,14 @@ export const DEMO_STEPS: DemoStep[] = [
     instruction: 'Click "Approve for Final" in the Review Dialog. Watch Tab 4 receive the final approval task in real time. Note the Approved badge on the queue row.',
     route: '/approvals/queue',
     eventToPublish: { type: 'APPROVE_FOR_FINAL', payload: { jobId: 'JOB-DEMO-001', reviewedBy: 'Reviewer', comments: 'All fields verified. Confidence acceptable.' } },
-    isHandoff: true, handoffTo: 'APPROVER',
+    isHandoff: true, handoffTo: 'approver',
     handoffLabel: 'Approved for final → Approver receives final sign-off task',
     tabHint: 'Tab 3 — Reviewer',
   },
 
   // ── APPROVER ───────────────────────────────────────────────────────────────
   {
-    id: 'step-17', stepNumber: 17, role: 'APPROVER',
+    id: 'step-17', stepNumber: 17, role: 'approver',
     roleLabel: 'Approver', roleColor: '#d97706',
     screenNumber: '4.3.1',
     title: 'Final Approval Dialog — SoD Check & Financial Summary',
@@ -207,7 +207,7 @@ export const DEMO_STEPS: DemoStep[] = [
     route: '/approvals/queue', tabHint: 'Tab 4 — Approver',
   },
   {
-    id: 'step-18', stepNumber: 18, role: 'APPROVER',
+    id: 'step-18', stepNumber: 18, role: 'approver',
     roleLabel: 'Approver', roleColor: '#d97706',
     screenNumber: '4.3.1',
     title: 'Record Approved — Handoff to Accountant',
@@ -215,14 +215,14 @@ export const DEMO_STEPS: DemoStep[] = [
     instruction: 'Click "Final Approve" in the Approver Dialog. Tab 5 (Accountant) will receive the export task immediately.',
     route: '/approvals/queue',
     eventToPublish: { type: 'RECORD_APPROVED', payload: { recordId: 'CR-DEMO-001', approvedBy: 'Approver', exportTaskId: 'EXP-DEMO-001' } },
-    isHandoff: true, handoffTo: 'ACCOUNTANT',
+    isHandoff: true, handoffTo: 'accountant',
     handoffLabel: 'Record approved → Accountant receives export task in Governed Export Queue',
     tabHint: 'Tab 4 — Approver',
   },
 
   // ── ACCOUNTANT ─────────────────────────────────────────────────────────────
   {
-    id: 'step-19', stepNumber: 19, role: 'ACCOUNTANT',
+    id: 'step-19', stepNumber: 19, role: 'accountant',
     roleLabel: 'Accountant', roleColor: '#059669',
     screenNumber: '7.1',
     title: 'Export Queue — New Task Received',
@@ -231,7 +231,7 @@ export const DEMO_STEPS: DemoStep[] = [
     route: '/export/queue', tabHint: 'Tab 5 — Accountant',
   },
   {
-    id: 'step-20', stepNumber: 20, role: 'ACCOUNTANT',
+    id: 'step-20', stepNumber: 20, role: 'accountant',
     roleLabel: 'Accountant', roleColor: '#059669',
     screenNumber: '7.2',
     title: 'Stage, Upload & Attest — Demo Complete',
@@ -281,9 +281,9 @@ export function DemoModeProvider({ children }: { children: React.ReactNode }) {
   const getActiveRole = useCallback((): UserRole => {
     try {
       const stored = sessionStorage.getItem('dodesk_active_role');
-      return (stored as UserRole) || 'DOCUMENT_SUBMITTER';
+      return (stored as UserRole) || 'document_submitter';
     } catch {
-      return 'DOCUMENT_SUBMITTER';
+      return 'document_submitter';
     }
   }, []);
 

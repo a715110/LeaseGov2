@@ -1,56 +1,17 @@
 /**
- * LeaseGov — Shared lib types
+ * LeaseGov — Demo-layer type re-exports
  *
- * This file provides the UserRole union, ROLE_LABELS, ROLE_COLORS, DemoEvent,
- * and DemoEventType definitions consumed by:
- *   - RoleContext.tsx
- *   - DemoModeContext.tsx
- *   - eventBus.ts
+ * UserRole, ROLE_LABELS, and ROLE_COLORS are defined once in
+ * @/types/shared/UserRole and re-exported here so that the demo layer
+ * (RoleContext, DemoModeContext, eventBus) can import from the familiar
+ * @/lib/types path without duplicating definitions.
  *
- * Role values use SCREAMING_SNAKE_CASE to match the demo context files.
- * The authoritative platform UserRole type (lowercase) lives in
- * types/shared/UserRole.ts — this file is the demo-layer alias.
+ * DemoEvent and DemoEventType are defined here because they are
+ * demo-layer-only constructs with no platform equivalent.
  */
 
-// ─── User Roles ──────────────────────────────────────────────────────────────
-
-export type UserRole =
-  | 'DOCUMENT_SUBMITTER'
-  | 'PREPARER'
-  | 'REVIEWER'
-  | 'APPROVER'
-  | 'ACCOUNTANT'
-  | 'CONTROLLER'
-  | 'BUSINESS_SUBMITTER'
-  | 'AUDITOR'
-  | 'LEASE_ADMIN'
-  | 'SUPERADMIN';
-
-export const ROLE_LABELS: Record<UserRole, string> = {
-  DOCUMENT_SUBMITTER: 'Document Submitter',
-  PREPARER:           'Preparer',
-  REVIEWER:           'Reviewer',
-  APPROVER:           'Approver',
-  ACCOUNTANT:         'Accountant',
-  CONTROLLER:         'Controller',
-  BUSINESS_SUBMITTER: 'Business Submitter',
-  AUDITOR:            'Auditor',
-  LEASE_ADMIN:        'Lease Admin',
-  SUPERADMIN:         'SuperAdmin',
-};
-
-export const ROLE_COLORS: Record<UserRole, string> = {
-  DOCUMENT_SUBMITTER: '#64748b',
-  PREPARER:           '#2563eb',
-  REVIEWER:           '#7c3aed',
-  APPROVER:           '#d97706',
-  ACCOUNTANT:         '#059669',
-  CONTROLLER:         '#dc2626',
-  BUSINESS_SUBMITTER: '#ec4899',
-  AUDITOR:            '#6b7280',
-  LEASE_ADMIN:        '#1F3864',
-  SUPERADMIN:         '#0f172a',
-};
+export type { UserRole } from '@/types/shared/UserRole';
+export { ROLE_LABELS, ROLE_COLORS } from '@/types/shared/UserRole';
 
 // ─── Demo Event Bus Types ─────────────────────────────────────────────────────
 
@@ -61,6 +22,8 @@ export type DemoEventType =
   | 'APPROVE_FOR_FINAL'
   | 'RECORD_APPROVED'
   | 'DEMO_RESET';
+
+import type { UserRole } from '@/types/shared/UserRole';
 
 export interface DemoEvent {
   type: DemoEventType;
