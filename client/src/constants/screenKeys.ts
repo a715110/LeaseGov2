@@ -105,7 +105,8 @@ export const SCREEN_KEYS = {
   REASSESSMENT_CONCURRENT_WARN: 'reassessment-concurrent-warning',
   REASSESSMENT_WATCHLIST:       'reassessment-watchlist',
   REASSESSMENT_SURVEY_INTAKE:   'reassessment-survey-intake',
-  REASSESSMENT_PROJECT_VIEW:    'reassessment-contextual-project',
+  REASSESSMENT_PROJECT_VIEW:         'reassessment-contextual-project',
+  REASSESSMENT_CONTEXTUAL_PROJECT:   'reassessment-contextual-project',
 
   // ─── FC-8: ADMINISTRATION (Phase 2 — 1 screen) ──────────────────────────────
   ADMIN_AUTOMATION:             'admin-automation-config',
