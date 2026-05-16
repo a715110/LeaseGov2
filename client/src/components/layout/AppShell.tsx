@@ -8,29 +8,65 @@
  * - Minimal, precise interactions
  *
  * Structure:
- * - Sidebar (fixed, 240px): logo + nav items + user section
+ * - Sidebar (fixed, 240px): logo + nav groups + user section
  * - Main content area: header bar + page content
  *
- * Nav items are filtered by useScreenAccess before rendering.
+ * In production, nav items are driven by the screen registry response.
+ * During scaffolding, a static MVP nav list is rendered directly.
  */
 import React from 'react'
 import { Link, useLocation } from 'wouter'
 import {
-  LayoutDashboard, AlertTriangle, GitBranch, Building2,
-  FileText, ClipboardList, CheckSquare, Settings, Users,
-  Activity, Package, Briefcase, BarChart2, Zap,
-  Bell, ChevronRight,
+  UploadCloud, Scan, Layers, CheckCircle, Folder,
+  CloudUpload, Settings, Shield, Bell, ChevronRight,
+  RefreshCw,
 } from 'lucide-react'
 import { ColorModeToggle } from './ColorModeToggle'
 import { cn } from '../../lib/utils'
-import type { NavItem } from '../../constants/navigationConfig'
-import { NAV_ITEMS } from '../../constants/navigationConfig'
+import { NAV_GROUPS, ROUTE_PATHS } from '../../constants/navigationConfig'
 
+// ─── Icon map ────────────────────────────────────────────────────────────────
 const ICON_MAP: Record<string, React.ElementType> = {
-  LayoutDashboard, AlertTriangle, GitBranch, Building2,
-  FileText, ClipboardList, CheckSquare, Settings, Users,
-  Activity, Package, Briefcase, BarChart2, Zap,
+  UploadCloud, Scan, Layers, CheckCircle, Folder,
+  CloudUpload, Settings, Shield, RefreshCw,
 }
+
+// ─── Static MVP nav items (used until registry-driven nav is wired) ───────────
+interface StaticNavEntry {
+  label: string
+  path: string
+  navGroup: string
+  phase: 'mvp' | 'phase_2'
+}
+
+const STATIC_NAV: StaticNavEntry[] = [
+  // FC-1
+  { label: 'Pipeline',            path: ROUTE_PATHS.pipelineDashboard,   navGroup: 'document-pipeline', phase: 'mvp' },
+  { label: 'Upload',              path: ROUTE_PATHS.pipelineUpload,       navGroup: 'document-pipeline', phase: 'mvp' },
+  // FC-2
+  { label: 'Queue',               path: ROUTE_PATHS.extractionQueue,      navGroup: 'extraction',        phase: 'mvp' },
+  { label: 'AI Workspace',        path: ROUTE_PATHS.extractionAi,         navGroup: 'extraction',        phase: 'mvp' },
+  // FC-3
+  { label: 'Packages',            path: '/packages',                      navGroup: 'packages',          phase: 'mvp' },
+  // FC-4
+  { label: 'Approvals Queue',     path: ROUTE_PATHS.approvalsQueue,       navGroup: 'approvals',         phase: 'mvp' },
+  // FC-5
+  { label: 'Records',             path: ROUTE_PATHS.records,              navGroup: 'records',           phase: 'mvp' },
+  { label: 'Dashboard',           path: ROUTE_PATHS.recordsDashboard,     navGroup: 'records',           phase: 'mvp' },
+  // FC-7
+  { label: 'Export',              path: ROUTE_PATHS.exportTemplates,      navGroup: 'export',            phase: 'mvp' },
+  // FC-8
+  { label: 'Users',               path: ROUTE_PATHS.adminUsers,           navGroup: 'admin',             phase: 'mvp' },
+  { label: 'Schema',              path: ROUTE_PATHS.adminSchema,          navGroup: 'admin',             phase: 'mvp' },
+  { label: 'Audit Log',           path: ROUTE_PATHS.adminAudit,           navGroup: 'admin',             phase: 'mvp' },
+  // FC-10
+  { label: 'Tenants',             path: ROUTE_PATHS.superadminTenants,    navGroup: 'superadmin',        phase: 'mvp' },
+  { label: 'System Health',       path: ROUTE_PATHS.superadminHealth,     navGroup: 'superadmin',        phase: 'mvp' },
+  { label: 'Screen Registry',     path: ROUTE_PATHS.superadminScreenRegistry, navGroup: 'superadmin',   phase: 'mvp' },
+  // FC-6 Phase 2
+  { label: 'Dashboard',           path: ROUTE_PATHS.reassessmentDashboard, navGroup: 'reassessment',    phase: 'phase_2' },
+  { label: 'Cases',               path: ROUTE_PATHS.reassessmentCases,    navGroup: 'reassessment',     phase: 'phase_2' },
+]
 
 interface AppShellProps {
   children: React.ReactNode
@@ -39,11 +75,10 @@ interface AppShellProps {
   userDisplayName?: string
 }
 
-function SidebarNavItem({ item, isActive }: { item: NavItem; isActive: boolean }) {
-  const Icon = ICON_MAP[item.icon] ?? ChevronRight
+function SidebarNavItem({ label, path, isActive }: { label: string; path: string; isActive: boolean }) {
   return (
     <Link
-      href={item.path}
+      href={path}
       className={cn(
         'flex items-center gap-2.5 rounded px-3 py-2 text-sm font-medium transition-colors duration-150 no-underline',
         isActive
@@ -52,42 +87,33 @@ function SidebarNavItem({ item, isActive }: { item: NavItem; isActive: boolean }
       )}
       aria-current={isActive ? 'page' : undefined}
     >
-      <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-      <span className="truncate">{item.label}</span>
+      <ChevronRight className="h-3 w-3 shrink-0 opacity-40" aria-hidden="true" />
+      <span className="truncate">{label}</span>
     </Link>
   )
 }
 
-const NAV_GROUP_LABELS: Record<string, string> = {
-  portfolio:        'Portfolio',
-  property_lease:   'Property Leases',
-  equipment_lease:  'Equipment Leases',
-  service_contract: 'Service Contracts',
-  documents:        'Documents',
-  surveys:          'Surveys',
-  checkpoints:      'Checkpoints',
-  reporting:        'Reporting',
-  settings:         'Settings',
-  superadmin:       'Administration',
-}
-
-export function AppShell({
+export default function AppShell({
   children,
-  userRoles = [],
   organizationName = 'LeaseGov',
   userDisplayName = 'User',
 }: AppShellProps) {
   const [location] = useLocation()
 
-  // Filter to MVP phase items only for now (Phase 2 items hidden until registry enables them)
-  const visibleItems = NAV_ITEMS.filter(item => item.phase === 'mvp')
+  // Only show MVP items during scaffolding
+  const visibleItems = STATIC_NAV.filter(item => item.phase === 'mvp')
 
-  // Group items
-  const groups = visibleItems.reduce<Record<string, NavItem[]>>((acc, item) => {
-    if (!acc[item.group]) acc[item.group] = []
-    acc[item.group].push(item)
+  // Group by navGroup
+  const grouped = visibleItems.reduce<Record<string, StaticNavEntry[]>>((acc, item) => {
+    if (!acc[item.navGroup]) acc[item.navGroup] = []
+    acc[item.navGroup].push(item)
     return acc
   }, {})
+
+  // Render groups in NAV_GROUPS sort order (MVP only)
+  const orderedGroups = NAV_GROUPS
+    .filter(g => g.phase === 'mvp' && grouped[g.key])
+    .sort((a, b) => a.sortOrder - b.sortOrder)
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background">
@@ -100,7 +126,7 @@ export function AppShell({
         {/* Logo */}
         <div className="flex h-14 items-center border-b px-4" style={{ borderColor: 'var(--sidebar-border)' }}>
           <Link
-            href="/portfolio"
+            href="/pipeline/dashboard"
             className="flex items-center gap-2.5 no-underline"
           >
             <div
@@ -120,26 +146,38 @@ export function AppShell({
 
         {/* Nav groups */}
         <nav className="flex-1 space-y-5 px-3 py-4">
-          {Object.entries(groups).map(([group, items]) => (
-            <div key={group}>
-              <p
-                className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest"
-                style={{ color: 'var(--sidebar-foreground)', opacity: 0.4 }}
-              >
-                {NAV_GROUP_LABELS[group] ?? group}
-              </p>
-              <ul className="space-y-0.5" role="list">
-                {items.map(item => (
-                  <li key={item.screenKey}>
-                    <SidebarNavItem
-                      item={item}
-                      isActive={location.startsWith(item.path)}
-                    />
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+          {orderedGroups.map(group => {
+            const Icon = ICON_MAP[group.icon] ?? ChevronRight
+            const items = grouped[group.key] ?? []
+            return (
+              <div key={group.key}>
+                <div className="mb-1 flex items-center gap-1.5 px-3">
+                  <Icon
+                    className="h-3 w-3 shrink-0"
+                    style={{ color: 'var(--sidebar-foreground)', opacity: 0.4 }}
+                    aria-hidden="true"
+                  />
+                  <p
+                    className="text-[10px] font-semibold uppercase tracking-widest"
+                    style={{ color: 'var(--sidebar-foreground)', opacity: 0.4 }}
+                  >
+                    {group.label}
+                  </p>
+                </div>
+                <ul className="space-y-0.5" role="list">
+                  {items.map(item => (
+                    <li key={item.path}>
+                      <SidebarNavItem
+                        label={item.label}
+                        path={item.path}
+                        isActive={location.startsWith(item.path)}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )
+          })}
         </nav>
 
         {/* User section */}

@@ -26,6 +26,10 @@ interface ScreenGateProps {
   userRoles?: string[]
   isRegistryLoaded?: boolean
   children: React.ReactNode
+  /** Rendered when screen is inactive in the registry (Layer 1 failure). Default: <ScreenDisabledFallback /> */
+  fallback?: React.ReactNode
+  /** Rendered while registry is loading. Default: <ScreenGateLoader /> */
+  loadingFallback?: React.ReactNode
 }
 
 function ScreenGateLoader() {
@@ -104,15 +108,17 @@ export function ScreenGate({
   userRoles = [],
   isRegistryLoaded = false,
   children,
+  fallback,
+  loadingFallback,
 }: ScreenGateProps) {
   // Show loader while registry is being fetched
   if (!isRegistryLoaded) {
-    return <ScreenGateLoader />
+    return <>{loadingFallback ?? <ScreenGateLoader />}</>
   }
 
   // Layer 1: Registry check
   if (!isScreenEnabled(screenKey)) {
-    return <ScreenDisabledFallback screenKey={screenKey} />
+    return <>{fallback ?? <ScreenDisabledFallback screenKey={screenKey} />}</>
   }
 
   // Layer 2: Role check

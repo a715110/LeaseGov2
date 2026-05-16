@@ -1,678 +1,493 @@
 /**
- * App.tsx — LeaseGov root application.
+ * App.tsx — LeaseGov Route Configuration
  *
- * Architecture: MASTER_FRONTEND_ARCHITECTURE_V4
- * Design: Structured Authority (deep navy sidebar, IBM Plex Sans, minimal)
+ * Routes are organised by Feature Cluster (FC-1 through FC-10) matching
+ * SCREEN_REGISTRY_SPECIFICATION_V2.md Part 6.
  *
- * Provider stack (outer → inner):
- * 1. ErrorBoundary
- * 2. TenantProvider (resolves organizationId, tenantConfig)
- * 3. LeaseGovThemeProvider (injects CSS custom properties, manages color mode)
- * 4. TooltipProvider
- * 5. Toaster (sonner)
- * 6. Router
+ * Every route is wrapped in <ScreenGate> for two-layer access control:
+ *   Layer 1 — screen registry check (is this screen active for this tenant?)
+ *   Layer 2 — role-based permission check (delegated to PermissionGate inside ScreenGate)
  *
- * ScreenGate wraps every authenticated route.
- * Two-layer check: registry enabled → role match.
- *
- * NOTE: isRegistryLoaded is hardcoded to true for scaffold phase.
- * Replace with real registry fetch in app bootstrap sequence.
+ * Future-slot Phase 3 domains (equipment lease, service contract) are guarded
+ * with {false && ...} until those domains are activated.
  */
+
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Route, Switch } from 'wouter'
 import ErrorBoundary from './components/ErrorBoundary'
-import { AppShell } from './components/layout/AppShell'
+import { ThemeProvider } from './contexts/ThemeContext'
 import { ScreenGate } from './components/shared/ScreenGate'
-import { LeaseGovThemeProvider } from './contexts/LeaseGovThemeProvider'
-import { TenantProvider } from './contexts/TenantContext'
 import { SCREEN_KEYS } from './constants/screenKeys'
+import AppShell from './components/layout/AppShell'
 import NotFound from './pages/NotFound'
 
-// ─── Auth pages (no AppShell) ─────────────────────────────────────────────────
-import LoginPage from './pages/auth/Login'
-import SuperAdminLoginPage from './pages/auth/SuperAdminLogin'
-import MfaChallengePage from './pages/auth/MfaChallenge'
-import PasswordResetPage from './pages/auth/PasswordReset'
+// ─── FC-1: Document Pipeline ─────────────────────────────────────────────────
+import PipelineDashboard      from './pages/pipeline/PipelineDashboard'
+import PipelineUpload         from './pages/pipeline/PipelineUpload'
+import PipelineNewRecordModal from './pages/pipeline/PipelineNewRecordModal'
+import PipelineValidation     from './pages/pipeline/PipelineValidation'
+import PipelineReviewGrouping from './pages/pipeline/PipelineReviewGrouping'
+import PipelineSubmitConfirm  from './pages/pipeline/PipelineSubmitConfirm'
 
-// ─── Portfolio ────────────────────────────────────────────────────────────────
-import PortfolioDashboardPage from './pages/portfolio/PortfolioDashboard'
-import PortfolioExceptionQueuePage from './pages/portfolio/PortfolioExceptionQueue'
-import PortfolioWorkflowSummaryPage from './pages/portfolio/PortfolioWorkflowSummary'
+// ─── FC-2: Extraction and Verification ───────────────────────────────────────
+import ExtractionQueue           from './pages/extraction/ExtractionQueue'
+import ExtractionUnderstanding   from './pages/extraction/ExtractionUnderstanding'
+import ExtractionStrategy        from './pages/extraction/ExtractionStrategy'
+import ExtractionAiWorkspace     from './pages/extraction/ExtractionAiWorkspace'
+import ExtractionManualWorkspace from './pages/extraction/ExtractionManualWorkspace'
+import ExtractionVerification    from './pages/extraction/ExtractionVerification'
+import ExtractionTracker         from './pages/extraction/ExtractionTracker'
+import ExtractionReprocessing    from './pages/extraction/ExtractionReprocessing'
 
-// ─── Property Lease — List ────────────────────────────────────────────────────
-import PropertyLeaseListPage from './pages/contracts/propertyLease/PropertyLeaseList'
-import PropertyLeaseSearchPage from './pages/contracts/propertyLease/PropertyLeaseSearch'
+// ─── FC-3: Contract Packages ──────────────────────────────────────────────────
+import PackagesComposition from './pages/packages/PackagesComposition'
+import PackagesFlags       from './pages/packages/PackagesFlags'
+import PackagesReassembly  from './pages/packages/PackagesReassembly'
 
-// ─── Property Lease — Record ──────────────────────────────────────────────────
-import PropertyLeaseRecordOverviewPage from './pages/contracts/propertyLease/PropertyLeaseRecordOverview'
-import PropertyLeaseRecordTermsPage from './pages/contracts/propertyLease/PropertyLeaseRecordTerms'
-import PropertyLeaseRecordDocumentsPage from './pages/contracts/propertyLease/PropertyLeaseRecordDocuments'
-import PropertyLeaseRecordWorkflowPage from './pages/contracts/propertyLease/PropertyLeaseRecordWorkflow'
-import PropertyLeaseRecordHistoryPage from './pages/contracts/propertyLease/PropertyLeaseRecordHistory'
-import PropertyLeaseRecordAgentPage from './pages/contracts/propertyLease/PropertyLeaseRecordAgent'
-import PropertyLeaseRecordReassessmentPage from './pages/contracts/propertyLease/PropertyLeaseRecordReassessment'
+// ─── FC-4: Approval Workflow ──────────────────────────────────────────────────
+import ApprovalsQueue    from './pages/approvals/ApprovalsQueue'
+import ApprovalsReview   from './pages/approvals/ApprovalsReview'
+import ApprovalsApprover from './pages/approvals/ApprovalsApprover'
+import ApprovalsRework   from './pages/approvals/ApprovalsRework'
+import ApprovalsRecall   from './pages/approvals/ApprovalsRecall'
 
-// ─── Tenant Onboarding (SuperAdmin — ON.1–ON.5) ──────────────────────────────
-import OrganizationSetupPage from './pages/onboarding/OrganizationSetupPage'
-import AdminUserSetupPage from './pages/onboarding/AdminUserSetupPage'
+// ─── FC-5: Contract Records (MVP) ────────────────────────────────────────────
+import RecordsDashboard   from './pages/records/RecordsDashboard'
+import RecordsSearch      from './pages/records/RecordsSearch'
+import RecordsDetail      from './pages/records/RecordsDetail'
+import RecordsAddDocument from './pages/records/RecordsAddDocument'
+
+// ─── FC-7: Governed Export ────────────────────────────────────────────────────
+import ExportTemplateSelection from './pages/export/ExportTemplateSelection'
+import ExportStaging           from './pages/export/ExportStaging'
+import ExportPreflight         from './pages/export/ExportPreflight'
+import ExportUploadTask        from './pages/export/ExportUploadTask'
+
+// ─── FC-8: Administration (MVP) ──────────────────────────────────────────────
+import AdminUsers         from './pages/admin/AdminUsers'
+import AdminSchema        from './pages/admin/AdminSchema'
+import AdminTemplates     from './pages/admin/AdminTemplates'
+import AdminThresholds    from './pages/admin/AdminThresholds'
+import AdminAuditLog      from './pages/admin/AdminAuditLog'
+import AdminNotifications from './pages/admin/AdminNotifications'
+
+// ─── FC-10: Multi-Tenancy and Platform ───────────────────────────────────────
+import PlatformNotAuthorized  from './pages/platform/PlatformNotAuthorized'
+import OrganizationSetupPage  from './pages/onboarding/OrganizationSetupPage'
+import AdminUserSetupPage     from './pages/onboarding/AdminUserSetupPage'
 import ThemeAndAutomationSetupPage from './pages/onboarding/ThemeAndAutomationSetupPage'
-import WorkflowTemplateSetupPage from './pages/onboarding/WorkflowTemplateSetupPage'
+import WorkflowTemplateSetupPage   from './pages/onboarding/WorkflowTemplateSetupPage'
 import OnboardingCompletePage from './pages/onboarding/OnboardingCompletePage'
+import SuperAdminTenantList   from './pages/superadmin/SuperAdminTenantList'
+import SuperAdminTenantDetail from './pages/superadmin/SuperAdminTenantDetail'
+import SuperAdminSystemHealth from './pages/superadmin/SuperAdminSystemHealth'
+import SuperAdminSubscriptionManagement from './pages/superadmin/SuperAdminSubscriptionManagement'
+import SuperAdminScreenRegistry from './pages/superadmin/SuperAdminScreenRegistry'
 
-// ─── Reassessment Workflow ────────────────────────────────────────────────────
-import ReassessmentAnalysisPage from './pages/workflows/ReassessmentAnalysis'
-import ReassessmentReviewPage from './pages/workflows/ReassessmentReview'
-import ReassessmentUpdatePage from './pages/workflows/ReassessmentUpdate'
-import ReassessmentApprovalPage from './pages/workflows/ReassessmentApproval'
+// ─── FC-5: Contract Records (Phase 2) ────────────────────────────────────────
+import RecordsDeferredTracker from './pages/records/RecordsDeferredTracker'
+import RecordsSnapshotViewer  from './pages/records/RecordsSnapshotViewer'
+import RecordsCorrection      from './pages/records/RecordsCorrection'
 
-// ─── Documents ────────────────────────────────────────────────────────────────
-import DocumentLibraryPage from './pages/documents/DocumentLibrary'
-import DocumentViewerPage from './pages/documents/DocumentViewer'
-import DocumentExtractionDetailPage from './pages/documents/DocumentExtractionDetail'
-import DocumentUploadPage from './pages/documents/DocumentUpload'
-// ─── Document Intake Workflow pages (moved from onboarding/) ──────────────────
-import DocumentIntakeStartPage from './pages/documents/DocumentIntakeStart'
-import DocumentOcrProcessingPage from './pages/documents/DocumentOcrProcessing'
-import DocumentExtractionReviewPage from './pages/documents/DocumentExtractionReview'
-import DocumentDataValidationPage from './pages/documents/DocumentDataValidation'
-import DocumentSurveyDispatchPage from './pages/documents/DocumentSurveyDispatch'
-import DocumentApprovalPage from './pages/documents/DocumentApproval'
-import DocumentIntakeCompletePage from './pages/documents/DocumentIntakeComplete'
+// ─── FC-6: Reassessment (Phase 2) ────────────────────────────────────────────
+import ReassessmentDashboard       from './pages/reassessment/ReassessmentDashboard'
+import ReassessmentTrigger         from './pages/reassessment/ReassessmentTrigger'
+import ReassessmentSweep           from './pages/reassessment/ReassessmentSweep'
+import ReassessmentCaseList        from './pages/reassessment/ReassessmentCaseList'
+import ReassessmentClassification  from './pages/reassessment/ReassessmentClassification'
+import ReassessmentAssessment      from './pages/reassessment/ReassessmentAssessment'
+import ReassessmentAnalysis        from './pages/reassessment/ReassessmentAnalysis'
+import ReassessmentMemo            from './pages/reassessment/ReassessmentMemo'
+import ReassessmentPackagePreview  from './pages/reassessment/ReassessmentPackagePreview'
+import ReassessmentRemediation     from './pages/reassessment/ReassessmentRemediation'
+import ReassessmentConcurrentWarn  from './pages/reassessment/ReassessmentConcurrentWarn'
+import ReassessmentWatchlist       from './pages/reassessment/ReassessmentWatchlist'
+import ReassessmentSurveyIntake    from './pages/reassessment/ReassessmentSurveyIntake'
+import ReassessmentProjectView     from './pages/reassessment/ReassessmentProjectView'
 
-// ─── Surveys ──────────────────────────────────────────────────────────────────
-import SurveyListPage from './pages/surveys/SurveyList'
-import SurveyDetailPage from './pages/surveys/SurveyDetail'
-import SurveyResponseFormPage from './pages/surveys/SurveyResponseForm'
+// ─── FC-8: Administration (Phase 2) ──────────────────────────────────────────
+import AdminAutomation from './pages/admin/AdminAutomation'
 
-// ─── Checkpoints ──────────────────────────────────────────────────────────────
-import CheckpointQueuePage from './pages/workflows/CheckpointQueue'
-import CheckpointDetailPage from './pages/workflows/CheckpointDetail'
-
-// ─── Notifications ────────────────────────────────────────────────────────────
-import NotificationCentrePage from './pages/notifications/NotificationCentre'
-
-// ─── Settings ─────────────────────────────────────────────────────────────────
-import SettingsProfilePage from './pages/settings/SettingsProfile'
-import SettingsAutomationPage from './pages/settings/SettingsAutomation'
-import SettingsNotificationsPage from './pages/settings/SettingsNotifications'
-import SettingsAppearancePage from './pages/settings/SettingsAppearance'
-
-// ─── SuperAdmin ───────────────────────────────────────────────────────────────
-import SuperAdminTenantListPage from './pages/superadmin/SuperAdminTenantList'
-import SuperAdminTenantDetailPage from './pages/superadmin/SuperAdminTenantDetail'
-import SuperAdminSystemHealthPage from './pages/superadmin/SuperAdminSystemHealth'
-
-// ─── Phase 2 — Equipment Lease (FUTURE SLOT — not yet active) ───────────────
-// TO ACTIVATE: add EQUIPMENT_LEASE to ACTIVE_CONTRACT_TYPES in constants/contractTypes.ts
-// and remove the /* FUTURE_SLOT */ comments below.
-import EquipmentLeaseListPage from './pages/contracts/equipmentLease/EquipmentLeaseList'
-import EquipmentLeaseRecordOverviewPage from './pages/contracts/equipmentLease/EquipmentLeaseRecordOverview'
-import EquipmentLeaseRecordTermsPage from './pages/contracts/equipmentLease/EquipmentLeaseRecordTerms'
-import EquipmentLeaseRecordWorkflowPage from './pages/contracts/equipmentLease/EquipmentLeaseRecordWorkflow'
-
-// ─── Phase 2 — Service Contract (FUTURE SLOT — not yet active) ───────────────
-// TO ACTIVATE: add SERVICE_CONTRACT to ACTIVE_CONTRACT_TYPES in constants/contractTypes.ts
-// and remove the /* FUTURE_SLOT */ comments below.
-import ServiceContractListPage from './pages/contracts/serviceContract/ServiceContractList'
-import ServiceContractRecordOverviewPage from './pages/contracts/serviceContract/ServiceContractRecordOverview'
-import ServiceContractRecordTermsPage from './pages/contracts/serviceContract/ServiceContractRecordTerms'
-import ServiceContractRecordWorkflowPage from './pages/contracts/serviceContract/ServiceContractRecordWorkflow'
-
-// ─── Phase 2 — Reporting ──────────────────────────────────────────────────────
-import ReportingPortfolioAnalyticsPage from './pages/settings/ReportingPortfolioAnalytics'
-import ReportingAutomationEfficiencyPage from './pages/settings/ReportingAutomationEfficiency'
-import ReportingAuditExportPage from './pages/settings/ReportingAuditExport'
-
-// ─── Phase 2 — Counterparties & Properties ────────────────────────────────────
-import CounterpartyListPage from './pages/counterparties/CounterpartyList'
-import CounterpartyDetailPage from './pages/counterparties/CounterpartyDetail'
-import PropertyListPage from './pages/properties/PropertyList'
-import PropertyDetailPage from './pages/properties/PropertyDetail'
-
-// ─── Phase 2 — SuperAdmin additions ──────────────────────────────────────────
-import SuperAdminScreenRegistryPage from './pages/superadmin/SuperAdminScreenRegistry'
-import SuperAdminSubscriptionManagementPage from './pages/superadmin/SuperAdminSubscriptionManagement'
-import SuperAdminAuditLogPage from './pages/superadmin/SuperAdminAuditLog'
-
-// (Onboarding Wizard imports removed — replaced by ON.1–ON.5 tenant onboarding pages above)
-
-// ─── Scaffold: registry is pre-loaded as all-enabled for development ──────────
-// TODO: Replace with real registry fetch in app bootstrap sequence
-const IS_REGISTRY_LOADED = true
-
-// ─── Gate helper ─────────────────────────────────────────────────────────────
-function Gate({
-  screenKey,
-  children,
-}: {
-  screenKey: string
-  children: React.ReactNode
-}) {
-  return (
-    <ScreenGate
-      screenKey={screenKey as any}
-      isRegistryLoaded={IS_REGISTRY_LOADED}
-      userRoles={['admin']}
-    >
-      {children}
-    </ScreenGate>
-  )
-}
-
-// ─── Authenticated layout wrapper ────────────────────────────────────────────
-function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <AppShell userRoles={['admin']} organizationName="LeaseGov" userDisplayName="Admin User">
-      {children}
-    </AppShell>
-  )
-}
+// ─── FC-9: AI Agents and Automation (Phase 2) ────────────────────────────────
+import AgentCheckpointQueue  from './pages/agents/AgentCheckpointQueue'
+import AgentActivityMonitor  from './pages/agents/AgentActivityMonitor'
 
 function Router() {
   return (
     <Switch>
-      {/* ── Public / Auth ──────────────────────────────────────────────── */}
-      <Route path="/login" component={LoginPage} />
-      <Route path="/superadmin/login" component={SuperAdminLoginPage} />
-      <Route path="/mfa" component={MfaChallengePage} />
-      <Route path="/password-reset" component={PasswordResetPage} />
 
-      {/* ── Portfolio ──────────────────────────────────────────────────── */}
-      <Route path="/portfolio">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.PORTFOLIO_DASHBOARD}>
-            <PortfolioDashboardPage />
-          </Gate>
-        </AuthenticatedLayout>
+      {/* ── FC-1: Document Pipeline ─────────────────────────────────────── */}
+      <Route path="/pipeline/dashboard">
+        <ScreenGate screenKey={SCREEN_KEYS.PIPELINE_DASHBOARD} fallback={<NotFound />}>
+          <PipelineDashboard />
+        </ScreenGate>
       </Route>
-      <Route path="/portfolio/exceptions">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.PORTFOLIO_EXCEPTION_QUEUE}>
-            <PortfolioExceptionQueuePage />
-          </Gate>
-        </AuthenticatedLayout>
+      <Route path="/pipeline/upload">
+        <ScreenGate screenKey={SCREEN_KEYS.PIPELINE_UPLOAD} fallback={<NotFound />}>
+          <PipelineUpload />
+        </ScreenGate>
       </Route>
-      <Route path="/portfolio/workflows">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.PORTFOLIO_WORKFLOW_SUMMARY}>
-            <PortfolioWorkflowSummaryPage />
-          </Gate>
-        </AuthenticatedLayout>
+      <Route path="/pipeline/new-record">
+        <ScreenGate screenKey={SCREEN_KEYS.PIPELINE_NEW_RECORD_MODAL} fallback={<NotFound />}>
+          <PipelineNewRecordModal />
+        </ScreenGate>
       </Route>
-
-      {/* ── Property Lease — List ──────────────────────────────────────── */}
-      <Route path="/contracts/property-leases">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.PROPERTY_LEASE_LIST}>
-            <PropertyLeaseListPage />
-          </Gate>
-        </AuthenticatedLayout>
+      <Route path="/pipeline/validation">
+        <ScreenGate screenKey={SCREEN_KEYS.PIPELINE_VALIDATION} fallback={<NotFound />}>
+          <PipelineValidation />
+        </ScreenGate>
       </Route>
-      <Route path="/contracts/property-leases/search">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.PROPERTY_LEASE_SEARCH}>
-            <PropertyLeaseSearchPage />
-          </Gate>
-        </AuthenticatedLayout>
+      <Route path="/pipeline/review">
+        <ScreenGate screenKey={SCREEN_KEYS.PIPELINE_REVIEW_GROUPING} fallback={<NotFound />}>
+          <PipelineReviewGrouping />
+        </ScreenGate>
+      </Route>
+      <Route path="/pipeline/confirm">
+        <ScreenGate screenKey={SCREEN_KEYS.PIPELINE_SUBMIT_CONFIRM} fallback={<NotFound />}>
+          <PipelineSubmitConfirm />
+        </ScreenGate>
       </Route>
 
-      {/* ── Property Lease — Record ────────────────────────────────────── */}
-      <Route path="/contracts/property-leases/:leaseId/overview">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.PROPERTY_LEASE_RECORD_OVERVIEW}>
-            <PropertyLeaseRecordOverviewPage />
-          </Gate>
-        </AuthenticatedLayout>
+      {/* ── FC-2: Extraction and Verification ──────────────────────────── */}
+      <Route path="/extraction/queue">
+        <ScreenGate screenKey={SCREEN_KEYS.EXTRACTION_QUEUE} fallback={<NotFound />}>
+          <ExtractionQueue />
+        </ScreenGate>
       </Route>
-      <Route path="/contracts/property-leases/:leaseId/terms">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.PROPERTY_LEASE_RECORD_TERMS}>
-            <PropertyLeaseRecordTermsPage />
-          </Gate>
-        </AuthenticatedLayout>
+      <Route path="/extraction/understanding">
+        <ScreenGate screenKey={SCREEN_KEYS.EXTRACTION_UNDERSTANDING} fallback={<NotFound />}>
+          <ExtractionUnderstanding />
+        </ScreenGate>
       </Route>
-      <Route path="/contracts/property-leases/:leaseId/documents">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.PROPERTY_LEASE_RECORD_DOCUMENTS}>
-            <PropertyLeaseRecordDocumentsPage />
-          </Gate>
-        </AuthenticatedLayout>
+      <Route path="/extraction/strategy">
+        <ScreenGate screenKey={SCREEN_KEYS.EXTRACTION_STRATEGY} fallback={<NotFound />}>
+          <ExtractionStrategy />
+        </ScreenGate>
       </Route>
-      <Route path="/contracts/property-leases/:leaseId/workflow">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.PROPERTY_LEASE_RECORD_WORKFLOW}>
-            <PropertyLeaseRecordWorkflowPage />
-          </Gate>
-        </AuthenticatedLayout>
+      <Route path="/extraction/ai">
+        <ScreenGate screenKey={SCREEN_KEYS.EXTRACTION_AI_WORKSPACE} fallback={<NotFound />}>
+          <ExtractionAiWorkspace />
+        </ScreenGate>
       </Route>
-      <Route path="/contracts/property-leases/:leaseId/history">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.PROPERTY_LEASE_RECORD_HISTORY}>
-            <PropertyLeaseRecordHistoryPage />
-          </Gate>
-        </AuthenticatedLayout>
+      <Route path="/extraction/manual">
+        <ScreenGate screenKey={SCREEN_KEYS.EXTRACTION_MANUAL_WORKSPACE} fallback={<NotFound />}>
+          <ExtractionManualWorkspace />
+        </ScreenGate>
       </Route>
-      <Route path="/contracts/property-leases/:leaseId/agent">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.PROPERTY_LEASE_RECORD_AGENT}>
-            <PropertyLeaseRecordAgentPage />
-          </Gate>
-        </AuthenticatedLayout>
+      <Route path="/extraction/verify">
+        <ScreenGate screenKey={SCREEN_KEYS.EXTRACTION_VERIFICATION} fallback={<NotFound />}>
+          <ExtractionVerification />
+        </ScreenGate>
       </Route>
-      <Route path="/contracts/property-leases/:leaseId/reassessment">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.PROPERTY_LEASE_RECORD_REASSESSMENT}>
-            <PropertyLeaseRecordReassessmentPage />
-          </Gate>
-        </AuthenticatedLayout>
+      <Route path="/extraction/tracker">
+        <ScreenGate screenKey={SCREEN_KEYS.EXTRACTION_TRACKER} fallback={<NotFound />}>
+          <ExtractionTracker />
+        </ScreenGate>
+      </Route>
+      <Route path="/extraction/reprocess">
+        <ScreenGate screenKey={SCREEN_KEYS.EXTRACTION_REPROCESSING} fallback={<NotFound />}>
+          <ExtractionReprocessing />
+        </ScreenGate>
       </Route>
 
-      {/* ── Tenant Onboarding — SuperAdmin only (ON.1–ON.5) ─────────────── */}
+      {/* ── FC-3: Contract Packages ─────────────────────────────────────── */}
+      <Route path="/packages/:contractId">
+        <ScreenGate screenKey={SCREEN_KEYS.PACKAGES_COMPOSITION} fallback={<NotFound />}>
+          <PackagesComposition />
+        </ScreenGate>
+      </Route>
+      <Route path="/packages/:packageId/flags">
+        <ScreenGate screenKey={SCREEN_KEYS.PACKAGES_FLAGS} fallback={<NotFound />}>
+          <PackagesFlags />
+        </ScreenGate>
+      </Route>
+      <Route path="/packages/:packageId/reassembly">
+        <ScreenGate screenKey={SCREEN_KEYS.PACKAGES_REASSEMBLY} fallback={<NotFound />}>
+          <PackagesReassembly />
+        </ScreenGate>
+      </Route>
+
+      {/* ── FC-4: Approval Workflow ─────────────────────────────────────── */}
+      <Route path="/approvals/queue">
+        <ScreenGate screenKey={SCREEN_KEYS.APPROVALS_QUEUE} fallback={<NotFound />}>
+          <ApprovalsQueue />
+        </ScreenGate>
+      </Route>
+      <Route path="/approvals/review">
+        <ScreenGate screenKey={SCREEN_KEYS.APPROVALS_REVIEW} fallback={<NotFound />}>
+          <ApprovalsReview />
+        </ScreenGate>
+      </Route>
+      <Route path="/approvals/final">
+        <ScreenGate screenKey={SCREEN_KEYS.APPROVALS_APPROVER} fallback={<NotFound />}>
+          <ApprovalsApprover />
+        </ScreenGate>
+      </Route>
+      <Route path="/approvals/rework">
+        <ScreenGate screenKey={SCREEN_KEYS.APPROVALS_REWORK} fallback={<NotFound />}>
+          <ApprovalsRework />
+        </ScreenGate>
+      </Route>
+      <Route path="/approvals/recall">
+        <ScreenGate screenKey={SCREEN_KEYS.APPROVALS_RECALL} fallback={<NotFound />}>
+          <ApprovalsRecall />
+        </ScreenGate>
+      </Route>
+
+      {/* ── FC-5: Contract Records (MVP) ────────────────────────────────── */}
+      <Route path="/records/dashboard">
+        <ScreenGate screenKey={SCREEN_KEYS.RECORDS_DASHBOARD} fallback={<NotFound />}>
+          <RecordsDashboard />
+        </ScreenGate>
+      </Route>
+      <Route path="/records/:id/add-document">
+        <ScreenGate screenKey={SCREEN_KEYS.RECORDS_ADD_DOCUMENT} fallback={<NotFound />}>
+          <RecordsAddDocument />
+        </ScreenGate>
+      </Route>
+      <Route path="/records/:id">
+        <ScreenGate screenKey={SCREEN_KEYS.RECORDS_DETAIL} fallback={<NotFound />}>
+          <RecordsDetail />
+        </ScreenGate>
+      </Route>
+      <Route path="/records">
+        <ScreenGate screenKey={SCREEN_KEYS.RECORDS_SEARCH} fallback={<NotFound />}>
+          <RecordsSearch />
+        </ScreenGate>
+      </Route>
+
+      {/* ── FC-7: Governed Export ───────────────────────────────────────── */}
+      <Route path="/export/templates">
+        <ScreenGate screenKey={SCREEN_KEYS.EXPORT_TEMPLATE_SELECTION} fallback={<NotFound />}>
+          <ExportTemplateSelection />
+        </ScreenGate>
+      </Route>
+      <Route path="/export/staging">
+        <ScreenGate screenKey={SCREEN_KEYS.EXPORT_STAGING} fallback={<NotFound />}>
+          <ExportStaging />
+        </ScreenGate>
+      </Route>
+      <Route path="/export/preflight">
+        <ScreenGate screenKey={SCREEN_KEYS.EXPORT_PREFLIGHT} fallback={<NotFound />}>
+          <ExportPreflight />
+        </ScreenGate>
+      </Route>
+      <Route path="/export/tasks/:id">
+        <ScreenGate screenKey={SCREEN_KEYS.EXPORT_UPLOAD_TASK} fallback={<NotFound />}>
+          <ExportUploadTask />
+        </ScreenGate>
+      </Route>
+
+      {/* ── FC-8: Administration (MVP) ──────────────────────────────────── */}
+      <Route path="/admin/users">
+        <ScreenGate screenKey={SCREEN_KEYS.ADMIN_USERS} fallback={<NotFound />}>
+          <AdminUsers />
+        </ScreenGate>
+      </Route>
+      <Route path="/admin/schema">
+        <ScreenGate screenKey={SCREEN_KEYS.ADMIN_SCHEMA} fallback={<NotFound />}>
+          <AdminSchema />
+        </ScreenGate>
+      </Route>
+      <Route path="/admin/templates">
+        <ScreenGate screenKey={SCREEN_KEYS.ADMIN_TEMPLATES} fallback={<NotFound />}>
+          <AdminTemplates />
+        </ScreenGate>
+      </Route>
+      <Route path="/admin/thresholds">
+        <ScreenGate screenKey={SCREEN_KEYS.ADMIN_THRESHOLDS} fallback={<NotFound />}>
+          <AdminThresholds />
+        </ScreenGate>
+      </Route>
+      <Route path="/admin/audit">
+        <ScreenGate screenKey={SCREEN_KEYS.ADMIN_AUDIT_LOG} fallback={<NotFound />}>
+          <AdminAuditLog />
+        </ScreenGate>
+      </Route>
+      <Route path="/admin/notifications">
+        <ScreenGate screenKey={SCREEN_KEYS.ADMIN_NOTIFICATIONS} fallback={<NotFound />}>
+          <AdminNotifications />
+        </ScreenGate>
+      </Route>
+
+      {/* ── FC-10: Multi-Tenancy and Platform ──────────────────────────── */}
+      <Route path="/not-authorized">
+        <ScreenGate screenKey={SCREEN_KEYS.PLATFORM_NOT_AUTHORIZED} fallback={<NotFound />}>
+          <PlatformNotAuthorized />
+        </ScreenGate>
+      </Route>
       <Route path="/onboarding/organization">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.ONBOARDING_ORGANIZATION_SETUP}>
-            <OrganizationSetupPage />
-          </Gate>
-        </AuthenticatedLayout>
+        <ScreenGate screenKey={SCREEN_KEYS.PLATFORM_ONBOARDING} fallback={<NotFound />}>
+          <OrganizationSetupPage />
+        </ScreenGate>
       </Route>
       <Route path="/onboarding/admin-user">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.ONBOARDING_ADMIN_USER_SETUP}>
-            <AdminUserSetupPage />
-          </Gate>
-        </AuthenticatedLayout>
+        <ScreenGate screenKey={SCREEN_KEYS.PLATFORM_ONBOARDING} fallback={<NotFound />}>
+          <AdminUserSetupPage />
+        </ScreenGate>
       </Route>
       <Route path="/onboarding/theme-automation">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.ONBOARDING_THEME_AUTOMATION_SETUP}>
-            <ThemeAndAutomationSetupPage />
-          </Gate>
-        </AuthenticatedLayout>
+        <ScreenGate screenKey={SCREEN_KEYS.PLATFORM_ONBOARDING} fallback={<NotFound />}>
+          <ThemeAndAutomationSetupPage />
+        </ScreenGate>
       </Route>
       <Route path="/onboarding/workflow-templates">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.ONBOARDING_WORKFLOW_TEMPLATE_SETUP}>
-            <WorkflowTemplateSetupPage />
-          </Gate>
-        </AuthenticatedLayout>
+        <ScreenGate screenKey={SCREEN_KEYS.PLATFORM_ONBOARDING} fallback={<NotFound />}>
+          <WorkflowTemplateSetupPage />
+        </ScreenGate>
       </Route>
       <Route path="/onboarding/complete">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.ONBOARDING_COMPLETE}>
-            <OnboardingCompletePage />
-          </Gate>
-        </AuthenticatedLayout>
+        <ScreenGate screenKey={SCREEN_KEYS.PLATFORM_ONBOARDING} fallback={<NotFound />}>
+          <OnboardingCompletePage />
+        </ScreenGate>
       </Route>
-
-      {/* ── Reassessment Workflow ──────────────────────────────────────── */}
-      <Route path="/reassessment/:reassessmentId/analysis">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.REASSESSMENT_ANALYSIS}>
-            <ReassessmentAnalysisPage />
-          </Gate>
-        </AuthenticatedLayout>
+      <Route path="/superadmin/tenants/:id">
+        <ScreenGate screenKey={SCREEN_KEYS.SUPERADMIN_TENANT_DETAIL} fallback={<NotFound />}>
+          <SuperAdminTenantDetail />
+        </ScreenGate>
       </Route>
-      <Route path="/reassessment/:reassessmentId/review">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.REASSESSMENT_REVIEW}>
-            <ReassessmentReviewPage />
-          </Gate>
-        </AuthenticatedLayout>
-      </Route>
-      <Route path="/reassessment/:reassessmentId/update">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.REASSESSMENT_UPDATE}>
-            <ReassessmentUpdatePage />
-          </Gate>
-        </AuthenticatedLayout>
-      </Route>
-      <Route path="/reassessment/:reassessmentId/approval">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.REASSESSMENT_APPROVAL}>
-            <ReassessmentApprovalPage />
-          </Gate>
-        </AuthenticatedLayout>
-      </Route>
-
-      {/* ── Documents ─────────────────────────────────────────────────── */}
-      <Route path="/documents">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.DOCUMENT_LIBRARY}>
-            <DocumentLibraryPage />
-          </Gate>
-        </AuthenticatedLayout>
-      </Route>
-      <Route path="/documents/upload">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.DOCUMENT_UPLOAD}>
-            <DocumentUploadPage />
-          </Gate>
-        </AuthenticatedLayout>
-      </Route>
-      <Route path="/documents/:documentId/extraction">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.DOCUMENT_EXTRACTION_DETAIL}>
-            <DocumentExtractionDetailPage />
-          </Gate>
-        </AuthenticatedLayout>
-      </Route>
-      <Route path="/documents/:documentId">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.DOCUMENT_VIEWER}>
-            <DocumentViewerPage />
-          </Gate>
-        </AuthenticatedLayout>
-      </Route>
-
-      {/* ── Document Intake Workflow (moved from onboarding/) ─────────────── */}
-      <Route path="/documents/intake/:workflowId/start">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.DOCUMENT_LIBRARY}>
-            <DocumentIntakeStartPage />
-          </Gate>
-        </AuthenticatedLayout>
-      </Route>
-      <Route path="/documents/intake/:workflowId/ocr">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.DOCUMENT_LIBRARY}>
-            <DocumentOcrProcessingPage />
-          </Gate>
-        </AuthenticatedLayout>
-      </Route>
-      <Route path="/documents/intake/:workflowId/extraction">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.DOCUMENT_EXTRACTION_DETAIL}>
-            <DocumentExtractionReviewPage />
-          </Gate>
-        </AuthenticatedLayout>
-      </Route>
-      <Route path="/documents/intake/:workflowId/validation">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.DOCUMENT_LIBRARY}>
-            <DocumentDataValidationPage />
-          </Gate>
-        </AuthenticatedLayout>
-      </Route>
-      <Route path="/documents/intake/:workflowId/survey">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.DOCUMENT_LIBRARY}>
-            <DocumentSurveyDispatchPage />
-          </Gate>
-        </AuthenticatedLayout>
-      </Route>
-      <Route path="/documents/intake/:workflowId/approval">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.DOCUMENT_LIBRARY}>
-            <DocumentApprovalPage />
-          </Gate>
-        </AuthenticatedLayout>
-      </Route>
-      <Route path="/documents/intake/:workflowId/complete">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.DOCUMENT_LIBRARY}>
-            <DocumentIntakeCompletePage />
-          </Gate>
-        </AuthenticatedLayout>
-      </Route>
-
-      {/* ── Surveys ───────────────────────────────────────────────────── */}
-      <Route path="/surveys">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.SURVEY_LIST}>
-            <SurveyListPage />
-          </Gate>
-        </AuthenticatedLayout>
-      </Route>
-      <Route path="/surveys/:surveyId/respond">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.SURVEY_RESPONSE_FORM}>
-            <SurveyResponseFormPage />
-          </Gate>
-        </AuthenticatedLayout>
-      </Route>
-      <Route path="/surveys/:surveyId">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.SURVEY_DETAIL}>
-            <SurveyDetailPage />
-          </Gate>
-        </AuthenticatedLayout>
-      </Route>
-
-      {/* ── Checkpoints ───────────────────────────────────────────────── */}
-      <Route path="/checkpoints">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.CHECKPOINT_QUEUE}>
-            <CheckpointQueuePage />
-          </Gate>
-        </AuthenticatedLayout>
-      </Route>
-      <Route path="/checkpoints/:checkpointId">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.CHECKPOINT_DETAIL}>
-            <CheckpointDetailPage />
-          </Gate>
-        </AuthenticatedLayout>
-      </Route>
-
-      {/* ── Notifications ─────────────────────────────────────────────── */}
-      <Route path="/notifications">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.NOTIFICATION_CENTRE}>
-            <NotificationCentrePage />
-          </Gate>
-        </AuthenticatedLayout>
-      </Route>
-
-      {/* ── Settings ──────────────────────────────────────────────────── */}
-      <Route path="/settings/profile">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.SETTINGS_PROFILE}>
-            <SettingsProfilePage />
-          </Gate>
-        </AuthenticatedLayout>
-      </Route>
-      <Route path="/settings/automation">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.SETTINGS_AUTOMATION}>
-            <SettingsAutomationPage />
-          </Gate>
-        </AuthenticatedLayout>
-      </Route>
-      <Route path="/settings/notifications">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.SETTINGS_NOTIFICATIONS}>
-            <SettingsNotificationsPage />
-          </Gate>
-        </AuthenticatedLayout>
-      </Route>
-      <Route path="/settings/appearance">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.SETTINGS_APPEARANCE}>
-            <SettingsAppearancePage />
-          </Gate>
-        </AuthenticatedLayout>
-      </Route>
-
-      {/* ── SuperAdmin ────────────────────────────────────────────────── */}
       <Route path="/superadmin/tenants">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.SUPERADMIN_TENANT_LIST}>
-            <SuperAdminTenantListPage />
-          </Gate>
-        </AuthenticatedLayout>
-      </Route>
-      <Route path="/superadmin/tenants/:tenantId">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.SUPERADMIN_TENANT_DETAIL}>
-            <SuperAdminTenantDetailPage />
-          </Gate>
-        </AuthenticatedLayout>
+        <ScreenGate screenKey={SCREEN_KEYS.SUPERADMIN_TENANT_LIST} fallback={<NotFound />}>
+          <SuperAdminTenantList />
+        </ScreenGate>
       </Route>
       <Route path="/superadmin/health">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.SUPERADMIN_SYSTEM_HEALTH}>
-            <SuperAdminSystemHealthPage />
-          </Gate>
-        </AuthenticatedLayout>
-      </Route>
-
-      {/* ── Phase 2 — Equipment Lease (FUTURE SLOT — inactive until domain activated) ── */}
-      {/* FUTURE_SLOT: Remove fragment wrapper when activating Equipment Lease domain */}
-      {false && <>
-        <Route path="/contracts/equipment-leases">
-          <AuthenticatedLayout>
-            <Gate screenKey={SCREEN_KEYS.EQUIPMENT_LEASE_LIST}>
-              <EquipmentLeaseListPage />
-            </Gate>
-          </AuthenticatedLayout>
-        </Route>
-        <Route path="/contracts/equipment-leases/:leaseId/overview">
-          <AuthenticatedLayout>
-            <Gate screenKey={SCREEN_KEYS.EQUIPMENT_LEASE_RECORD_OVERVIEW}>
-              <EquipmentLeaseRecordOverviewPage />
-            </Gate>
-          </AuthenticatedLayout>
-        </Route>
-        <Route path="/contracts/equipment-leases/:leaseId/terms">
-          <AuthenticatedLayout>
-            <Gate screenKey={SCREEN_KEYS.EQUIPMENT_LEASE_RECORD_TERMS}>
-              <EquipmentLeaseRecordTermsPage />
-            </Gate>
-          </AuthenticatedLayout>
-        </Route>
-        <Route path="/contracts/equipment-leases/:leaseId/workflow">
-          <AuthenticatedLayout>
-            <Gate screenKey={SCREEN_KEYS.EQUIPMENT_LEASE_RECORD_WORKFLOW}>
-              <EquipmentLeaseRecordWorkflowPage />
-            </Gate>
-          </AuthenticatedLayout>
-        </Route>
-      </>}{/* end FUTURE_SLOT equipment-leases */}
-
-      {/* ── Phase 2 — Service Contract (FUTURE SLOT — inactive until domain activated) ── */}
-      {/* FUTURE_SLOT: Remove fragment wrapper when activating Service Contract domain */}
-      {false && <>
-        <Route path="/contracts/service-contracts">
-          <AuthenticatedLayout>
-            <Gate screenKey={SCREEN_KEYS.SERVICE_CONTRACT_LIST}>
-              <ServiceContractListPage />
-            </Gate>
-          </AuthenticatedLayout>
-        </Route>
-        <Route path="/contracts/service-contracts/:contractId/overview">
-          <AuthenticatedLayout>
-            <Gate screenKey={SCREEN_KEYS.SERVICE_CONTRACT_RECORD_OVERVIEW}>
-              <ServiceContractRecordOverviewPage />
-            </Gate>
-          </AuthenticatedLayout>
-        </Route>
-        <Route path="/contracts/service-contracts/:contractId/terms">
-          <AuthenticatedLayout>
-            <Gate screenKey={SCREEN_KEYS.SERVICE_CONTRACT_RECORD_TERMS}>
-              <ServiceContractRecordTermsPage />
-            </Gate>
-          </AuthenticatedLayout>
-        </Route>
-        <Route path="/contracts/service-contracts/:contractId/workflow">
-          <AuthenticatedLayout>
-            <Gate screenKey={SCREEN_KEYS.SERVICE_CONTRACT_RECORD_WORKFLOW}>
-              <ServiceContractRecordWorkflowPage />
-            </Gate>
-          </AuthenticatedLayout>
-        </Route>
-      </>}{/* end FUTURE_SLOT service-contracts */}
-
-      {/* ── Phase 2 — Reporting ───────────────────────────────────────── */}
-      <Route path="/reporting/portfolio">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.REPORTING_PORTFOLIO_ANALYTICS}>
-            <ReportingPortfolioAnalyticsPage />
-          </Gate>
-        </AuthenticatedLayout>
-      </Route>
-      <Route path="/reporting/automation">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.REPORTING_AUTOMATION_EFFICIENCY}>
-            <ReportingAutomationEfficiencyPage />
-          </Gate>
-        </AuthenticatedLayout>
-      </Route>
-      <Route path="/reporting/audit">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.REPORTING_AUDIT_EXPORT}>
-            <ReportingAuditExportPage />
-          </Gate>
-        </AuthenticatedLayout>
-      </Route>
-
-      {/* ── Phase 2 — Counterparties & Properties ─────────────────────── */}
-      <Route path="/counterparties">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.COUNTERPARTY_LIST}>
-            <CounterpartyListPage />
-          </Gate>
-        </AuthenticatedLayout>
-      </Route>
-      <Route path="/counterparties/:counterpartyId">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.COUNTERPARTY_DETAIL}>
-            <CounterpartyDetailPage />
-          </Gate>
-        </AuthenticatedLayout>
-      </Route>
-      <Route path="/properties">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.PROPERTY_LIST}>
-            <PropertyListPage />
-          </Gate>
-        </AuthenticatedLayout>
-      </Route>
-      <Route path="/properties/:propertyId">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.PROPERTY_DETAIL}>
-            <PropertyDetailPage />
-          </Gate>
-        </AuthenticatedLayout>
-      </Route>
-
-      {/* ── Phase 2 — SuperAdmin additions ────────────────────────────── */}
-      <Route path="/superadmin/registry">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.SUPERADMIN_SCREEN_REGISTRY}>
-            <SuperAdminScreenRegistryPage />
-          </Gate>
-        </AuthenticatedLayout>
+        <ScreenGate screenKey={SCREEN_KEYS.SUPERADMIN_SYSTEM_HEALTH} fallback={<NotFound />}>
+          <SuperAdminSystemHealth />
+        </ScreenGate>
       </Route>
       <Route path="/superadmin/subscriptions">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.SUPERADMIN_SUBSCRIPTION_MANAGEMENT}>
-            <SuperAdminSubscriptionManagementPage />
-          </Gate>
-        </AuthenticatedLayout>
+        <ScreenGate screenKey={SCREEN_KEYS.SUPERADMIN_SUBSCRIPTIONS} fallback={<NotFound />}>
+          <SuperAdminSubscriptionManagement />
+        </ScreenGate>
       </Route>
-      <Route path="/superadmin/audit">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.SUPERADMIN_AUDIT_LOG}>
-            <SuperAdminAuditLogPage />
-          </Gate>
-        </AuthenticatedLayout>
+      <Route path="/superadmin/screen-registry">
+        <ScreenGate screenKey={SCREEN_KEYS.SUPERADMIN_SCREEN_REGISTRY} fallback={<NotFound />}>
+          <SuperAdminScreenRegistry />
+        </ScreenGate>
       </Route>
 
-      {/* (Onboarding Wizard routes removed — replaced by ON.1–ON.5 tenant onboarding routes above) */}
-
-      {/* ── Root redirect ─────────────────────────────────────────────── */}
-      <Route path="/">
-        <AuthenticatedLayout>
-          <Gate screenKey={SCREEN_KEYS.PORTFOLIO_DASHBOARD}>
-            <PortfolioDashboardPage />
-          </Gate>
-        </AuthenticatedLayout>
+      {/* ── FC-5: Contract Records (Phase 2) ────────────────────────────── */}
+      <Route path="/records/:id/deferred">
+        <ScreenGate screenKey={SCREEN_KEYS.RECORDS_DEFERRED_TRACKER} fallback={<NotFound />}>
+          <RecordsDeferredTracker />
+        </ScreenGate>
+      </Route>
+      <Route path="/records/:id/snapshots">
+        <ScreenGate screenKey={SCREEN_KEYS.RECORDS_SNAPSHOT_VIEWER} fallback={<NotFound />}>
+          <RecordsSnapshotViewer />
+        </ScreenGate>
+      </Route>
+      <Route path="/records/:id/correction">
+        <ScreenGate screenKey={SCREEN_KEYS.RECORDS_CORRECTION} fallback={<NotFound />}>
+          <RecordsCorrection />
+        </ScreenGate>
       </Route>
 
-      {/* ── 404 ───────────────────────────────────────────────────────── */}
+      {/* ── FC-6: Reassessment (Phase 2) ────────────────────────────────── */}
+      <Route path="/reassessment/dashboard">
+        <ScreenGate screenKey={SCREEN_KEYS.REASSESSMENT_DASHBOARD} fallback={<NotFound />}>
+          <ReassessmentDashboard />
+        </ScreenGate>
+      </Route>
+      <Route path="/reassessment/trigger">
+        <ScreenGate screenKey={SCREEN_KEYS.REASSESSMENT_TRIGGER} fallback={<NotFound />}>
+          <ReassessmentTrigger />
+        </ScreenGate>
+      </Route>
+      <Route path="/reassessment/sweep">
+        <ScreenGate screenKey={SCREEN_KEYS.REASSESSMENT_SWEEP} fallback={<NotFound />}>
+          <ReassessmentSweep />
+        </ScreenGate>
+      </Route>
+      <Route path="/reassessment/cases/:id/classify">
+        <ScreenGate screenKey={SCREEN_KEYS.REASSESSMENT_CLASSIFICATION} fallback={<NotFound />}>
+          <ReassessmentClassification />
+        </ScreenGate>
+      </Route>
+      <Route path="/reassessment/cases/:id/assess">
+        <ScreenGate screenKey={SCREEN_KEYS.REASSESSMENT_ASSESSMENT} fallback={<NotFound />}>
+          <ReassessmentAssessment />
+        </ScreenGate>
+      </Route>
+      <Route path="/reassessment/cases/:id/analysis">
+        <ScreenGate screenKey={SCREEN_KEYS.REASSESSMENT_ANALYSIS} fallback={<NotFound />}>
+          <ReassessmentAnalysis />
+        </ScreenGate>
+      </Route>
+      <Route path="/reassessment/cases/:id/memo">
+        <ScreenGate screenKey={SCREEN_KEYS.REASSESSMENT_MEMO} fallback={<NotFound />}>
+          <ReassessmentMemo />
+        </ScreenGate>
+      </Route>
+      <Route path="/reassessment/cases/:id/package">
+        <ScreenGate screenKey={SCREEN_KEYS.REASSESSMENT_PACKAGE_PREVIEW} fallback={<NotFound />}>
+          <ReassessmentPackagePreview />
+        </ScreenGate>
+      </Route>
+      <Route path="/reassessment/cases/:id/remediation">
+        <ScreenGate screenKey={SCREEN_KEYS.REASSESSMENT_REMEDIATION} fallback={<NotFound />}>
+          <ReassessmentRemediation />
+        </ScreenGate>
+      </Route>
+      <Route path="/reassessment/cases">
+        <ScreenGate screenKey={SCREEN_KEYS.REASSESSMENT_CASE_LIST} fallback={<NotFound />}>
+          <ReassessmentCaseList />
+        </ScreenGate>
+      </Route>
+      <Route path="/reassessment/concurrent">
+        <ScreenGate screenKey={SCREEN_KEYS.REASSESSMENT_CONCURRENT_WARN} fallback={<NotFound />}>
+          <ReassessmentConcurrentWarn />
+        </ScreenGate>
+      </Route>
+      <Route path="/reassessment/watchlist">
+        <ScreenGate screenKey={SCREEN_KEYS.REASSESSMENT_WATCHLIST} fallback={<NotFound />}>
+          <ReassessmentWatchlist />
+        </ScreenGate>
+      </Route>
+      <Route path="/reassessment/surveys">
+        <ScreenGate screenKey={SCREEN_KEYS.REASSESSMENT_SURVEY_INTAKE} fallback={<NotFound />}>
+          <ReassessmentSurveyIntake />
+        </ScreenGate>
+      </Route>
+      <Route path="/reassessment/projects/:id">
+        <ScreenGate screenKey={SCREEN_KEYS.REASSESSMENT_PROJECT_VIEW} fallback={<NotFound />}>
+          <ReassessmentProjectView />
+        </ScreenGate>
+      </Route>
+
+      {/* ── FC-8: Administration (Phase 2) ──────────────────────────────── */}
+      <Route path="/admin/automation">
+        <ScreenGate screenKey={SCREEN_KEYS.ADMIN_AUTOMATION} fallback={<NotFound />}>
+          <AdminAutomation />
+        </ScreenGate>
+      </Route>
+
+      {/* ── FC-9: AI Agents and Automation (Phase 2) ────────────────────── */}
+      <Route path="/approvals/checkpoints">
+        <ScreenGate screenKey={SCREEN_KEYS.AGENT_CHECKPOINT_QUEUE} fallback={<NotFound />}>
+          <AgentCheckpointQueue />
+        </ScreenGate>
+      </Route>
+      <Route path="/agents/monitor">
+        <ScreenGate screenKey={SCREEN_KEYS.AGENT_ACTIVITY_MONITOR} fallback={<NotFound />}>
+          <AgentActivityMonitor />
+        </ScreenGate>
+      </Route>
+
+      {/* ── PHASE 3 FUTURE SLOTS (inactive until domain activation) ─────── */}
+      {false && (
+        <>
+          {/* Equipment Lease — activate when EQUIPMENT_LEASE domain is enabled */}
+          {/* Service Contract — activate when SERVICE_CONTRACT domain is enabled */}
+        </>
+      )}
+
+      {/* ── Default / 404 ───────────────────────────────────────────────── */}
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
+
     </Switch>
   )
 }
@@ -680,18 +495,14 @@ function Router() {
 function App() {
   return (
     <ErrorBoundary>
-      <TenantProvider>
-        <LeaseGovThemeProvider
-          themeKey="structured_authority"
-          tenantColorModeDefault="light"
-          allowUserModeToggle={true}
-        >
-          <TooltipProvider>
-            <Toaster />
+      <ThemeProvider defaultTheme="light">
+        <TooltipProvider>
+          <Toaster />
+          <AppShell>
             <Router />
-          </TooltipProvider>
-        </LeaseGovThemeProvider>
-      </TenantProvider>
+          </AppShell>
+        </TooltipProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   )
 }
