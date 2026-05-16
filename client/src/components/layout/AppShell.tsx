@@ -9,7 +9,7 @@
  *
  * Structure:
  * - Sidebar (fixed, 240px): logo + nav groups + user section
- * - Main content area: header bar + page content
+ * - Main content area: header bar (with role switcher) + page content
  *
  * In production, nav items are driven by the screen registry response.
  * During scaffolding, a static MVP nav list is rendered directly.
@@ -19,17 +19,41 @@ import { Link, useLocation } from 'wouter'
 import {
   UploadCloud, Scan, Layers, CheckCircle, Folder,
   CloudUpload, Settings, Shield, Bell, ChevronRight,
-  RefreshCw,
+  RefreshCw, UserCog, ChevronDown,
 } from 'lucide-react'
 import { ColorModeToggle } from './ColorModeToggle'
 import { cn } from '../../lib/utils'
 import { NAV_GROUPS, ROUTE_PATHS } from '../../constants/navigationConfig'
+import { useRole } from '../../contexts/RoleContext'
+import type { UserRole } from '../../lib/types'
+import { ROLE_LABELS } from '../../lib/types'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '../ui/dropdown-menu'
 
 // ─── Icon map ────────────────────────────────────────────────────────────────
 const ICON_MAP: Record<string, React.ElementType> = {
   UploadCloud, Scan, Layers, CheckCircle, Folder,
   CloudUpload, Settings, Shield, RefreshCw,
 }
+
+// ─── All 9 V4 roles for the demo switcher ────────────────────────────────────
+const ALL_ROLES: UserRole[] = [
+  'document_submitter',
+  'preparer',
+  'reviewer',
+  'approver',
+  'accountant',
+  'controller',
+  'business_submitter',
+  'auditor',
+  'lease_admin',
+]
 
 // ─── Static MVP nav items (used until registry-driven nav is wired) ───────────
 interface StaticNavEntry {
@@ -90,6 +114,47 @@ function SidebarNavItem({ label, path, isActive }: { label: string; path: string
       <ChevronRight className="h-3 w-3 shrink-0 opacity-40" aria-hidden="true" />
       <span className="truncate">{label}</span>
     </Link>
+  )
+}
+
+/** Demo role switcher — shown in the top header bar */
+function RoleSwitcher() {
+  const { activeRole, setActiveRole, roleLabel } = useRole()
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          className="flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label="Switch demo role"
+        >
+          <UserCog className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          <span className="max-w-[140px] truncate">{roleLabel}</span>
+          <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-52">
+        <DropdownMenuLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          Demo Role
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {ALL_ROLES.map(role => (
+          <DropdownMenuItem
+            key={role}
+            onSelect={() => setActiveRole(role)}
+            className={cn(
+              'text-xs cursor-pointer',
+              activeRole === role && 'font-semibold text-primary'
+            )}
+          >
+            {activeRole === role && (
+              <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-primary" />
+            )}
+            {ROLE_LABELS[role]}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 
@@ -206,8 +271,11 @@ export default function AppShell({
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Top header bar */}
         <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-background px-6">
+          {/* Left: breadcrumb placeholder */}
           <div />
+          {/* Right: role switcher + color mode + notifications */}
           <div className="flex items-center gap-3">
+            <RoleSwitcher />
             <ColorModeToggle />
             <Link
               href="/notifications"
