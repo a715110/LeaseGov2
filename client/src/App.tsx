@@ -19,6 +19,7 @@ import ErrorBoundary from './components/ErrorBoundary'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { ScreenGate } from './components/shared/ScreenGate'
 import { RegistryProvider } from './contexts/RegistryContext'
+import { RoleProvider } from './contexts/RoleContext'
 import { SCREEN_KEYS } from './constants/screenKeys'
 import AppShell from './components/layout/AppShell'
 import NotFound from './pages/NotFound'
@@ -501,6 +502,7 @@ function Router() {
 function App() {
   return (
     <ErrorBoundary>
+      <RoleProvider>
       <ThemeProvider defaultTheme="light">
         {/*
           RegistryProvider — scaffold mode: immediately marks registry as loaded.
@@ -518,6 +520,7 @@ function App() {
           </TooltipProvider>
         </RegistryProvider>
       </ThemeProvider>
+      </RoleProvider>
     </ErrorBoundary>
   )
 }
