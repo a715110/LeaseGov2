@@ -583,6 +583,186 @@ function SubmissionDetailPanel({ submission, isReadOnly, onClose, onUnsubmit }: 
   );
 }
 
+// ─── S1d: Package Detail Panel ──────────────────────────────────────────────
+
+// Role badge colour map
+const ROLE_BADGE: Record<DocumentRole, string> = {
+  'Base Contract': 'bg-blue-50 text-blue-700 border-blue-200',
+  'Amendment':     'bg-amber-50 text-amber-700 border-amber-200',
+  'Addendum':      'bg-orange-50 text-orange-700 border-orange-200',
+  'Exhibit':       'bg-violet-50 text-violet-700 border-violet-200',
+  'Schedule':      'bg-teal-50 text-teal-700 border-teal-200',
+  'Notice':        'bg-rose-50 text-rose-700 border-rose-200',
+  'Supporting':    'bg-slate-100 text-slate-600 border-slate-200',
+  'Undefined':     'bg-red-50 text-red-600 border-red-200',
+};
+
+interface PackageDetailPanelProps {
+  pkg: ContractPackage;
+  isReadOnly: boolean;
+  onClose: () => void;
+  onSaveRoles: (pkgId: string, updatedFiles: PackageFile[]) => void;
+  onSubmit: (pkg: ContractPackage) => void;
+}
+
+function PackageDetailPanel({ pkg, isReadOnly, onClose, onSaveRoles, onSubmit }: PackageDetailPanelProps) {
+  const [editedRoles, setEditedRoles] = useState<Record<string, DocumentRole>>(
+    () => Object.fromEntries(pkg.files.map(f => [f.docId, f.role]))
+  );
+  const [dirty, setDirty] = useState(false);
+
+  const handleRoleChange = (docId: string, role: DocumentRole) => {
+    setEditedRoles(prev => ({ ...prev, [docId]: role }));
+    setDirty(true);
+  };
+
+  const handleSave = () => {
+    const updatedFiles = pkg.files.map(f => ({ ...f, role: editedRoles[f.docId] }));
+    onSaveRoles(pkg.id, updatedFiles);
+    setDirty(false);
+    toast.success('Roles saved');
+  };
+
+  const allRolesAssigned = pkg.files.every(f => editedRoles[f.docId] !== 'Undefined');
+  const readyAfterEdit = Object.values(editedRoles).every(r => r !== 'Undefined');
+
+  return (
+    <FlagSlidingPanel open={true} onClose={onClose} title="Package Details" subtitle={pkg.packageNum} width={560}>
+      <div className="space-y-5">
+        {/* Metadata */}
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Package Information</p>
+          <dl className="space-y-2">
+            {[
+              { label: 'Package #',  value: pkg.packageNum },
+              { label: 'Name',       value: pkg.packageName ?? '—' },
+              { label: 'Mode',       value: pkg.mode },
+              { label: 'Workspace',  value: pkg.workspace },
+              { label: 'Created By', value: pkg.createdBy },
+              { label: 'Created',    value: formatDate(pkg.createdAt) },
+            ].map(({ label, value }) => (
+              <div key={label} className="flex items-start justify-between gap-4">
+                <dt className="text-[12px] text-muted-foreground shrink-0">{label}</dt>
+                <dd className="text-[12px] font-medium text-foreground text-right">{value}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+
+        {/* Role status banner */}
+        <div className={`rounded-md px-3 py-2 flex items-center gap-2 text-[12px] font-medium border ${
+          allRolesAssigned
+            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+            : 'bg-amber-50 text-amber-700 border-amber-200'
+        }`}>
+          {allRolesAssigned
+            ? <><CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> All roles assigned — package is ready to submit.</>  
+            : <><AlertTriangle className="w-3.5 h-3.5 shrink-0" /> Some files have no role assigned. Assign roles before submitting.</>
+          }
+        </div>
+
+        {/* File list with inline role editing */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+              Files ({pkg.files.length})
+            </p>
+            {!isReadOnly && dirty && (
+              <Button size="sm" onClick={handleSave} className="h-6 px-2.5 text-[11px] gap-1">
+                <CheckCircle2 className="w-3 h-3" /> Save Roles
+              </Button>
+            )}
+          </div>
+          <div className="rounded-md border border-border overflow-hidden">
+            <table className="w-full text-[12px]">
+              <thead>
+                <tr className="bg-muted/40 border-b border-border">
+                  <th className="text-left px-3 py-2 font-semibold text-muted-foreground text-[11px] uppercase tracking-wide">File</th>
+                  <th className="text-left px-3 py-2 font-semibold text-muted-foreground text-[11px] uppercase tracking-wide w-44">Role</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pkg.files.map((f, idx) => (
+                  <tr key={f.docId} className={`border-b border-border/50 last:border-0 ${
+                    idx % 2 === 0 ? '' : 'bg-muted/20'
+                  }`}>
+                    <td className="px-3 py-2.5">
+                      <div className="flex items-center gap-2">
+                        <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                        <span className="font-medium text-foreground truncate max-w-[220px]" title={f.name}>
+                          {f.name}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-3 py-2.5">
+                      {isReadOnly ? (
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold border ${
+                          ROLE_BADGE[editedRoles[f.docId]]
+                        }`}>
+                          {editedRoles[f.docId]}
+                        </span>
+                      ) : (
+                        <Select
+                          value={editedRoles[f.docId]}
+                          onValueChange={v => handleRoleChange(f.docId, v as DocumentRole)}
+                        >
+                          <SelectTrigger className={`h-7 text-[12px] w-40 border ${
+                            editedRoles[f.docId] === 'Undefined'
+                              ? 'border-amber-300 bg-amber-50 text-amber-700'
+                              : 'border-border'
+                          }`}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {DOCUMENT_ROLES.map(r => (
+                              <SelectItem key={r} value={r}>
+                                <span className={`inline-flex items-center gap-1.5`}>
+                                  <span className={`w-2 h-2 rounded-full inline-block border ${
+                                    ROLE_BADGE[r as DocumentRole]
+                                  }`} />
+                                  {r}
+                                </span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Actions */}
+        {!isReadOnly && (
+          <div className="pt-1 flex flex-col gap-2">
+            {dirty && (
+              <Button size="sm" onClick={handleSave} className="w-full gap-2 text-[13px]">
+                <CheckCircle2 className="w-3.5 h-3.5" /> Save Role Changes
+              </Button>
+            )}
+            <Button
+              size="sm"
+              onClick={() => { onSubmit(pkg); onClose(); }}
+              disabled={!readyAfterEdit}
+              title={!readyAfterEdit ? 'Assign roles to all files before submitting' : undefined}
+              className={`w-full gap-2 text-[13px] ${
+                readyAfterEdit
+                  ? 'bg-[#1F3864] hover:bg-[#162d54] text-white'
+                  : 'bg-[#9CA3AF] text-white cursor-not-allowed'
+              }`}
+            >
+              <Send className="w-3.5 h-3.5" /> Submit Package
+            </Button>
+          </div>
+        )}
+      </div>
+    </FlagSlidingPanel>
+  );
+}
+
 // ─── S1c: Bulk Action Bar ─────────────────────────────────────────────────────
 
 function BulkActionBar({
@@ -1212,6 +1392,23 @@ export default function PipelineDashboard() {
       {/* ── Panels & dialogs ── */}
       {detailDoc && <DocumentDetailPanel doc={detailDoc} onClose={() => setDetailDoc(null)} />}
       {detailBatch && <BatchDetailPanel batch={detailBatch} onClose={() => setDetailBatch(null)} />}
+      {detailPkg && (
+        <PackageDetailPanel
+          pkg={detailPkg}
+          isReadOnly={isReadOnly}
+          onClose={() => setDetailPkg(null)}
+          onSaveRoles={(pkgId, updatedFiles) => {
+            setContractPackages(prev => prev.map(p =>
+              p.id === pkgId
+                ? { ...p, files: updatedFiles, status: updatedFiles.every(f => f.role !== 'Undefined') ? 'Ready' : 'Pending' }
+                : p
+            ));
+            // Keep detailPkg in sync with updated files
+            setDetailPkg(prev => prev ? { ...prev, files: updatedFiles, status: updatedFiles.every(f => f.role !== 'Undefined') ? 'Ready' : 'Pending' } : null);
+          }}
+          onSubmit={(pkg) => submitPackage(pkg)}
+        />
+      )}
       {detailSub && (
         <SubmissionDetailPanel
           submission={detailSub}
