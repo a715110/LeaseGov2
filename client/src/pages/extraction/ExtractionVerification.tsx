@@ -19,14 +19,14 @@
  */
 
 import { useState, useMemo } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { ContractCheckpointCard } from '@/components/checkpoints/ContractCheckpointCard';
 import { GracefulDegradationBanner } from '@/components/automation/GracefulDegradationBanner';
 import { useCheckpoints } from '@/hooks/useCheckpoints';
 import {
   Shield, CheckCircle2, AlertTriangle, Link2, Link2Off,
   ChevronDown, ChevronUp, ZoomIn, ZoomOut, Layers,
-  FileText, ChevronRight, AlertCircle, Copy
+  FileText, ChevronRight, AlertCircle, Copy, ArrowLeft
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -80,8 +80,19 @@ function getConfidenceClass(c: number | null) {
 }
 
 export default function ExtractionVerification() {
-  const _screenKey = SCREEN_KEYS.EXTRACTION_VERIFICATION;
+
   const [, navigate] = useLocation();
+  const search = useSearch();
+
+  // S8: ?from= back navigation
+  const backDestination = useMemo(() => {
+    const from = new URLSearchParams(search).get('from');
+    if (from === 'workspace') return { path: '/extraction/ai',    label: 'AI Workspace' };
+    if (from === 'queue')     return { path: '/extraction/queue', label: 'Processing Queue' };
+    return { path: '/extraction/ai', label: 'AI Workspace' };
+  }, [search]);
+
+  const _screenKey = SCREEN_KEYS.EXTRACTION_VERIFICATION;
   const [fields, setFields] = useState<VerificationField[]>(INITIAL_FIELDS);
   const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set(["core_metadata"]));
   const [activeFieldId, setActiveFieldId] = useState("v1");
@@ -126,9 +137,18 @@ export default function ExtractionVerification() {
   return (
     <div className="flex flex-col" style={{ height: "100vh" }}>
       <div className="page-header shrink-0">
-        <div>
-          <h1 className="page-title">Verification Workspace</h1>
-          <p className="page-subtitle">Office-Tower-Amendment-3.pdf · JOB-2026-0442</p>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate(backDestination.path)}
+            className="p-1.5 rounded hover:bg-muted text-muted-foreground transition-colors"
+            title={`Back to ${backDestination.label}`}
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+          <div>
+            <h1 className="page-title">Verification Workspace</h1>
+            <p className="page-subtitle">Office-Tower-Amendment-3.pdf · JOB-2026-0442</p>
+          </div>
         </div>
       </div>
 

@@ -5,20 +5,32 @@
  * Role: Preparer
  *
  * Design: Structured Authority
- * Prompt 2.1: Filter tabs (All/Processing/OCR Complete/Warning/Failed),
- *             table with Agent column, side panel with OCR bar chart + log.
- * Data model refs: DocumentJob (status, ocr_confidence_avg),
- *                  ExtractionRecord (extraction_mode, status)
+ * S4: ClassificationDialog + FieldMappingDialog as inline dialogs (InlineDialog pattern, 95vw×100vh)
+ * S5a: Template selector in FieldMappingDialog
+ * S5b: Auto-suggest template from filename
+ * S5c: AddFieldDialog (560px, shadcn Dialog)
+ * S5d: Confirm Mapping button
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   RefreshCw, ChevronRight, BarChart2, X, Clock,
-  CheckCircle2, AlertTriangle, XCircle, Cpu, User
+  CheckCircle2, AlertTriangle, XCircle, Cpu, User,
+  Settings, Info, CheckCheck, Plus, Trash2, GripVertical,
+  ArrowLeft, Zap
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useLocation } from 'wouter';
+import { useLocation, useSearch } from 'wouter';
+import { ProcessingWorkflowDialog } from '@/components/extraction/ProcessingWorkflowDialog';
 import { SCREEN_KEYS } from '@/constants/screenKeys';
+import { InlineDialog } from '@/components/shared/InlineDialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -41,7 +53,28 @@ interface ProcessingJob {
   log: { time: string; message: string; level: 'info' | 'warn' | 'error' }[];
 }
 
-// ─── Mock data — TODO: Backend integration required ───────────────────────────
+interface ExtractionTemplateField {
+  id: string;
+  canonical_name: string;
+  data_type: 'string' | 'number' | 'date' | 'boolean' | 'currency';
+  category: 'Financial' | 'Legal' | 'Party' | 'Date' | 'Property' | 'Other';
+  validation_rule: string;
+  is_critical: boolean;
+  is_required: boolean;
+  status: 'Active' | 'Inactive' | 'Draft';
+  aliases: string[];
+}
+
+interface ExtractionTemplate {
+  id: string;
+  name: string;
+  version: string;
+  description: string;
+  field_count: number;
+  fields: ExtractionTemplateField[];
+}
+
+// ─── Mock data ────────────────────────────────────────────────────────────────
 
 const MOCK_JOBS: ProcessingJob[] = [
   {
@@ -126,6 +159,66 @@ const MOCK_JOBS: ProcessingJob[] = [
   },
 ];
 
+// S5a: 5 mock templates
+const MOCK_TEMPLATES: ExtractionTemplate[] = [
+  {
+    id: 't1', name: 'Standard Commercial Lease', version: 'v3.2',
+    description: 'Full commercial lease with all standard clauses and financial terms.',
+    field_count: 73,
+    fields: [
+      { id: 'f1', canonical_name: 'lease_commencement_date', data_type: 'date', category: 'Date', validation_rule: 'required', is_critical: true, is_required: true, status: 'Active', aliases: ['start_date', 'commencement'] },
+      { id: 'f2', canonical_name: 'lease_expiration_date', data_type: 'date', category: 'Date', validation_rule: 'required', is_critical: true, is_required: true, status: 'Active', aliases: ['end_date', 'expiry'] },
+      { id: 'f3', canonical_name: 'base_rent_monthly', data_type: 'currency', category: 'Financial', validation_rule: 'positive_number', is_critical: true, is_required: true, status: 'Active', aliases: ['monthly_rent', 'base_rent'] },
+      { id: 'f4', canonical_name: 'tenant_legal_name', data_type: 'string', category: 'Party', validation_rule: 'required', is_critical: true, is_required: true, status: 'Active', aliases: ['tenant_name', 'lessee'] },
+      { id: 'f5', canonical_name: 'landlord_legal_name', data_type: 'string', category: 'Party', validation_rule: 'required', is_critical: true, is_required: true, status: 'Active', aliases: ['landlord_name', 'lessor'] },
+      { id: 'f6', canonical_name: 'premises_address', data_type: 'string', category: 'Property', validation_rule: 'required', is_critical: false, is_required: true, status: 'Active', aliases: ['property_address', 'location'] },
+      { id: 'f7', canonical_name: 'rentable_area_sqft', data_type: 'number', category: 'Property', validation_rule: 'positive_number', is_critical: false, is_required: true, status: 'Active', aliases: ['area', 'sqft', 'square_feet'] },
+      { id: 'f8', canonical_name: 'security_deposit', data_type: 'currency', category: 'Financial', validation_rule: 'non_negative', is_critical: false, is_required: false, status: 'Active', aliases: ['deposit'] },
+    ],
+  },
+  {
+    id: 't2', name: 'Lease Amendment', version: 'v2.1',
+    description: 'Amendment to an existing lease agreement.',
+    field_count: 28,
+    fields: [
+      { id: 'f1', canonical_name: 'amendment_effective_date', data_type: 'date', category: 'Date', validation_rule: 'required', is_critical: true, is_required: true, status: 'Active', aliases: ['effective_date'] },
+      { id: 'f2', canonical_name: 'original_lease_reference', data_type: 'string', category: 'Legal', validation_rule: 'required', is_critical: true, is_required: true, status: 'Active', aliases: ['lease_ref', 'original_ref'] },
+      { id: 'f3', canonical_name: 'amended_rent_amount', data_type: 'currency', category: 'Financial', validation_rule: 'positive_number', is_critical: true, is_required: false, status: 'Active', aliases: ['new_rent', 'revised_rent'] },
+      { id: 'f4', canonical_name: 'amendment_description', data_type: 'string', category: 'Legal', validation_rule: 'required', is_critical: false, is_required: true, status: 'Active', aliases: ['changes', 'modifications'] },
+    ],
+  },
+  {
+    id: 't3', name: 'Sublease Agreement', version: 'v1.4',
+    description: 'Sublease from original tenant to subtenant.',
+    field_count: 45,
+    fields: [
+      { id: 'f1', canonical_name: 'sublease_commencement_date', data_type: 'date', category: 'Date', validation_rule: 'required', is_critical: true, is_required: true, status: 'Active', aliases: ['sublease_start'] },
+      { id: 'f2', canonical_name: 'subtenant_legal_name', data_type: 'string', category: 'Party', validation_rule: 'required', is_critical: true, is_required: true, status: 'Active', aliases: ['subtenant', 'sub_lessee'] },
+      { id: 'f3', canonical_name: 'sublease_rent', data_type: 'currency', category: 'Financial', validation_rule: 'positive_number', is_critical: true, is_required: true, status: 'Active', aliases: ['sub_rent'] },
+    ],
+  },
+  {
+    id: 't4', name: 'Lease Renewal', version: 'v2.0',
+    description: 'Renewal option exercise or automatic renewal terms.',
+    field_count: 32,
+    fields: [
+      { id: 'f1', canonical_name: 'renewal_term_months', data_type: 'number', category: 'Date', validation_rule: 'positive_integer', is_critical: true, is_required: true, status: 'Active', aliases: ['renewal_period', 'term_months'] },
+      { id: 'f2', canonical_name: 'renewal_rent_amount', data_type: 'currency', category: 'Financial', validation_rule: 'positive_number', is_critical: true, is_required: true, status: 'Active', aliases: ['new_rent', 'renewal_rent'] },
+      { id: 'f3', canonical_name: 'renewal_exercise_date', data_type: 'date', category: 'Date', validation_rule: 'required', is_critical: false, is_required: true, status: 'Active', aliases: ['exercise_date', 'option_date'] },
+    ],
+  },
+  {
+    id: 't5', name: 'Termination Agreement', version: 'v1.1',
+    description: 'Early termination or mutual surrender agreement.',
+    field_count: 22,
+    fields: [
+      { id: 'f1', canonical_name: 'termination_effective_date', data_type: 'date', category: 'Date', validation_rule: 'required', is_critical: true, is_required: true, status: 'Active', aliases: ['termination_date', 'surrender_date'] },
+      { id: 'f2', canonical_name: 'termination_fee', data_type: 'currency', category: 'Financial', validation_rule: 'non_negative', is_critical: true, is_required: false, status: 'Active', aliases: ['break_fee', 'surrender_fee'] },
+      { id: 'f3', canonical_name: 'termination_reason', data_type: 'string', category: 'Legal', validation_rule: 'required', is_critical: false, is_required: true, status: 'Active', aliases: ['reason', 'grounds'] },
+    ],
+  },
+];
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const STATUS_TABS = [
@@ -157,6 +250,16 @@ function getBarColor(c: number) {
   return 'var(--color-lg-error)';
 }
 
+// S5b: auto-suggest template from filename
+function suggestTemplate(filename: string): ExtractionTemplate | null {
+  const lower = filename.toLowerCase();
+  if (lower.includes('amendment')) return MOCK_TEMPLATES[1];
+  if (lower.includes('sublease')) return MOCK_TEMPLATES[2];
+  if (lower.includes('renewal')) return MOCK_TEMPLATES[3];
+  if (lower.includes('termination')) return MOCK_TEMPLATES[4];
+  return null;
+}
+
 function AgentBadge({ status }: { status: AgentStatus }) {
   const config = {
     queued:              { label: 'Queued',              cls: 'text-muted-foreground bg-muted border-border' },
@@ -172,6 +275,490 @@ function AgentBadge({ status }: { status: AgentStatus }) {
   );
 }
 
+// ─── AddFieldDialog (S5c) ─────────────────────────────────────────────────────
+
+interface AddFieldDialogProps {
+  open: boolean;
+  onClose: () => void;
+  onSave: (field: ExtractionTemplateField) => void;
+  existing?: ExtractionTemplateField | null;
+  existingNames: string[];
+}
+
+function AddFieldDialog({ open, onClose, onSave, existing, existingNames }: AddFieldDialogProps) {
+  const [canonicalName, setCanonicalName] = useState(existing?.canonical_name ?? '');
+  const [dataType, setDataType] = useState<ExtractionTemplateField['data_type']>(existing?.data_type ?? 'string');
+  const [category, setCategory] = useState<ExtractionTemplateField['category']>(existing?.category ?? 'Other');
+  const [validationRule, setValidationRule] = useState(existing?.validation_rule ?? '');
+  const [isCritical, setIsCritical] = useState(existing?.is_critical ?? false);
+  const [isRequired, setIsRequired] = useState(existing?.is_required ?? false);
+  const [status, setStatus] = useState<ExtractionTemplateField['status']>(existing?.status ?? 'Active');
+  const [aliases, setAliases] = useState<string[]>(existing?.aliases ?? []);
+  const [aliasInput, setAliasInput] = useState('');
+  const [nameError, setNameError] = useState('');
+
+  // auto-format to snake_case
+  const handleNameChange = (val: string) => {
+    const snake = val.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+    setCanonicalName(snake);
+    if (existingNames.includes(snake) && snake !== existing?.canonical_name) {
+      setNameError('This canonical name already exists');
+    } else {
+      setNameError('');
+    }
+  };
+
+  const handleAddAlias = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && aliasInput.trim()) {
+      setAliases(prev => [...prev, aliasInput.trim()]);
+      setAliasInput('');
+    }
+  };
+
+  const handleSave = () => {
+    if (!canonicalName || nameError) return;
+    onSave({
+      id: existing?.id ?? `f_${Date.now()}`,
+      canonical_name: canonicalName,
+      data_type: dataType,
+      category,
+      validation_rule: validationRule,
+      is_critical: isCritical,
+      is_required: isRequired,
+      status,
+      aliases,
+    });
+    onClose();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-[560px]">
+        <DialogHeader>
+          <DialogTitle>{existing ? 'Edit Field' : 'Add Field'}</DialogTitle>
+        </DialogHeader>
+        <div className="flex flex-col gap-4 py-2">
+          <div>
+            <Label className="text-[12px] mb-1.5 block">Canonical Name</Label>
+            <Input
+              value={canonicalName}
+              onChange={e => handleNameChange(e.target.value)}
+              placeholder="e.g. lease_commencement_date"
+              className="font-mono text-[13px]"
+            />
+            {nameError && <p className="text-[11px] text-destructive mt-1">{nameError}</p>}
+            <p className="text-[11px] text-muted-foreground mt-1">Auto-formatted to snake_case</p>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label className="text-[12px] mb-1.5 block">Data Type</Label>
+              <Select value={dataType} onValueChange={v => setDataType(v as ExtractionTemplateField['data_type'])}>
+                <SelectTrigger className="text-[13px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {(['string','number','date','boolean','currency'] as const).map(t => (
+                    <SelectItem key={t} value={t}>{t}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-[12px] mb-1.5 block">Category</Label>
+              <Select value={category} onValueChange={v => setCategory(v as ExtractionTemplateField['category'])}>
+                <SelectTrigger className="text-[13px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {(['Financial','Legal','Party','Date','Property','Other'] as const).map(c => (
+                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div>
+            <Label className="text-[12px] mb-1.5 block">Validation Rule</Label>
+            <Input value={validationRule} onChange={e => setValidationRule(e.target.value)} placeholder="e.g. required, positive_number" className="text-[13px]" />
+          </div>
+          <div>
+            <Label className="text-[12px] mb-1.5 block">Status</Label>
+            <Select value={status} onValueChange={v => setStatus(v as ExtractionTemplateField['status'])}>
+              <SelectTrigger className="text-[13px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {(['Active','Inactive','Draft'] as const).map(s => (
+                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center gap-6">
+            <label className="flex items-center gap-2 text-[13px] cursor-pointer">
+              <Checkbox checked={isCritical} onCheckedChange={v => setIsCritical(!!v)} />
+              Critical
+            </label>
+            <label className="flex items-center gap-2 text-[13px] cursor-pointer">
+              <Checkbox checked={isRequired} onCheckedChange={v => setIsRequired(!!v)} />
+              Required
+            </label>
+          </div>
+          <div>
+            <Label className="text-[12px] mb-1.5 block">Aliases</Label>
+            <Input
+              value={aliasInput}
+              onChange={e => setAliasInput(e.target.value)}
+              onKeyDown={handleAddAlias}
+              placeholder="Type alias + Enter to add"
+              className="text-[13px] mb-2"
+            />
+            <div className="flex flex-wrap gap-1.5">
+              {aliases.map((a, i) => (
+                <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-[11px] font-medium">
+                  {a}
+                  <button onClick={() => setAliases(prev => prev.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive">
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={handleSave} disabled={!canonicalName || !!nameError}>
+            {existing ? 'Save Changes' : 'Add Field'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── FieldMappingDialog (S5a-S5d) ─────────────────────────────────────────────
+
+interface FieldMappingDialogProps {
+  job: ProcessingJob | null;
+  onClose: () => void;
+  onConfirm: (template: ExtractionTemplate) => void;
+}
+
+function FieldMappingDialog({ job, onClose, onConfirm }: FieldMappingDialogProps) {
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
+  const [fields, setFields] = useState<ExtractionTemplateField[]>([]);
+  const [autoSuggested, setAutoSuggested] = useState<ExtractionTemplate | null>(null);
+  const [mappingConfirmed, setMappingConfirmed] = useState(false);
+  const [addFieldOpen, setAddFieldOpen] = useState(false);
+  const [editField, setEditField] = useState<ExtractionTemplateField | null>(null);
+
+  // S5b: auto-suggest on open
+  useEffect(() => {
+    if (!job) return;
+    setSelectedTemplateId('');
+    setFields([]);
+    setMappingConfirmed(false);
+    const suggested = suggestTemplate(job.file_name);
+    setAutoSuggested(suggested);
+    if (suggested) {
+      setSelectedTemplateId(suggested.id);
+      setFields([...suggested.fields]);
+    }
+  }, [job]);
+
+  const handleTemplateChange = (id: string) => {
+    setSelectedTemplateId(id);
+    setMappingConfirmed(false);
+    const tmpl = MOCK_TEMPLATES.find(t => t.id === id);
+    if (tmpl) setFields([...tmpl.fields]);
+  };
+
+  const selectedTemplate = MOCK_TEMPLATES.find(t => t.id === selectedTemplateId) ?? null;
+  const canConfirm = !!selectedTemplateId && !mappingConfirmed;
+
+  const handleConfirmMapping = () => {
+    if (!selectedTemplate) return;
+    const activeCount = fields.filter(f => f.status === 'Active').length;
+    const criticalCount = fields.filter(f => f.is_critical).length;
+    toast.success(`Mapping confirmed — ${activeCount} active fields, ${criticalCount} critical fields`);
+    setMappingConfirmed(true);
+    onConfirm(selectedTemplate);
+  };
+
+  const handleAddField = (field: ExtractionTemplateField) => {
+    if (editField) {
+      setFields(prev => prev.map(f => f.id === editField.id ? field : f));
+    } else {
+      setFields(prev => [...prev, field]);
+    }
+    setEditField(null);
+  };
+
+  const handleDeleteField = (id: string) => {
+    toast('Field deleted', { description: 'Field removed from mapping' });
+    setFields(prev => prev.filter(f => f.id !== id));
+  };
+
+  return (
+    <InlineDialog
+      open={!!job}
+      onClose={onClose}
+      title={`Field Mapping Config — ${job?.display_id ?? ''}`}
+      subtitle={job?.file_name}
+      width="95vw"
+      maxHeight="100vh"
+      footer={
+        <div className="flex items-center justify-between w-full">
+          <Button variant="outline" onClick={onClose}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Queue
+          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              className="gap-2"
+              style={{ borderColor: 'var(--color-lg-success)', color: 'var(--color-lg-success)' }}
+              disabled={!canConfirm}
+              onClick={handleConfirmMapping}
+            >
+              <CheckCheck className="w-4 h-4" />
+              Confirm Mapping
+            </Button>
+            <Button
+              disabled={!mappingConfirmed}
+              onClick={() => { if (selectedTemplate) onConfirm(selectedTemplate); onClose(); }}
+            >
+              Proceed to Extraction
+              <ChevronRight className="w-4 h-4 ml-2" />
+            </Button>
+          </div>
+        </div>
+      }
+    >
+      <div className="flex flex-col gap-5 p-6">
+        {/* S5a: Template selector */}
+        <div className="flex items-start gap-4">
+          <div className="flex-1">
+            <Label className="text-[12px] mb-1.5 block font-semibold">Mapping Template</Label>
+            {selectedTemplate && (
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[11px] font-semibold mb-2">
+                {selectedTemplate.name} {selectedTemplate.version}
+              </span>
+            )}
+            <Select value={selectedTemplateId} onValueChange={handleTemplateChange}>
+              <SelectTrigger className="text-[13px] w-full max-w-md">
+                <SelectValue placeholder="Select a mapping template to begin" />
+              </SelectTrigger>
+              <SelectContent>
+                {MOCK_TEMPLATES.map(t => (
+                  <SelectItem key={t.id} value={t.id}>
+                    <span className="font-medium">{t.name}</span>
+                    <span className="text-muted-foreground ml-2">{t.version} · {t.field_count} fields</span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {/* S5b: auto-suggest banner */}
+          {autoSuggested && (
+            <div className="flex items-start gap-2 px-3 py-2 rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 text-[12px] text-amber-800 dark:text-amber-300 max-w-sm mt-5">
+              <Info className="w-4 h-4 mt-0.5 shrink-0" />
+              <span>
+                Template auto-suggested based on document name.{' '}
+                <strong>{autoSuggested.name}</strong> — {autoSuggested.description}
+              </span>
+            </div>
+          )}
+          {!selectedTemplateId && (
+            <div className="flex items-center gap-2 text-[13px] text-muted-foreground mt-5">
+              <Settings className="w-4 h-4" />
+              Select a mapping template to begin
+            </div>
+          )}
+        </div>
+
+        {/* Field table */}
+        {fields.length > 0 && (
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-[14px] font-semibold text-foreground">
+                Fields ({fields.length})
+              </h3>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-[12px]"
+                onClick={() => { setEditField(null); setAddFieldOpen(true); }}
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Add Field
+              </Button>
+            </div>
+            <div className="rounded-lg border border-border overflow-hidden">
+              <table className="data-table w-full text-[12px]">
+                <thead>
+                  <tr>
+                    <th className="text-left">Canonical Name</th>
+                    <th className="text-left">Type</th>
+                    <th className="text-left">Category</th>
+                    <th className="text-left">Validation</th>
+                    <th className="text-center">Critical</th>
+                    <th className="text-center">Required</th>
+                    <th className="text-left">Status</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {fields.map(field => (
+                    <tr
+                      key={field.id}
+                      className="cursor-pointer hover:bg-accent/40"
+                      onClick={() => { setEditField(field); setAddFieldOpen(true); }}
+                    >
+                      <td className="font-mono text-[11px] text-primary">{field.canonical_name}</td>
+                      <td className="text-muted-foreground">{field.data_type}</td>
+                      <td>
+                        <span className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground text-[10px] font-medium">
+                          {field.category}
+                        </span>
+                      </td>
+                      <td className="text-muted-foreground font-mono text-[10px]">{field.validation_rule}</td>
+                      <td className="text-center">
+                        {field.is_critical && <CheckCircle2 className="w-3.5 h-3.5 text-destructive mx-auto" />}
+                      </td>
+                      <td className="text-center">
+                        {field.is_required && <CheckCircle2 className="w-3.5 h-3.5 text-primary mx-auto" />}
+                      </td>
+                      <td>
+                        <span className={cn(
+                          'px-1.5 py-0.5 rounded text-[10px] font-semibold',
+                          field.status === 'Active' ? 'badge-valid' :
+                          field.status === 'Draft' ? 'badge-warning' : 'badge-invalid'
+                        )}>
+                          {field.status}
+                        </span>
+                      </td>
+                      <td>
+                        <button
+                          onClick={e => { e.stopPropagation(); handleDeleteField(field.id); }}
+                          className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {!selectedTemplateId && (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <Settings className="w-12 h-12 text-muted-foreground/40 mb-3" />
+            <p className="text-[14px] font-medium text-muted-foreground">Select a mapping template to begin</p>
+            <p className="text-[12px] text-muted-foreground/70 mt-1">
+              Choose a template from the dropdown above to load its field definitions
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* S5c: AddFieldDialog */}
+      <AddFieldDialog
+        open={addFieldOpen}
+        onClose={() => { setAddFieldOpen(false); setEditField(null); }}
+        onSave={handleAddField}
+        existing={editField}
+        existingNames={fields.map(f => f.canonical_name).filter(n => n !== editField?.canonical_name)}
+      />
+    </InlineDialog>
+  );
+}
+
+// ─── ClassificationDialog (S4) ────────────────────────────────────────────────
+
+interface ClassificationDialogProps {
+  job: ProcessingJob | null;
+  onClose: () => void;
+}
+
+function ClassificationDialog({ job, onClose }: ClassificationDialogProps) {
+  const [, navigate] = useLocation();
+  const [contractType, setContractType] = useState('commercial_lease');
+  const [documentRole, setDocumentRole] = useState('primary_lease');
+  const [confidence, setConfidence] = useState(0.91);
+
+  return (
+    <InlineDialog
+      open={!!job}
+      onClose={onClose}
+      title={`Document Classification — ${job?.display_id ?? ''}`}
+      subtitle={job?.file_name}
+      width="95vw"
+      maxHeight="100vh"
+      footer={
+        <div className="flex items-center justify-between w-full">
+          <Button variant="outline" onClick={onClose}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Queue
+          </Button>
+          <Button onClick={() => { onClose(); navigate('/extraction/strategy'); }}>
+            Confirm Classification
+            <ChevronRight className="w-4 h-4 ml-2" />
+          </Button>
+        </div>
+      }
+    >
+      <div className="flex flex-col gap-6 p-6 max-w-2xl">
+        <div className="rounded-lg border border-border bg-card p-5">
+          <h3 className="text-[14px] font-semibold text-foreground mb-4">AI Detection Results</h3>
+          <div className="flex items-center gap-3 mb-4">
+            <span className="text-[12px] text-muted-foreground">Confidence:</span>
+            <span className={cn(
+              'px-2 py-0.5 rounded text-[12px] font-semibold',
+              confidence >= 0.90 ? 'badge-valid' : confidence >= 0.60 ? 'badge-warning' : 'badge-invalid'
+            )}>
+              {Math.round(confidence * 100)}%
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label className="text-[12px] mb-1.5 block">Contract Type</Label>
+              <Select value={contractType} onValueChange={setContractType}>
+                <SelectTrigger className="text-[13px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="commercial_lease">Commercial Lease</SelectItem>
+                  <SelectItem value="amendment">Amendment</SelectItem>
+                  <SelectItem value="sublease">Sublease</SelectItem>
+                  <SelectItem value="renewal">Renewal</SelectItem>
+                  <SelectItem value="termination">Termination</SelectItem>
+                  <SelectItem value="supporting">Supporting Document</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-[12px] mb-1.5 block">Document Role</Label>
+              <Select value={documentRole} onValueChange={setDocumentRole}>
+                <SelectTrigger className="text-[13px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="primary_lease">Primary Lease</SelectItem>
+                  <SelectItem value="amendment">Amendment</SelectItem>
+                  <SelectItem value="sublease">Sublease</SelectItem>
+                  <SelectItem value="renewal">Renewal</SelectItem>
+                  <SelectItem value="termination">Termination</SelectItem>
+                  <SelectItem value="supporting">Supporting</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-lg border border-border bg-card p-5">
+          <h3 className="text-[14px] font-semibold text-foreground mb-3">Document Preview</h3>
+          <div className="h-48 rounded-lg bg-muted flex items-center justify-center text-muted-foreground text-[13px]">
+            PDF preview — {job?.file_name}
+          </div>
+        </div>
+      </div>
+    </InlineDialog>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function ExtractionQueue() {
@@ -179,6 +766,30 @@ export default function ExtractionQueue() {
   const [, navigate] = useLocation();
   const [activeTab, setActiveTab] = useState('all');
   const [selectedJob, setSelectedJob] = useState<ProcessingJob | null>(MOCK_JOBS[0]);
+
+  // S4: inline dialog states
+  const [classificationItem, setClassificationItem] = useState<ProcessingJob | null>(null);
+  const [fieldMappingItem, setFieldMappingItem] = useState<ProcessingJob | null>(null);
+
+  // S6a: ProcessingWorkflowDialog state
+  const [workflowJob, setWorkflowJob] = useState<ProcessingJob | null>(null);
+  const [workflowInitialStep, setWorkflowInitialStep] = useState(1);
+
+  // S6a: re-open workflow dialog when returning from field mapping with ?from=workflow
+  const search = useSearch();
+  useEffect(() => {
+    const params = new URLSearchParams(search);
+    const from = params.get('from');
+    const jobId = params.get('jobId');
+    if (from === 'workflow' && jobId) {
+      const job = MOCK_JOBS.find(j => j.id === jobId || j.display_id === jobId);
+      if (job) {
+        setWorkflowJob(job);
+        setWorkflowInitialStep(3); // re-open at Step 3 (AI Extract)
+      }
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  }, [search]);
 
   // TODO: Backend integration required — GET /api/document-jobs
   const filtered = activeTab === 'all'
@@ -270,14 +881,31 @@ export default function ExtractionQueue() {
                   <td className="text-muted-foreground">{job.duration}</td>
                   <td className="text-muted-foreground">{job.assigned}</td>
                   <td>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 text-[12px] gap-1"
-                      onClick={e => { e.stopPropagation(); navigate('/extraction/understanding'); }}
-                    >
-                      Open <ChevronRight className="w-3 h-3" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-[11px] gap-1"
+                        onClick={e => { e.stopPropagation(); setClassificationItem(job); }}
+                      >
+                        Classify
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-[11px] gap-1"
+                        onClick={e => { e.stopPropagation(); setFieldMappingItem(job); }}
+                      >
+                        Map Fields
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="h-7 text-[11px] gap-1"
+                        onClick={e => { e.stopPropagation(); navigate('/extraction/understanding'); }}
+                      >
+                        Open <ChevronRight className="w-3 h-3" />
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -346,7 +974,15 @@ export default function ExtractionQueue() {
               </div>
             </div>
 
-            <div className="px-5 py-3 border-t border-border">
+            <div className="px-5 py-3 border-t border-border flex flex-col gap-2">
+              <Button
+                variant="outline"
+                className="w-full gap-2 text-[13px]"
+                onClick={() => setFieldMappingItem(selectedJob)}
+              >
+                <Settings className="w-3.5 h-3.5" />
+                Map Fields
+              </Button>
               <Button
                 className="w-full gap-2 text-[13px]"
                 onClick={() => navigate('/extraction/understanding')}
@@ -358,6 +994,30 @@ export default function ExtractionQueue() {
           </div>
         )}
       </div>
+
+      {/* S4: Inline dialogs — mounted at bottom of JSX */}
+      <>
+        <ClassificationDialog
+          job={classificationItem}
+          onClose={() => setClassificationItem(null)}
+        />
+        <FieldMappingDialog
+          job={fieldMappingItem}
+          onClose={() => setFieldMappingItem(null)}
+          onConfirm={(_template) => {
+            // TODO: Backend integration required — store confirmed template in ExtractionStoreContext
+            setFieldMappingItem(null);
+          }}
+        />
+        {/* S6a: ProcessingWorkflowDialog */}
+        <ProcessingWorkflowDialog
+          open={!!workflowJob}
+          onClose={() => { setWorkflowJob(null); setWorkflowInitialStep(1); }}
+          jobId={workflowJob?.display_id}
+          fileName={workflowJob?.file_name}
+          initialStep={workflowInitialStep}
+        />
+      </>
     </div>
   );
 }

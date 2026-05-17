@@ -5,26 +5,29 @@
  * Role: Document Submitter
  *
  * Design: Structured Authority
- * Prompt 1.5: Split-panel file review and grouping.
- *   Left (55%): file list with checkboxes, thumbnails, editable names, document role dropdowns.
- *               Two files grouped in a "Contract Package" card.
- *   Right (45%): PDF preview placeholder with zoom controls.
- *   Submission mode auto-detected label.
- *   "Submit for Ingestion" primary, "Save Draft" outlined.
- * Data model refs: StagedDocument (display_name, document_role, status),
- *                  IntakeBatch (submission_mode: single_contract|contract_package|bulk_batch)
+ * POST-SCAFFOLDING changes:
+ *   S3a — dialog width: max-w-4xl for the grouping dialog (N/A here — no dialog in this screen; the
+ *          spec refers to the "New Contract Package" group dialog which is inline here)
+ *   S3b — editable package name on the Contract Package group header
+ *   S3c — undo last rename (stores previous display_name, shows Undo toast)
+ *   S3d — submission detail panel (FlagSlidingPanel) showing full batch summary before submit
+ *   S3e — rename inline (already present, confirmed)
+ *   S3f — filter bar: filter by document_role and status
  */
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useLocation } from 'wouter';
 import {
   FileText, CheckSquare, Square, ChevronDown, Edit2, Check,
-  X, ZoomIn, ZoomOut, Layers, Package, Info, Save, Send
+  X, ZoomIn, ZoomOut, Layers, Package, Info, Save, Send,
+  Undo2, Filter, ChevronRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '@/components/ui/select';
+import { FlagSlidingPanel } from '@/components/shared/FlagSlidingPanel';
+import { toast } from 'sonner';
 import { SCREEN_KEYS } from '@/constants/screenKeys';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -41,7 +44,7 @@ interface ReviewFile {
   document_role: DocumentRole;
   file_size_bytes: number;
   page_count: number;
-  grouped?: boolean; // part of a contract package group
+  grouped?: boolean;
 }
 
 // ─── Mock data — TODO: Backend integration required ───────────────────────────
@@ -104,7 +107,6 @@ function FileRow({ file, selected, active, onSelect, onActivate, onRename, onRol
         {selected ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4" />}
       </button>
 
-      {/* Thumbnail placeholder */}
       <div className="w-8 h-10 rounded bg-muted border border-border flex items-center justify-center shrink-0">
         <FileText className="w-4 h-4 text-muted-foreground" />
       </div>
@@ -157,6 +159,95 @@ function FileRow({ file, selected, active, onSelect, onActivate, onRename, onRol
   );
 }
 
+// ─── S3d: Submission Detail Panel ─────────────────────────────────────────────
+
+function SubmissionDetailPanel({
+  files,
+  packageName,
+  submissionMode,
+  onClose,
+  onConfirm,
+}: {
+  files: ReviewFile[];
+  packageName: string;
+  submissionMode: string;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  const validCount = files.filter(f => f.status === 'valid').length;
+  const warningCount = files.filter(f => f.status === 'warning').length;
+
+  return (
+    <FlagSlidingPanel
+      open={true}
+      onClose={onClose}
+      title="Submission Summary"
+      subtitle="Review before submitting for ingestion"
+      width={440}
+      footer={
+        <>
+          <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
+          <Button size="sm" className="gap-1.5" onClick={onConfirm}>
+            <Send className="w-3.5 h-3.5" />
+            Confirm Submission
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-5">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Submission Mode</p>
+          <div className="flex items-center gap-2">
+            <Layers className="w-4 h-4 text-primary" />
+            <span className="text-[13px] font-semibold text-foreground">{submissionMode}</span>
+            {submissionMode === 'Contract Package' && (
+              <span className="text-[12px] text-muted-foreground">· {packageName}</span>
+            )}
+          </div>
+        </div>
+
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">File Breakdown</p>
+          <div className="space-y-1.5">
+            <div className="flex justify-between text-[13px]">
+              <span className="text-muted-foreground">Total files</span>
+              <span className="font-medium text-foreground">{files.length}</span>
+            </div>
+            <div className="flex justify-between text-[13px]">
+              <span className="text-muted-foreground">Valid</span>
+              <span className="font-medium text-[var(--color-lg-success)]">{validCount}</span>
+            </div>
+            {warningCount > 0 && (
+              <div className="flex justify-between text-[13px]">
+                <span className="text-muted-foreground">Warning</span>
+                <span className="font-medium text-amber-600">{warningCount}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Document Roles</p>
+          <div className="space-y-1.5">
+            {files.map(f => (
+              <div key={f.id} className="flex items-center justify-between gap-2 text-[12px]">
+                <span className="text-foreground truncate flex-1">{f.display_name}</span>
+                <span className="text-muted-foreground shrink-0">{ROLE_LABELS[f.document_role]}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {warningCount > 0 && (
+          <div className="rounded bg-amber-50 border border-amber-200 px-3 py-2 text-[12px] text-amber-800">
+            {warningCount} file{warningCount !== 1 ? 's have' : ' has'} warnings. Warnings do not block submission but may affect extraction quality.
+          </div>
+        )}
+      </div>
+    </FlagSlidingPanel>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function PipelineReviewGrouping() {
@@ -164,13 +255,39 @@ export default function PipelineReviewGrouping() {
   const [, navigate] = useLocation();
 
   const [files, setFiles] = useState<ReviewFile[]>(MOCK_FILES);
+  // S3c: undo last rename
+  const [lastRename, setLastRename] = useState<{ id: string; prev: string } | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [activeFileId, setActiveFileId] = useState<string>(MOCK_FILES[0].id);
   const [zoom, setZoom] = useState(100);
+  // S3b: editable package name
+  const [packageName, setPackageName] = useState('Contract Package');
+  const [editingPackageName, setEditingPackageName] = useState(false);
+  const [packageNameEdit, setPackageNameEdit] = useState(packageName);
+  // S3d: submission detail panel
+  const [showSubmissionPanel, setShowSubmissionPanel] = useState(false);
+  // S3f: filter bar
+  const [filterRole, setFilterRole] = useState<string>('all');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [showFilters, setShowFilters] = useState(false);
 
   const groupedFiles = files.filter(f => f.grouped);
   const ungroupedFiles = files.filter(f => !f.grouped);
   const submissionMode = groupedFiles.length >= 2 ? 'Contract Package' : 'Single Contract';
+
+  // S3f: apply filters
+  const filteredGrouped = groupedFiles.filter(f => {
+    if (filterRole !== 'all' && f.document_role !== filterRole) return false;
+    if (filterStatus !== 'all' && f.status !== filterStatus) return false;
+    return true;
+  });
+  const filteredUngrouped = ungroupedFiles.filter(f => {
+    if (filterRole !== 'all' && f.document_role !== filterRole) return false;
+    if (filterStatus !== 'all' && f.status !== filterStatus) return false;
+    return true;
+  });
+  const filteredFiles = [...filteredGrouped, ...filteredUngrouped];
+  const activeFiltersCount = (filterRole !== 'all' ? 1 : 0) + (filterStatus !== 'all' ? 1 : 0);
 
   function toggleSelect(id: string) {
     setSelectedIds(prev => {
@@ -180,12 +297,34 @@ export default function PipelineReviewGrouping() {
     });
   }
 
-  function handleRename(id: string, name: string) {
-    setFiles(prev => prev.map(f => f.id === id ? { ...f, display_name: name } : f));
-  }
+  // S3c: rename with undo
+  const handleRename = useCallback((id: string, name: string) => {
+    setFiles(prev => {
+      const prev_name = prev.find(f => f.id === id)?.display_name ?? '';
+      setLastRename({ id, prev: prev_name });
+      return prev.map(f => f.id === id ? { ...f, display_name: name } : f);
+    });
+    toast('File renamed', {
+      action: {
+        label: 'Undo',
+        onClick: () => {
+          setFiles(p => p.map(f => f.id === id ? { ...f, display_name: lastRename?.prev ?? f.display_name } : f));
+          setLastRename(null);
+        },
+      },
+      duration: 4000,
+    });
+  }, [lastRename]);
 
   function handleRoleChange(id: string, role: DocumentRole) {
     setFiles(prev => prev.map(f => f.id === id ? { ...f, document_role: role } : f));
+  }
+
+  function commitPackageName() {
+    const trimmed = packageNameEdit.trim();
+    if (trimmed) setPackageName(trimmed);
+    else setPackageNameEdit(packageName);
+    setEditingPackageName(false);
   }
 
   return (
@@ -210,22 +349,93 @@ export default function PipelineReviewGrouping() {
         {/* Left panel 55% */}
         <div className="split-panel-left flex flex-col" style={{ width: '55%' }}>
           <div className="px-4 py-3 border-b border-border bg-muted/20 flex items-center justify-between">
-            <p className="text-[13px] font-semibold text-foreground">{files.length} files</p>
-            <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
-              <span>{selectedIds.size} selected</span>
+            <p className="text-[13px] font-semibold text-foreground">{filteredFiles.length} of {files.length} files</p>
+            <div className="flex items-center gap-2">
+              {/* S3f: filter toggle */}
+              <button
+                onClick={() => setShowFilters(v => !v)}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-[12px] font-medium transition-colors ${showFilters ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
+              >
+                <Filter className="w-3.5 h-3.5" />
+                Filters
+                {activeFiltersCount > 0 && (
+                  <span className="ml-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
+                    {activeFiltersCount}
+                  </span>
+                )}
+              </button>
+              <span className="text-[12px] text-muted-foreground">{selectedIds.size} selected</span>
             </div>
           </div>
 
+          {/* S3f: filter bar */}
+          {showFilters && (
+            <div className="px-4 py-2.5 border-b border-border bg-muted/10 flex items-center gap-3">
+              <Select value={filterRole} onValueChange={setFilterRole}>
+                <SelectTrigger className="h-7 w-40 text-[12px]">
+                  <SelectValue placeholder="All roles" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all" className="text-[12px]">All roles</SelectItem>
+                  {Object.entries(ROLE_LABELS).map(([val, label]) => (
+                    <SelectItem key={val} value={val} className="text-[12px]">{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger className="h-7 w-32 text-[12px]">
+                  <SelectValue placeholder="All statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all" className="text-[12px]">All statuses</SelectItem>
+                  <SelectItem value="valid" className="text-[12px]">Valid</SelectItem>
+                  <SelectItem value="warning" className="text-[12px]">Warning</SelectItem>
+                </SelectContent>
+              </Select>
+              {activeFiltersCount > 0 && (
+                <button
+                  onClick={() => { setFilterRole('all'); setFilterStatus('all'); }}
+                  className="text-[12px] text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
+          )}
+
           <div className="flex-1 overflow-y-auto divide-y divide-border">
-            {/* Contract Package group */}
-            {groupedFiles.length > 0 && (
+            {/* S3b: Contract Package group with editable name */}
+            {filteredGrouped.length > 0 && (
               <div className="border border-primary/20 rounded-lg m-3 overflow-hidden bg-accent/30">
                 <div className="flex items-center gap-2 px-4 py-2 bg-accent border-b border-primary/20">
-                  <Package className="w-4 h-4 text-primary" />
-                  <span className="text-[12px] font-semibold text-primary">Contract Package</span>
-                  <span className="text-[11px] text-muted-foreground ml-auto">{groupedFiles.length} files</span>
+                  <Package className="w-4 h-4 text-primary shrink-0" />
+                  {editingPackageName ? (
+                    <div className="flex items-center gap-1 flex-1">
+                      <input
+                        value={packageNameEdit}
+                        onChange={e => setPackageNameEdit(e.target.value)}
+                        onBlur={commitPackageName}
+                        onKeyDown={e => { if (e.key === 'Enter') commitPackageName(); if (e.key === 'Escape') { setPackageNameEdit(packageName); setEditingPackageName(false); } }}
+                        className="flex-1 h-6 px-2 text-[12px] border border-primary rounded focus:outline-none bg-background"
+                        autoFocus
+                      />
+                      <button onClick={commitPackageName} className="p-0.5 text-[var(--color-lg-success)]"><Check className="w-3.5 h-3.5" /></button>
+                      <button onClick={() => { setPackageNameEdit(packageName); setEditingPackageName(false); }} className="p-0.5 text-muted-foreground"><X className="w-3.5 h-3.5" /></button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1 flex-1 group">
+                      <span className="text-[12px] font-semibold text-primary">{packageName}</span>
+                      <button
+                        onClick={() => { setPackageNameEdit(packageName); setEditingPackageName(true); }}
+                        className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-muted-foreground hover:text-foreground transition-all"
+                      >
+                        <Edit2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+                  <span className="text-[11px] text-muted-foreground ml-auto shrink-0">{filteredGrouped.length} files</span>
                 </div>
-                {groupedFiles.map(file => (
+                {filteredGrouped.map(file => (
                   <FileRow
                     key={file.id}
                     file={file}
@@ -241,7 +451,7 @@ export default function PipelineReviewGrouping() {
             )}
 
             {/* Ungrouped files */}
-            {ungroupedFiles.map(file => (
+            {filteredUngrouped.map(file => (
               <FileRow
                 key={file.id}
                 file={file}
@@ -253,6 +463,12 @@ export default function PipelineReviewGrouping() {
                 onRoleChange={handleRoleChange}
               />
             ))}
+
+            {filteredFiles.length === 0 && (
+              <div className="py-10 text-center text-[13px] text-muted-foreground">
+                No files match the current filters.
+              </div>
+            )}
           </div>
 
           {/* Info callout */}
@@ -266,7 +482,6 @@ export default function PipelineReviewGrouping() {
 
         {/* Right panel 45% */}
         <div className="split-panel-right flex flex-col" style={{ width: '45%' }}>
-          {/* PDF toolbar */}
           <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card">
             <p className="text-[12px] font-medium text-foreground truncate max-w-[200px]">
               {files.find(f => f.id === activeFileId)?.display_name}
@@ -288,7 +503,6 @@ export default function PipelineReviewGrouping() {
             </div>
           </div>
 
-          {/* PDF preview placeholder */}
           <div className="flex-1 flex items-center justify-center bg-muted/20 p-4">
             <div
               className="bg-white border border-border shadow-md rounded flex items-center justify-center"
@@ -324,15 +538,30 @@ export default function PipelineReviewGrouping() {
             <Save className="w-4 h-4" />
             Save Draft
           </Button>
+          {/* S3d: opens submission detail panel instead of navigating directly */}
           <Button
             className="gap-2"
-            onClick={() => navigate('/pipeline/confirm')}
+            onClick={() => setShowSubmissionPanel(true)}
           >
-            <Send className="w-4 h-4" />
-            Submit for Ingestion
+            <ChevronRight className="w-4 h-4" />
+            Review &amp; Submit
           </Button>
         </div>
       </div>
+
+      {/* S3d: Submission Detail Panel */}
+      {showSubmissionPanel && (
+        <SubmissionDetailPanel
+          files={files}
+          packageName={packageName}
+          submissionMode={submissionMode}
+          onClose={() => setShowSubmissionPanel(false)}
+          onConfirm={() => {
+            setShowSubmissionPanel(false);
+            navigate('/pipeline/confirm');
+          }}
+        />
+      )}
     </div>
   );
 }

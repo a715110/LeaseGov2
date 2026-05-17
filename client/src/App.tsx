@@ -21,6 +21,8 @@ import { ScreenGate } from './components/shared/ScreenGate'
 import { RegistryProvider } from './contexts/RegistryContext'
 import { RoleProvider, useRole } from './contexts/RoleContext'
 import { DemoModeProvider } from './contexts/DemoModeContext'
+import { NotificationProvider } from './contexts/NotificationContext'
+import { ExtractionStoreProvider } from './contexts/ExtractionStoreContext'
 import { DemoOverlay } from './components/layout/DemoOverlay'
 import { SCREEN_KEYS } from './constants/screenKeys'
 import AppShell from './components/layout/AppShell'
@@ -524,6 +526,8 @@ function App() {
               can call useLocation for navigation. Wouter's Router is implicit at
               the top level, so this placement is safe. */}
           <DemoModeProviderWithRole>
+            <NotificationProvider>
+            <ExtractionStoreProvider>
             <TooltipProvider>
               <Toaster />
               <AppShell>
@@ -533,6 +537,8 @@ function App() {
                   the AppShell scroll container so it is never clipped. */}
               <DemoOverlay />
             </TooltipProvider>
+            </ExtractionStoreProvider>
+            </NotificationProvider>
           </DemoModeProviderWithRole>
         </RegistryProvider>
       </ThemeProvider>

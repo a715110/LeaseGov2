@@ -16,7 +16,7 @@
  */
 
 import { useState, useMemo } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { ContractAgentProgressPanel } from '@/components/agents/ContractAgentProgressPanel';
 import { ContractCheckpointCard } from '@/components/checkpoints/ContractCheckpointCard';
 import { AutomationPolicyBadge } from '@/components/automation/AutomationPolicyBadge';
@@ -27,7 +27,7 @@ import { useCheckpoints } from '@/hooks/useCheckpoints';
 import {
   Shield, CheckCircle2, AlertTriangle, Link2, Link2Off,
   ChevronDown, ChevronUp, ZoomIn, ZoomOut, Layers,
-  Cpu, StopCircle, FileText, ChevronRight, Edit2
+  Cpu, StopCircle, FileText, ChevronRight, Edit2, ArrowLeft
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
@@ -175,6 +175,15 @@ function FieldRow({ field, onConfirm, isActive, onActivate }: FieldRowProps) {
 export default function ExtractionAiWorkspace() {
   const _screenKey = SCREEN_KEYS.EXTRACTION_AI_WORKSPACE;
   const [, navigate] = useLocation();
+  const search = useSearch();
+
+  // S8: ?from= back navigation
+  const backDestination = useMemo(() => {
+    const from = new URLSearchParams(search).get('from');
+    if (from === 'queue')     return { path: '/extraction/queue',   label: 'Processing Queue' };
+    if (from === 'approvals') return { path: '/approvals/review',   label: 'Approvals' };
+    return { path: '/extraction/queue', label: 'Processing Queue' };
+  }, [search]);
 
   const [fields, setFields] = useState<ExtractionField[]>(MOCK_FIELDS);
   const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set(["core_metadata"]));
@@ -250,9 +259,18 @@ export default function ExtractionAiWorkspace() {
     <div className="flex flex-col" style={{ height: "100vh" }}>
       {/* Header */}
       <div className="page-header shrink-0">
-        <div>
-          <h1 className="page-title">AI Extraction Workspace</h1>
-          <p className="page-subtitle">Office-Tower-Amendment-3.pdf · JOB-2026-0442</p>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate(backDestination.path)}
+            className="p-1.5 rounded hover:bg-muted text-muted-foreground transition-colors"
+            title={`Back to ${backDestination.label}`}
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+          <div>
+            <h1 className="page-title">AI Extraction Workspace</h1>
+            <p className="page-subtitle">Office-Tower-Amendment-3.pdf · JOB-2026-0442</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <AutomationPolicyBadge level={automationLevel} size="sm" />

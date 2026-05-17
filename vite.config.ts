@@ -4,6 +4,7 @@ import react from "@vitejs/plugin-react";
 import fs from "node:fs";
 import path from "node:path";
 import { defineConfig, type Plugin, type ViteDevServer } from "vite";
+import type { UserConfig } from 'vitest/config';
 import { vitePluginManusRuntime } from "vite-plugin-manus-runtime";
 
 // =============================================================================
@@ -206,6 +207,18 @@ function vitePluginStorageProxy(): Plugin {
 const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector(), vitePluginStorageProxy()];
 
 export default defineConfig({
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: ['./client/src/test/setup.ts'],
+    include: ['client/src/**/*.{test,spec}.{ts,tsx}'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html'],
+      include: ['client/src/**/*.{ts,tsx}'],
+      exclude: ['client/src/test/**', 'client/src/**/*.d.ts'],
+    },
+  } satisfies UserConfig['test'],
   plugins,
   resolve: {
     alias: {

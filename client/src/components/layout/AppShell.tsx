@@ -22,10 +22,12 @@ import {
   RefreshCw, UserCog, ChevronDown, Bot, Play,
 } from 'lucide-react'
 import { ColorModeToggle } from './ColorModeToggle'
+import { Breadcrumb } from '../shared/Breadcrumb'
 import { cn } from '../../lib/utils'
 import { NAV_GROUPS, ROUTE_PATHS } from '../../constants/navigationConfig'
 import { useRole } from '../../contexts/RoleContext'
 import { useDemoMode } from '../../contexts/DemoModeContext'
+import { useNotifications } from '../../contexts/NotificationContext'
 import type { UserRole } from '../../lib/types'
 import { ROLE_LABELS } from '../../lib/types'
 import {
@@ -164,6 +166,48 @@ function RoleSwitcher() {
   )
 }
 
+// ─── Notification Bell — A7 ──────────────────────────────────────────────────
+function NotificationBell() {
+  const { unreadCount } = useNotifications()
+  return (
+    <Link
+      href="/notifications"
+      className="relative flex h-8 w-8 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+      aria-label={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications'}
+    >
+      <Bell className="h-4 w-4" />
+      {unreadCount > 0 && (
+        <span
+          className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-destructive-foreground"
+          aria-hidden="true"
+        >
+          {unreadCount > 9 ? '9+' : unreadCount}
+        </span>
+      )}
+    </Link>
+  )
+}
+
+// ─── Sidebar active state helper — A9 ──────────────────────────────────────
+/**
+ * Returns true when the current location matches the nav item path.
+ * Uses prefix matching so nested routes (e.g. /records/123) keep the
+ * parent nav item (e.g. /records) highlighted.
+ * Special case: root-level paths like /pipeline/dashboard must not
+ * match /pipeline/upload, so we use the full path for exact items
+ * and prefix matching only for section roots.
+ */
+function isNavItemActive(location: string, itemPath: string): boolean {
+  if (location === itemPath) return true
+  // Strip query string for comparison
+  const cleanLocation = location.split('?')[0]
+  if (cleanLocation === itemPath) return true
+  // Prefix match: /records/123 → /records is active
+  // But avoid /pipeline matching /pipeline/upload AND /pipeline/dashboard simultaneously
+  // by requiring the prefix to be followed by / or end of string
+  return cleanLocation.startsWith(itemPath + '/')
+}
+
 // ─── Start Demo sidebar button ──────────────────────────────────────────────
 function StartDemoButton() {
   const { isActive, startDemo } = useDemoMode()
@@ -262,7 +306,7 @@ export default function AppShell({
                       <SidebarNavItem
                         label={item.label}
                         path={item.path}
-                        isActive={location.startsWith(item.path)}
+                        isActive={isNavItemActive(location, item.path)}
                       />
                     </li>
                   ))}
@@ -299,19 +343,13 @@ export default function AppShell({
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Top header bar */}
         <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-background px-6">
-          {/* Left: breadcrumb placeholder */}
-          <div />
+          {/* Left: breadcrumb — A8 */}
+          <Breadcrumb />
           {/* Right: role switcher + color mode + notifications */}
           <div className="flex items-center gap-3">
             <RoleSwitcher />
             <ColorModeToggle />
-            <Link
-              href="/notifications"
-              className="flex h-8 w-8 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              aria-label="Notifications"
-            >
-              <Bell className="h-4 w-4" />
-            </Link>
+            <NotificationBell />
           </div>
         </header>
 

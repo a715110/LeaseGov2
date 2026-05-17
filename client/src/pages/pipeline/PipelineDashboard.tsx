@@ -5,11 +5,10 @@
  * Role: Document Submitter
  *
  * Design: Structured Authority — Structured Clarity (Modern Gov-Tech)
- * Typography: Inter primary, JetBrains Mono for IDs/codes
- * Prompt 1.1: 7 summary cards (Uploaded/Validating/Valid/Warning/Invalid/Ready/Submitted),
- *             Staged Documents table, Recent Batches sidebar, Upload CTA.
- * Data model refs: StagedDocument (status: uploaded|validating|valid|warning|invalid|submitted),
- *                  IntakeBatch (batch_reference, submission_mode, status)
+ * POST-SCAFFOLDING changes:
+ *   S1a — DocumentDetailPanel (FlagSlidingPanel) opened from Eye button on doc rows
+ *   S1b — BatchDetailPanel (FlagSlidingPanel) opened from Eye button on batch rows
+ *   S1c — Bulk Action Bar (checkbox per row, floating bar with Remove/Submit actions)
  */
 
 import { useState } from 'react';
@@ -17,7 +16,7 @@ import { useLocation } from 'wouter';
 import {
   UploadCloud, FileText, AlertTriangle, CheckCircle2, XCircle,
   Clock, Send, RefreshCw, Search, MoreHorizontal,
-  Eye, Trash2, ArrowRight, FileUp
+  Eye, Trash2, ArrowRight, FileUp, CheckSquare, Square, Layers
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +26,7 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
+import { FlagSlidingPanel } from '@/components/shared/FlagSlidingPanel';
 import { SCREEN_KEYS } from '@/constants/screenKeys';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -99,25 +99,26 @@ function getBatchModeLabel(mode: IntakeBatch['submission_mode']): string {
 // ─── Status badge config ──────────────────────────────────────────────────────
 
 const STATUS_BADGE: Record<StagedStatus, string> = {
-  uploaded:   'badge-uploaded',
-  validating: 'badge-processing',
-  valid:      'badge-valid',
-  warning:    'badge-warning',
-  invalid:    'badge-invalid',
-  ready:      'badge-ready',
-  submitted:  'badge-submitted',
+  uploaded:   'bg-blue-50 text-blue-700 border border-blue-200',
+  validating: 'bg-amber-50 text-amber-700 border border-amber-200',
+  valid:      'bg-emerald-50 text-emerald-700 border border-emerald-200',
+  warning:    'bg-orange-50 text-orange-700 border border-orange-200',
+  invalid:    'bg-red-50 text-red-700 border border-red-200',
+  ready:      'bg-violet-50 text-violet-700 border border-violet-200',
+  submitted:  'bg-slate-100 text-slate-600 border border-slate-200',
 };
-
 const STATUS_LABEL: Record<StagedStatus, string> = {
   uploaded: 'Uploaded', validating: 'Validating', valid: 'Valid',
   warning: 'Warning', invalid: 'Invalid', ready: 'Ready', submitted: 'Submitted',
 };
 
 const BATCH_BADGE: Record<IntakeBatch['status'], string> = {
-  assembling: 'badge-uploaded', submitted: 'badge-processing', processing: 'badge-processing',
-  completed: 'badge-valid', failed: 'badge-invalid',
+  assembling: 'bg-blue-50 text-blue-700 border border-blue-200',
+  submitted:  'bg-amber-50 text-amber-700 border border-amber-200',
+  processing: 'bg-violet-50 text-violet-700 border border-violet-200',
+  completed:  'bg-emerald-50 text-emerald-700 border border-emerald-200',
+  failed:     'bg-red-50 text-red-700 border border-red-200',
 };
-
 const BATCH_LABEL: Record<IntakeBatch['status'], string> = {
   assembling: 'Assembling', submitted: 'Submitted', processing: 'Processing',
   completed: 'Completed', failed: 'Failed',
@@ -130,7 +131,7 @@ interface SummaryCardProps {
   count: number;
   icon: React.ReactNode;
   accentClass: string;
-  active?: boolean;
+  active: boolean;
   onClick: () => void;
   spinning?: boolean;
 }
@@ -139,39 +140,194 @@ function SummaryCard({ label, count, icon, accentClass, active, onClick, spinnin
   return (
     <button
       onClick={onClick}
-      className={`
-        text-left w-full rounded-lg bg-card border shadow-sm p-4 transition-all duration-150
-        hover:shadow-md hover:border-primary/40
-        ${active ? 'border-primary/60 ring-1 ring-primary/20' : 'border-border'}
-      `}
-      style={{ borderLeftWidth: '3px', borderLeftColor: `var(--color-${accentClass})` }}
+      className={`rounded-lg border p-4 text-left transition-all duration-150 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+        active
+          ? 'border-primary bg-primary/5 shadow-sm ring-1 ring-primary/20'
+          : 'border-border bg-card hover:border-primary/30'
+      }`}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-muted-foreground mb-1">{label}</p>
-          <p className="text-[32px] font-bold leading-none text-foreground">{count}</p>
-        </div>
-        <div className={`mt-0.5 ${spinning ? 'animate-spin' : ''}`} style={{ color: `var(--color-${accentClass})` }}>
+      <div className="flex items-center justify-between mb-2">
+        <span className={`text-[var(--color-${accentClass})] ${spinning ? 'animate-spin' : ''}`}>
           {icon}
+        </span>
+        {active && <span className="h-1.5 w-1.5 rounded-full bg-primary" />}
+      </div>
+      <p className="text-2xl font-bold text-foreground tabular-nums">{count}</p>
+      <p className="text-[11px] font-medium text-muted-foreground mt-0.5">{label}</p>
+    </button>
+  );
+}
+
+// ─── S1a: Document Detail Panel ───────────────────────────────────────────────
+
+function DocumentDetailPanel({ doc, onClose }: { doc: StagedDocument; onClose: () => void }) {
+  return (
+    <FlagSlidingPanel
+      open={true}
+      onClose={onClose}
+      title="Document Details"
+      subtitle={doc.display_name}
+      width={440}
+    >
+      <div className="space-y-5">
+        {/* Status */}
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Status</p>
+          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[12px] font-semibold ${STATUS_BADGE[doc.status]}`}>
+            {doc.status === 'validating' && <RefreshCw className="w-3 h-3 animate-spin" />}
+            {STATUS_LABEL[doc.status]}
+          </span>
+        </div>
+
+        {/* File info */}
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">File Information</p>
+          <dl className="space-y-2">
+            {[
+              { label: 'File Name', value: doc.display_name },
+              { label: 'Type', value: getMimeLabel(doc.mime_type) },
+              { label: 'Size', value: formatBytes(doc.file_size_bytes) },
+              { label: 'Pages', value: doc.page_count != null ? String(doc.page_count) : '—' },
+            ].map(({ label, value }) => (
+              <div key={label} className="flex items-start justify-between gap-4">
+                <dt className="text-[12px] text-muted-foreground shrink-0">{label}</dt>
+                <dd className="text-[12px] font-medium text-foreground text-right truncate">{value}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+
+        {/* Submission info */}
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Submission</p>
+          <dl className="space-y-2">
+            {[
+              { label: 'Uploaded By', value: doc.uploader },
+              { label: 'Upload Date', value: doc.upload_date },
+              { label: 'Target Workspace', value: doc.workspace_tag },
+            ].map(({ label, value }) => (
+              <div key={label} className="flex items-start justify-between gap-4">
+                <dt className="text-[12px] text-muted-foreground shrink-0">{label}</dt>
+                <dd className="text-[12px] font-medium text-foreground text-right">{value}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+
+        {/* Actions */}
+        <div className="pt-2 flex flex-col gap-2">
+          <Button size="sm" variant="outline" className="w-full justify-start gap-2 text-[13px]">
+            <Eye className="w-3.5 h-3.5" /> Preview Document
+          </Button>
+          <Button size="sm" variant="outline" className="w-full justify-start gap-2 text-[13px] text-destructive hover:text-destructive">
+            <Trash2 className="w-3.5 h-3.5" /> Remove from Pipeline
+          </Button>
         </div>
       </div>
-    </button>
+    </FlagSlidingPanel>
+  );
+}
+
+// ─── S1b: Batch Detail Panel ──────────────────────────────────────────────────
+
+function BatchDetailPanel({ batch, onClose }: { batch: IntakeBatch; onClose: () => void }) {
+  return (
+    <FlagSlidingPanel
+      open={true}
+      onClose={onClose}
+      title="Batch Details"
+      subtitle={batch.batch_reference}
+      width={400}
+    >
+      <div className="space-y-5">
+        {/* Status */}
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Status</p>
+          <span className={`inline-flex items-center px-2.5 py-1 rounded text-[12px] font-semibold ${BATCH_BADGE[batch.status]}`}>
+            {BATCH_LABEL[batch.status]}
+          </span>
+        </div>
+
+        {/* Batch info */}
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Batch Information</p>
+          <dl className="space-y-2">
+            {[
+              { label: 'Reference', value: batch.batch_reference },
+              { label: 'Submission Mode', value: getBatchModeLabel(batch.submission_mode) },
+              { label: 'Document Count', value: String(batch.document_count) },
+              { label: 'Submitted At', value: batch.submitted_at },
+            ].map(({ label, value }) => (
+              <div key={label} className="flex items-start justify-between gap-4">
+                <dt className="text-[12px] text-muted-foreground shrink-0">{label}</dt>
+                <dd className="text-[12px] font-medium text-foreground text-right font-mono">{value}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+
+        {/* Actions */}
+        <div className="pt-2 flex flex-col gap-2">
+          <Button size="sm" variant="outline" className="w-full justify-start gap-2 text-[13px]">
+            <Layers className="w-3.5 h-3.5" /> View Documents in Batch
+          </Button>
+        </div>
+      </div>
+    </FlagSlidingPanel>
+  );
+}
+
+// ─── S1c: Bulk Action Bar ─────────────────────────────────────────────────────
+
+function BulkActionBar({
+  selectedCount,
+  onRemove,
+  onSubmit,
+  onClear,
+}: {
+  selectedCount: number;
+  onRemove: () => void;
+  onSubmit: () => void;
+  onClear: () => void;
+}) {
+  if (selectedCount === 0) return null;
+  return (
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 flex items-center gap-3 rounded-lg border border-border bg-background px-4 py-2.5 shadow-xl">
+      <span className="text-[13px] font-semibold text-foreground">
+        {selectedCount} selected
+      </span>
+      <div className="h-4 w-px bg-border" />
+      <Button size="sm" variant="outline" onClick={onSubmit} className="gap-1.5 text-[13px]">
+        <Send className="w-3.5 h-3.5" /> Submit to Processing
+      </Button>
+      <Button size="sm" variant="outline" onClick={onRemove} className="gap-1.5 text-[13px] text-destructive hover:text-destructive">
+        <Trash2 className="w-3.5 h-3.5" /> Remove
+      </Button>
+      <button onClick={onClear} className="text-[12px] text-muted-foreground hover:text-foreground transition-colors">
+        Clear
+      </button>
+    </div>
   );
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function PipelineDashboard() {
-  // Confirm this screen key is correct
   const _screenKey = SCREEN_KEYS.PIPELINE_DASHBOARD;
 
   const [, navigate] = useLocation();
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // TODO: Backend integration required — replace with API call to GET /api/staged-documents
+  // S1a — Document detail panel
+  const [detailDoc, setDetailDoc] = useState<StagedDocument | null>(null);
+  // S1b — Batch detail panel
+  const [detailBatch, setDetailBatch] = useState<IntakeBatch | null>(null);
+  // S1c — Bulk selection
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // TODO: Backend integration required
   const documents = MOCK_DOCUMENTS;
-  // TODO: Backend integration required — replace with API call to GET /api/intake-batches
   const batches = MOCK_BATCHES;
 
   const counts = {
@@ -181,7 +337,7 @@ export default function PipelineDashboard() {
     warning:    documents.filter(d => d.status === 'warning').length,
     invalid:    documents.filter(d => d.status === 'invalid').length,
     ready:      documents.filter(d => d.status === 'ready').length,
-    submitted:  156, // TODO: Backend integration required — total submitted count from API
+    submitted:  156,
   };
 
   const filteredDocs = documents.filter(doc => {
@@ -193,6 +349,31 @@ export default function PipelineDashboard() {
       doc.uploader.toLowerCase().includes(q);
     return matchesStatus && matchesSearch;
   });
+
+  // S1c helpers
+  const allFilteredSelected = filteredDocs.length > 0 && filteredDocs.every(d => selectedIds.has(d.id));
+  const toggleAll = () => {
+    if (allFilteredSelected) {
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        filteredDocs.forEach(d => next.delete(d.id));
+        return next;
+      });
+    } else {
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        filteredDocs.forEach(d => next.add(d.id));
+        return next;
+      });
+    }
+  };
+  const toggleOne = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
 
   return (
     <div className="flex flex-col gap-6 p-6 min-h-full bg-[var(--color-lg-page-bg)]">
@@ -271,7 +452,6 @@ export default function PipelineDashboard() {
           </div>
 
           {documents.length === 0 ? (
-            /* Empty state */
             <div className="flex flex-col items-center justify-center py-16 gap-3">
               <div className="w-14 h-14 rounded-full bg-accent flex items-center justify-center">
                 <FileText className="w-7 h-7 text-accent-foreground" />
@@ -288,6 +468,15 @@ export default function PipelineDashboard() {
               <table className="data-table w-full text-[13px]">
                 <thead>
                   <tr>
+                    {/* S1c: select-all checkbox */}
+                    <th className="w-8 px-3">
+                      <button onClick={toggleAll} className="flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
+                        {allFilteredSelected
+                          ? <CheckSquare className="w-4 h-4 text-primary" />
+                          : <Square className="w-4 h-4" />
+                        }
+                      </button>
+                    </th>
                     <th className="text-left">File Name</th>
                     <th className="text-left">Status</th>
                     <th className="text-left">Upload Date</th>
@@ -300,57 +489,79 @@ export default function PipelineDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredDocs.map(doc => (
-                    <tr key={doc.id}>
-                      <td>
-                        <div className="flex items-center gap-2">
-                          <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                          <span className="font-medium text-foreground truncate max-w-[200px]" title={doc.display_name}>
-                            {doc.display_name}
+                  {filteredDocs.map(doc => {
+                    const isSelected = selectedIds.has(doc.id);
+                    return (
+                      <tr key={doc.id} className={isSelected ? 'bg-primary/5' : ''}>
+                        {/* S1c: row checkbox */}
+                        <td className="px-3">
+                          <button onClick={() => toggleOne(doc.id)} className="flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
+                            {isSelected
+                              ? <CheckSquare className="w-4 h-4 text-primary" />
+                              : <Square className="w-4 h-4" />
+                            }
+                          </button>
+                        </td>
+                        <td>
+                          <div className="flex items-center gap-2">
+                            <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                            <span className="font-medium text-foreground truncate max-w-[200px]" title={doc.display_name}>
+                              {doc.display_name}
+                            </span>
+                          </div>
+                        </td>
+                        <td>
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold ${STATUS_BADGE[doc.status]}`}>
+                            {doc.status === 'validating' && <RefreshCw className="w-3 h-3 animate-spin" />}
+                            {STATUS_LABEL[doc.status]}
                           </span>
-                        </div>
-                      </td>
-                      <td>
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold ${STATUS_BADGE[doc.status]}`}>
-                          {doc.status === 'validating' && <RefreshCw className="w-3 h-3 animate-spin" />}
-                          {STATUS_LABEL[doc.status]}
-                        </span>
-                      </td>
-                      <td className="font-mono text-[12px] text-muted-foreground">{doc.upload_date}</td>
-                      <td className="text-muted-foreground">{doc.uploader}</td>
-                      <td>
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-muted text-muted-foreground border border-border">
-                          {getMimeLabel(doc.mime_type)}
-                        </span>
-                      </td>
-                      <td className="text-muted-foreground">{formatBytes(doc.file_size_bytes)}</td>
-                      <td className="text-muted-foreground">
-                        {doc.page_count != null ? doc.page_count : <span className="text-muted-foreground/50">—</span>}
-                      </td>
-                      <td>
-                        <span className="text-[12px] text-primary bg-accent px-2 py-0.5 rounded font-medium">
-                          {doc.workspace_tag}
-                        </span>
-                      </td>
-                      <td>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
-                              <MoreHorizontal className="w-4 h-4" />
+                        </td>
+                        <td className="font-mono text-[12px] text-muted-foreground">{doc.upload_date}</td>
+                        <td className="text-muted-foreground">{doc.uploader}</td>
+                        <td>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-muted text-muted-foreground border border-border">
+                            {getMimeLabel(doc.mime_type)}
+                          </span>
+                        </td>
+                        <td className="text-muted-foreground">{formatBytes(doc.file_size_bytes)}</td>
+                        <td className="text-muted-foreground">
+                          {doc.page_count != null ? doc.page_count : <span className="text-muted-foreground/50">—</span>}
+                        </td>
+                        <td>
+                          <span className="text-[12px] text-primary bg-accent px-2 py-0.5 rounded font-medium">
+                            {doc.workspace_tag}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="flex items-center gap-1">
+                            {/* S1a: Eye button opens DocumentDetailPanel */}
+                            <button
+                              onClick={() => setDetailDoc(doc)}
+                              className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                              aria-label={`View details for ${doc.display_name}`}
+                            >
+                              <Eye className="w-3.5 h-3.5" />
                             </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-40">
-                            <DropdownMenuItem className="gap-2 text-[13px]">
-                              <Eye className="w-3.5 h-3.5" /> View
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="gap-2 text-[13px] text-destructive">
-                              <Trash2 className="w-3.5 h-3.5" /> Remove
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </td>
-                    </tr>
-                  ))}
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
+                                  <MoreHorizontal className="w-4 h-4" />
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-40">
+                                <DropdownMenuItem className="gap-2 text-[13px]" onSelect={() => setDetailDoc(doc)}>
+                                  <Eye className="w-3.5 h-3.5" /> View Details
+                                </DropdownMenuItem>
+                                <DropdownMenuItem className="gap-2 text-[13px] text-destructive">
+                                  <Trash2 className="w-3.5 h-3.5" /> Remove
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
 
@@ -367,6 +578,7 @@ export default function PipelineDashboard() {
             <div className="flex items-center justify-between px-5 py-3 border-t border-border bg-muted/30">
               <p className="text-[12px] text-muted-foreground">
                 Showing {filteredDocs.length} of {documents.length} documents
+                {selectedIds.size > 0 && ` · ${selectedIds.size} selected`}
               </p>
               <Button
                 variant="outline"
@@ -393,9 +605,19 @@ export default function PipelineDashboard() {
                   <span className="font-mono text-[12px] font-medium text-primary">
                     {batch.batch_reference}
                   </span>
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold ${BATCH_BADGE[batch.status]}`}>
-                    {BATCH_LABEL[batch.status]}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold ${BATCH_BADGE[batch.status]}`}>
+                      {BATCH_LABEL[batch.status]}
+                    </span>
+                    {/* S1b: Eye button opens BatchDetailPanel */}
+                    <button
+                      onClick={() => setDetailBatch(batch)}
+                      className="p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                      aria-label={`View details for ${batch.batch_reference}`}
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-[12px] text-muted-foreground">
@@ -421,6 +643,30 @@ export default function PipelineDashboard() {
           </div>
         </div>
       </div>
+
+      {/* S1a: Document Detail Panel */}
+      {detailDoc && (
+        <DocumentDetailPanel doc={detailDoc} onClose={() => setDetailDoc(null)} />
+      )}
+
+      {/* S1b: Batch Detail Panel */}
+      {detailBatch && (
+        <BatchDetailPanel batch={detailBatch} onClose={() => setDetailBatch(null)} />
+      )}
+
+      {/* S1c: Bulk Action Bar */}
+      <BulkActionBar
+        selectedCount={selectedIds.size}
+        onRemove={() => {
+          // TODO: Backend integration required — DELETE /api/staged-documents (bulk)
+          setSelectedIds(new Set());
+        }}
+        onSubmit={() => {
+          // TODO: Backend integration required — POST /api/intake-batches (bulk submit)
+          setSelectedIds(new Set());
+        }}
+        onClear={() => setSelectedIds(new Set())}
+      />
     </div>
   );
 }

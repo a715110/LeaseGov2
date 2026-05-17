@@ -20,6 +20,7 @@
 import React from 'react'
 import { isScreenEnabled, getRequiredRoles } from '../../services/screenRegistryService'
 import { useRegistry } from '../../contexts/RegistryContext'
+import { useRole } from '../../contexts/RoleContext'
 import type { ScreenKey } from '../../constants/screenKeys'
 
 interface ScreenGateProps {
@@ -111,7 +112,7 @@ function AccessDeniedFallback({ screenKey }: { screenKey: ScreenKey }) {
 
 export function ScreenGate({
   screenKey,
-  userRoles = [],
+  userRoles,
   isRegistryLoaded: isRegistryLoadedProp,
   children,
   fallback,
@@ -120,6 +121,9 @@ export function ScreenGate({
   // Read from context; prop override takes precedence if explicitly provided
   const { isRegistryLoaded: isRegistryLoadedCtx } = useRegistry()
   const isRegistryLoaded = isRegistryLoadedProp ?? isRegistryLoadedCtx
+  // A6: auto-read activeRole from RoleContext when userRoles prop is not passed
+  const { activeRole } = useRole()
+  const resolvedRoles: string[] = userRoles ?? [activeRole]
 
   // Show loader while registry is being fetched
   if (!isRegistryLoaded) {
@@ -134,7 +138,7 @@ export function ScreenGate({
   // Layer 2: Role check
   const requiredRoles = getRequiredRoles(screenKey)
   if (requiredRoles.length > 0) {
-    const hasRole = requiredRoles.some(role => userRoles.includes(role))
+    const hasRole = requiredRoles.some(role => resolvedRoles.includes(role))
     if (!hasRole) {
       return <AccessDeniedFallback screenKey={screenKey} />
     }

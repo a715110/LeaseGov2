@@ -11,11 +11,11 @@
  *                  ocr_confidence_avg, status: uploaded|validating|valid|warning|invalid)
  */
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import {
   UploadCloud, FileText, CheckCircle2, AlertTriangle, XCircle,
-  ChevronDown, ChevronUp, X, Plus, Info, Tag
+  ChevronDown, ChevronUp, X, Plus, Info, Tag, Loader2, RefreshCw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -119,9 +119,10 @@ function formatBytes(bytes: number): string {
 interface FileCardProps {
   file: StagedFile;
   onRemove: (id: string) => void;
+  onRetry: (id: string) => void;
 }
 
-function FileCard({ file, onRemove }: FileCardProps) {
+function FileCard({ file, onRemove, onRetry }: FileCardProps) {
   const [expanded, setExpanded] = useState(false);
 
   const statusConfig = {
@@ -159,6 +160,16 @@ function FileCard({ file, onRemove }: FileCardProps) {
         >
           {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </button>
+        {/* S2c: Retry button for invalid files */}
+        {file.status === 'invalid' && (
+          <button
+            onClick={() => onRetry(file.id)}
+            className="p-1 rounded hover:bg-amber-100 text-amber-600 hover:text-amber-700 transition-colors"
+            title="Retry validation"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
+        )}
         <button
           onClick={() => onRemove(file.id)}
           className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
@@ -221,9 +232,18 @@ export default function PipelineUpload() {
   const [, navigate] = useLocation();
   const [files, setFiles] = useState<StagedFile[]>(MOCK_FILES);
   const [isDragging, setIsDragging] = useState(false);
-  const [workspaceTag, setWorkspaceTag] = useState('');
+  // S2b: auto-select last used workspace from localStorage
+  const [workspaceTag, setWorkspaceTag] = useState(
+    () => localStorage.getItem('leasegov_last_workspace') ?? ''
+  );
   const [isCreatingTag, setIsCreatingTag] = useState(false);
+  const [isValidating, setIsValidating] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // S2b: persist workspace selection
+  useEffect(() => {
+    if (workspaceTag) localStorage.setItem('leasegov_last_workspace', workspaceTag);
+  }, [workspaceTag]);
 
   const validFiles = files.filter(f => f.status === 'valid' || f.status === 'warning');
   const invalidFiles = files.filter(f => f.status === 'invalid');
@@ -244,6 +264,17 @@ export default function PipelineUpload() {
 
   const handleRemove = useCallback((id: string) => {
     setFiles(prev => prev.filter(f => f.id !== id));
+  }, []);
+
+  // S2a/S2c: retry validation — sets file back to 'validating' then resolves after mock delay
+  const handleRetry = useCallback((id: string) => {
+    setFiles(prev => prev.map(f => f.id === id ? { ...f, status: 'validating' as ValidationStatus, error: undefined } : f));
+    setIsValidating(true);
+    // TODO: Backend integration required — POST /api/staged-documents/:id/revalidate
+    setTimeout(() => {
+      setFiles(prev => prev.map(f => f.id === id ? { ...f, status: 'warning' as ValidationStatus, warning: 'Re-validation complete — review warnings before submitting.' } : f));
+      setIsValidating(false);
+    }, 2000);
   }, []);
 
   return (
@@ -327,7 +358,7 @@ export default function PipelineUpload() {
                 </div>
               </div>
               {files.map(file => (
-                <FileCard key={file.id} file={file} onRemove={handleRemove} />
+                <FileCard key={file.id} file={file} onRemove={handleRemove} onRetry={handleRetry} />
               ))}
             </div>
           )}
@@ -425,6 +456,16 @@ export default function PipelineUpload() {
           )}
         </div>
       </div>
+
+      {/* S2a: Global validating overlay */}
+      {isValidating && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-[2px]">
+          <div className="flex items-center gap-3 rounded-lg bg-background border border-border px-5 py-3.5 shadow-xl">
+            <Loader2 className="w-5 h-5 animate-spin text-primary" />
+            <span className="text-[13px] font-medium text-foreground">Re-validating file…</span>
+          </div>
+        </div>
+      )}
 
       {/* Bottom action bar */}
       <div className="sticky bottom-0 border-t border-border bg-card px-6 py-4 flex items-center justify-between">

@@ -15,9 +15,9 @@
  *                  confidence_threshold)
  */
 
-import { useState } from "react";
-import { useLocation } from "wouter";
-import { Cpu, Users, User, ChevronRight, Info, Shield } from "lucide-react";
+import { useState, useMemo } from "react";
+import { useLocation, useSearch } from "wouter";
+import { Cpu, Users, User, ChevronRight, Info, Shield, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
@@ -84,15 +84,34 @@ const OPTIONS: StrategyOption[] = [
 export default function ExtractionStrategy() {
   const _screenKey = SCREEN_KEYS.EXTRACTION_STRATEGY;
   const [, navigate] = useLocation();
+  const search = useSearch();
   const [selected, setSelected] = useState<AutomationLevel>("ai_assisted");
   const [threshold, setThreshold] = useState(0.90);
+
+  // S8: ?from= back navigation
+  const backDestination = useMemo(() => {
+    const from = new URLSearchParams(search).get('from');
+    if (from === 'queue')    return { path: '/extraction/queue',    label: 'Processing Queue' };
+    if (from === 'workflow') return { path: '/extraction/queue?from=workflow', label: 'Workflow' };
+    if (from === 'admin')    return { path: '/admin/schema',         label: 'Admin Schema' };
+    return { path: '/extraction/understanding', label: 'Understanding' };
+  }, [search]);
 
   return (
     <div className="flex flex-col min-h-full bg-[var(--color-lg-page-bg)]">
       <div className="page-header">
-        <div>
-          <h1 className="page-title">Extraction Strategy</h1>
-          <p className="page-subtitle">Choose how fields will be extracted from this document.</p>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate(backDestination.path)}
+            className="p-1.5 rounded hover:bg-muted text-muted-foreground transition-colors"
+            title={`Back to ${backDestination.label}`}
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+          <div>
+            <h1 className="page-title">Extraction Strategy</h1>
+            <p className="page-subtitle">Choose how fields will be extracted from this document.</p>
+          </div>
         </div>
       </div>
 
