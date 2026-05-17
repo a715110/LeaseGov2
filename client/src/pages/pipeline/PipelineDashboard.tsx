@@ -585,6 +585,49 @@ function SubmissionDetailPanel({ submission, isReadOnly, onClose, onUnsubmit }: 
 
 // ─── S1d: Package Detail Panel ──────────────────────────────────────────────
 
+// Undo toast content component
+function UngroupUndoToast({
+  packageNum,
+  fileCount,
+  remaining,
+  onUndo,
+  onDismiss,
+}: {
+  packageNum: string;
+  fileCount: number;
+  remaining: number;
+  onUndo: () => void;
+  onDismiss: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-3 w-full">
+      <div className="flex-1 min-w-0">
+        <p className="text-[13px] font-semibold text-foreground leading-tight">
+          {packageNum} ungrouped
+        </p>
+        <p className="text-[12px] text-muted-foreground">
+          {fileCount} file{fileCount !== 1 ? 's' : ''} returned to Stage Documents
+        </p>
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        <button
+          onClick={onUndo}
+          className="px-2.5 py-1 rounded text-[12px] font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+        >
+          Undo ({remaining}s)
+        </button>
+        <button
+          onClick={onDismiss}
+          className="p-1 rounded text-muted-foreground hover:text-foreground transition-colors"
+          aria-label="Dismiss"
+        >
+          <X className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // Role badge colour map
 const ROLE_BADGE: Record<DocumentRole, string> = {
   'Base Contract': 'bg-blue-50 text-blue-700 border-blue-200',
@@ -604,9 +647,10 @@ interface PackageDetailPanelProps {
   onSaveRoles: (pkgId: string, updatedFiles: PackageFile[]) => void;
   onSubmit: (pkg: ContractPackage) => void;
   onUngroup: (pkg: ContractPackage) => void;
+  onRemoveFile: (pkgId: string, docId: string) => void;
 }
 
-function PackageDetailPanel({ pkg, isReadOnly, onClose, onSaveRoles, onSubmit, onUngroup }: PackageDetailPanelProps) {
+function PackageDetailPanel({ pkg, isReadOnly, onClose, onSaveRoles, onSubmit, onUngroup, onRemoveFile }: PackageDetailPanelProps) {
   const [editedRoles, setEditedRoles] = useState<Record<string, DocumentRole>>(
     () => Object.fromEntries(pkg.files.map(f => [f.docId, f.role]))
   );
@@ -691,7 +735,7 @@ function PackageDetailPanel({ pkg, isReadOnly, onClose, onSaveRoles, onSubmit, o
                     <td className="px-3 py-2.5">
                       <div className="flex items-center gap-2">
                         <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                        <span className="font-medium text-foreground truncate max-w-[220px]" title={f.name}>
+                        <span className="font-medium text-foreground truncate max-w-[180px]" title={f.name}>
                           {f.name}
                         </span>
                       </div>
@@ -730,6 +774,23 @@ function PackageDetailPanel({ pkg, isReadOnly, onClose, onSaveRoles, onSubmit, o
                         </Select>
                       )}
                     </td>
+                    {!isReadOnly && (
+                      <td className="px-2 py-2.5 w-8">
+                        <button
+                          onClick={() => onRemoveFile(pkg.id, f.docId)}
+                          disabled={pkg.files.length <= 1}
+                          title={pkg.files.length <= 1 ? 'Cannot remove the last file — ungroup instead' : `Remove ${f.name} from package`}
+                          className={`p-1 rounded transition-colors ${
+                            pkg.files.length <= 1
+                              ? 'text-muted-foreground/30 cursor-not-allowed'
+                              : 'text-muted-foreground hover:text-destructive hover:bg-destructive/10'
+                          }`}
+                          aria-label={`Remove ${f.name}`}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -874,7 +935,7 @@ export default function PipelineDashboard() {
     warning:    stagedDocs.filter(d => d.status === 'warning').length,
     invalid:    stagedDocs.filter(d => d.status === 'invalid').length,
     ready:      stagedDocs.filter(d => d.status === 'ready').length,
-    submitted:  156,
+    submitted:  submissions.length,
   };
 
   const filteredDocs = stagedDocs.filter(doc => {
@@ -971,9 +1032,10 @@ export default function PipelineDashboard() {
     });
   }
 
-  // ── Ungroup package workflow ──
+  // ── Ungroup package workflow (with 10s undo countdown) ──
+  const ungroupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   function ungroupPackage(pkg: ContractPackage) {
-    // Reconstruct StagedDocument stubs from PackageFile entries
     const restoredDocs: StagedDocument[] = pkg.files.map(f => ({
       id: `restored-${f.docId}-${Date.now()}`,
       display_name: f.name,
@@ -987,7 +1049,92 @@ export default function PipelineDashboard() {
     }));
     setContractPackages(prev => prev.filter(p => p.id !== pkg.id));
     setStagedDocs(prev => [...restoredDocs, ...prev]);
-    toast.success(`${pkg.packageNum} ungrouped — ${pkg.files.length} file${pkg.files.length !== 1 ? 's' : ''} returned to Stage Documents`);
+
+    // Undo toast with 10-second countdown
+    let remaining = 10;
+    const toastId = toast(
+      <UngroupUndoToast
+        packageNum={pkg.packageNum}
+        fileCount={pkg.files.length}
+        remaining={remaining}
+        onUndo={() => {
+          if (ungroupTimerRef.current) clearInterval(ungroupTimerRef.current);
+          toast.dismiss(toastId);
+          // Reverse: remove restored docs, re-add package
+          const restoredIds = new Set(restoredDocs.map(d => d.id));
+          setStagedDocs(prev => prev.filter(d => !restoredIds.has(d.id)));
+          setContractPackages(prev => [pkg, ...prev]);
+          toast.success(`Undo successful — ${pkg.packageNum} restored`);
+        }}
+        onDismiss={() => {
+          if (ungroupTimerRef.current) clearInterval(ungroupTimerRef.current);
+          toast.dismiss(toastId);
+        }}
+      />,
+      { duration: Infinity, id: String(Date.now()) }
+    );
+
+    // Tick countdown every second, auto-dismiss at 0
+    ungroupTimerRef.current = setInterval(() => {
+      remaining -= 1;
+      if (remaining <= 0) {
+        if (ungroupTimerRef.current) clearInterval(ungroupTimerRef.current);
+        toast.dismiss(toastId);
+        return;
+      }
+      toast(
+        <UngroupUndoToast
+          packageNum={pkg.packageNum}
+          fileCount={pkg.files.length}
+          remaining={remaining}
+          onUndo={() => {
+            if (ungroupTimerRef.current) clearInterval(ungroupTimerRef.current);
+            toast.dismiss(toastId);
+            const restoredIds = new Set(restoredDocs.map(d => d.id));
+            setStagedDocs(prev => prev.filter(d => !restoredIds.has(d.id)));
+            setContractPackages(prev => [pkg, ...prev]);
+            toast.success(`Undo successful — ${pkg.packageNum} restored`);
+          }}
+          onDismiss={() => {
+            if (ungroupTimerRef.current) clearInterval(ungroupTimerRef.current);
+            toast.dismiss(toastId);
+          }}
+        />,
+        { duration: Infinity, id: toastId as string }
+      );
+    }, 1000);
+  }
+
+  // ── Remove single file from package ──
+  function removeFileFromPackage(pkgId: string, docId: string) {
+    const pkg = contractPackages.find(p => p.id === pkgId);
+    if (!pkg || pkg.files.length <= 1) return;
+    const removedFile = pkg.files.find(f => f.docId === docId);
+    if (!removedFile) return;
+    const updatedFiles = pkg.files.filter(f => f.docId !== docId);
+    const updatedPkg: ContractPackage = {
+      ...pkg,
+      files: updatedFiles,
+      mode: updatedFiles.length >= 2 ? 'Package' : 'Single',
+      status: updatedFiles.every(f => f.role !== 'Undefined') ? 'Ready' : 'Pending',
+    };
+    // Restore the removed file to Stage Documents
+    const restoredDoc: StagedDocument = {
+      id: `restored-${docId}-${Date.now()}`,
+      display_name: removedFile.name,
+      status: 'valid',
+      upload_date: new Date().toLocaleString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', ''),
+      uploader: pkg.createdBy,
+      mime_type: removedFile.name.toLowerCase().endsWith('.tiff') || removedFile.name.toLowerCase().endsWith('.tif') ? 'image/tiff' : 'application/pdf',
+      file_size_bytes: 0,
+      page_count: null,
+      workspace_tag: pkg.workspace,
+    };
+    setContractPackages(prev => prev.map(p => p.id === pkgId ? updatedPkg : p));
+    setStagedDocs(prev => [restoredDoc, ...prev]);
+    // Keep panel in sync
+    setDetailPkg(prev => prev?.id === pkgId ? updatedPkg : prev);
+    toast.success(`"${removedFile.name}" removed from ${pkg.packageNum}`);
   }
 
   // ── Unsubmit workflow ──
@@ -1462,6 +1609,7 @@ export default function PipelineDashboard() {
           }}
           onSubmit={(pkg) => submitPackage(pkg)}
           onUngroup={(pkg) => ungroupPackage(pkg)}
+          onRemoveFile={(pkgId, docId) => removeFileFromPackage(pkgId, docId)}
         />
       )}
       {detailSub && (
