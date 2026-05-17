@@ -117,11 +117,11 @@ export function DemoOverlay() {
       aria-modal="false"
       aria-label="Demo tour"
       className={cn(
-        'fixed bottom-6 right-6 z-50 w-80 overflow-hidden rounded-xl border border-border bg-card shadow-2xl',
-        'transition-all duration-200',
+        'fixed bottom-6 right-6 z-50 w-80 rounded-xl border border-border bg-card shadow-2xl',
+        'flex flex-col transition-all duration-200',
         visible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
       )}
-      style={{ transformOrigin: 'bottom right' }}
+      style={{ transformOrigin: 'bottom right', maxHeight: 'calc(100vh - 3rem)' }}
     >
       {/* Header */}
       <div
@@ -167,9 +167,9 @@ export function DemoOverlay() {
         <StepProgress current={roleLocalIndex} total={totalSteps} />
       </div>
 
-      {/* Content */}
+      {/* Content — scrollable so footer is always visible */}
       {currentStep && (
-        <div className="px-4 py-3 space-y-2">
+        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
           <h3 className="text-sm font-semibold text-foreground leading-snug">
             {currentStep.title}
           </h3>
@@ -209,8 +209,8 @@ export function DemoOverlay() {
         </div>
       )}
 
-      {/* Footer actions */}
-      <div className="flex items-center justify-between gap-2 border-t border-border px-4 py-3">
+      {/* Footer actions — always pinned to bottom */}
+      <div className="flex-shrink-0 flex items-center justify-between gap-2 border-t border-border px-4 py-3">
         {/* Reset */}
         <button
           onClick={resetDemo}
@@ -256,7 +256,7 @@ export function DemoOverlay() {
       </div>
 
       {/* Overall progress bar (full width, bottom edge) */}
-      <div className="h-0.5 w-full bg-border">
+      <div className="flex-shrink-0 h-0.5 w-full bg-border">
         <div
           className="h-full transition-all duration-300 ease-out"
           style={{ width: `${progress}%`, background: 'var(--color-lg-blue)' }}

@@ -280,8 +280,30 @@ export function DemoModeProvider({
   children: React.ReactNode;
   activeRole?: UserRole;
 }) {
-  const [isActive, setIsActive] = useState(false);
-  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  // ── Persistence keys (tab-isolated via sessionStorage) ─────────────────
+  const STEP_KEY = 'dodesk_demo_step';
+  const ACTIVE_KEY = 'dodesk_demo_active';
+
+  const [isActive, setIsActive] = useState<boolean>(() => {
+    try { return sessionStorage.getItem(ACTIVE_KEY) === 'true'; } catch { return false; }
+  });
+  const [currentStepIndex, setCurrentStepIndex] = useState<number>(() => {
+    try {
+      const stored = sessionStorage.getItem(STEP_KEY);
+      const n = stored !== null ? parseInt(stored, 10) : NaN;
+      return !isNaN(n) && n >= 0 && n < DEMO_STEPS.length ? n : 0;
+    } catch { return 0; }
+  });
+
+  // Sync isActive to sessionStorage whenever it changes
+  useEffect(() => {
+    try { sessionStorage.setItem(ACTIVE_KEY, String(isActive)); } catch { /* ignore */ }
+  }, [isActive]);
+
+  // Sync currentStepIndex to sessionStorage whenever it changes
+  useEffect(() => {
+    try { sessionStorage.setItem(STEP_KEY, String(currentStepIndex)); } catch { /* ignore */ }
+  }, [currentStepIndex]);
 
   // Prefer the prop (from RoleContext) over sessionStorage fallback.
   // sessionStorage fallback is kept for cases where DemoModeProvider is used
@@ -310,7 +332,12 @@ export function DemoModeProvider({
   const endDemo = useCallback(() => {
     setIsActive(false);
     setCurrentStepIndex(0);
-  }, []);
+    // Clear persisted state so a closed demo doesn't re-open on next page load
+    try {
+      sessionStorage.removeItem(ACTIVE_KEY);
+      sessionStorage.removeItem(STEP_KEY);
+    } catch { /* ignore */ }
+  }, [ACTIVE_KEY, STEP_KEY]);
 
   const resetDemo = useCallback(() => {
     // 1. Clear all cross-tab event history from localStorage
