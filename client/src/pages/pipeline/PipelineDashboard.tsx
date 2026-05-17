@@ -23,7 +23,7 @@ import {
   UploadCloud, FileText, AlertTriangle, CheckCircle2, XCircle,
   Clock, Send, RefreshCw, Search, MoreHorizontal,
   Eye, Trash2, ArrowRight, FileUp, CheckSquare, Square, Layers,
-  Package, X, ChevronDown, Edit2
+  Package, X, ChevronDown, Edit2, Unlink
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -603,13 +603,15 @@ interface PackageDetailPanelProps {
   onClose: () => void;
   onSaveRoles: (pkgId: string, updatedFiles: PackageFile[]) => void;
   onSubmit: (pkg: ContractPackage) => void;
+  onUngroup: (pkg: ContractPackage) => void;
 }
 
-function PackageDetailPanel({ pkg, isReadOnly, onClose, onSaveRoles, onSubmit }: PackageDetailPanelProps) {
+function PackageDetailPanel({ pkg, isReadOnly, onClose, onSaveRoles, onSubmit, onUngroup }: PackageDetailPanelProps) {
   const [editedRoles, setEditedRoles] = useState<Record<string, DocumentRole>>(
     () => Object.fromEntries(pkg.files.map(f => [f.docId, f.role]))
   );
   const [dirty, setDirty] = useState(false);
+  const [confirmingUngroup, setConfirmingUngroup] = useState(false);
 
   const handleRoleChange = (docId: string, role: DocumentRole) => {
     setEditedRoles(prev => ({ ...prev, [docId]: role }));
@@ -756,6 +758,39 @@ function PackageDetailPanel({ pkg, isReadOnly, onClose, onSaveRoles, onSubmit }:
             >
               <Send className="w-3.5 h-3.5" /> Submit Package
             </Button>
+
+            {/* Ungroup — inline confirmation */}
+            <div className="pt-1">
+              {confirmingUngroup ? (
+                <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4">
+                  <p className="text-[13px] font-semibold text-destructive mb-1">Confirm Ungroup</p>
+                  <p className="text-[12px] text-muted-foreground mb-3">
+                    This will dissolve <span className="font-semibold text-foreground">{pkg.packageNum}</span> and return all {pkg.files.length} file{pkg.files.length !== 1 ? 's' : ''} to Stage Documents.
+                  </p>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => setConfirmingUngroup(false)} className="text-[12px]">
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => { onUngroup(pkg); onClose(); }}
+                      className="text-[12px] bg-destructive hover:bg-destructive/90 text-white gap-1.5"
+                    >
+                      <Unlink className="w-3.5 h-3.5" /> Yes, Ungroup
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setConfirmingUngroup(true)}
+                  className="w-full justify-start gap-2 text-[13px] text-destructive hover:text-destructive border-destructive/30 hover:border-destructive/60"
+                >
+                  <Unlink className="w-3.5 h-3.5" /> Ungroup Package
+                </Button>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -934,6 +969,25 @@ export default function PipelineDashboard() {
       payload: { batchId: pkg.id, packageNum: pkg.packageNum },
       sourceRole: 'document_submitter',
     });
+  }
+
+  // ── Ungroup package workflow ──
+  function ungroupPackage(pkg: ContractPackage) {
+    // Reconstruct StagedDocument stubs from PackageFile entries
+    const restoredDocs: StagedDocument[] = pkg.files.map(f => ({
+      id: `restored-${f.docId}-${Date.now()}`,
+      display_name: f.name,
+      status: 'valid' as StagedStatus,
+      upload_date: new Date().toLocaleString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', ''),
+      uploader: pkg.createdBy,
+      mime_type: f.name.toLowerCase().endsWith('.tiff') || f.name.toLowerCase().endsWith('.tif') ? 'image/tiff' : 'application/pdf',
+      file_size_bytes: 0,
+      page_count: null,
+      workspace_tag: pkg.workspace,
+    }));
+    setContractPackages(prev => prev.filter(p => p.id !== pkg.id));
+    setStagedDocs(prev => [...restoredDocs, ...prev]);
+    toast.success(`${pkg.packageNum} ungrouped — ${pkg.files.length} file${pkg.files.length !== 1 ? 's' : ''} returned to Stage Documents`);
   }
 
   // ── Unsubmit workflow ──
@@ -1407,6 +1461,7 @@ export default function PipelineDashboard() {
             setDetailPkg(prev => prev ? { ...prev, files: updatedFiles, status: updatedFiles.every(f => f.role !== 'Undefined') ? 'Ready' : 'Pending' } : null);
           }}
           onSubmit={(pkg) => submitPackage(pkg)}
+          onUngroup={(pkg) => ungroupPackage(pkg)}
         />
       )}
       {detailSub && (
