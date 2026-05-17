@@ -6,17 +6,21 @@
  * - Deep navy accent matching sidebar palette
  * - Animated entrance: scale(0.95) + opacity 0 → scale(1) + opacity 1 (200ms ease-out)
  * - Dismissible via Close (X) button; re-opens cleanly when startDemo() is called again
+ * - Step-list drawer: toggle via "All Steps" button in header; shows checkmarks + jump-to-step
  * - Shows: role badge, step counter, title, description, instruction, Back/Next/Reset
  *
- * Reads from DemoModeContext — minimal local state (animation only).
+ * Reads from DemoModeContext — minimal local state (animation + drawer only).
  * Navigation (Back/Next) is role-scoped; does not cross role boundaries.
  * The "Start Demo" trigger button lives in AppShell sidebar, not here.
  */
 import React, { useEffect, useRef, useState } from 'react'
 import { useLocation } from 'wouter'
-import { X, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react'
+import {
+  X, ChevronLeft, ChevronRight, RotateCcw,
+  List, CheckCircle2, Circle, Play,
+} from 'lucide-react'
 import { cn } from '../../lib/utils'
-import { useDemoMode } from '../../contexts/DemoModeContext'
+import { useDemoMode, globalIndexForRole } from '../../contexts/DemoModeContext'
 
 // ─── Role colour helper ───────────────────────────────────────────────────────
 function RolePill({ label, color }: { label: string; color: string }) {
@@ -49,35 +53,36 @@ export function DemoOverlay() {
     isActive,
     currentStep,
     totalSteps,
+    roleSteps,
     roleLocalIndex,
     nextStep,
     prevStep,
     resetDemo,
     endDemo,
+    goToStep,
     progress,
   } = useDemoMode()
 
   const [, navigate] = useLocation()
 
   // ── Animation state ──────────────────────────────────────────────────────
-  // `shown`  — whether the panel DOM node is mounted at all
-  // `visible` — whether it has transitioned to full opacity/scale
   const [shown, setShown] = useState(false)
   const [visible, setVisible] = useState(false)
 
-  // `userDismissed` tracks whether the user explicitly closed the panel in
-  // the current demo session. It is reset to false whenever isActive flips
-  // from false → true (i.e. a new startDemo() call).
+  // `userDismissed` resets when isActive flips false → true (new startDemo call)
   const [userDismissed, setUserDismissed] = useState(false)
   const prevIsActive = useRef(false)
+
+  // ── Drawer state ─────────────────────────────────────────────────────────
+  const [drawerOpen, setDrawerOpen] = useState(false)
 
   useEffect(() => {
     const wasActive = prevIsActive.current
     prevIsActive.current = isActive
 
     if (isActive && !wasActive) {
-      // New demo session started — always clear dismissed state first
       setUserDismissed(false)
+      setDrawerOpen(false)
     }
   }, [isActive])
 
@@ -87,12 +92,10 @@ export function DemoOverlay() {
 
     if (shouldShow) {
       setShown(true)
-      // Tiny delay so the browser renders scale(0.95)/opacity-0 before transitioning in
       const t = setTimeout(() => setVisible(true), 20)
       return () => clearTimeout(t)
     } else {
       setVisible(false)
-      // Wait for the exit transition to finish before unmounting
       const t = setTimeout(() => setShown(false), 220)
       return () => clearTimeout(t)
     }
@@ -105,11 +108,11 @@ export function DemoOverlay() {
     }
   }, [isActive, currentStep?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Nothing to render ────────────────────────────────────────────────────
   if (!shown) return null
 
   const isFirstStep = roleLocalIndex === 0
   const isLastStep = roleLocalIndex === totalSteps - 1
+  const activeRole = currentStep?.role
 
   return (
     <div
@@ -125,7 +128,7 @@ export function DemoOverlay() {
     >
       {/* Header */}
       <div
-        className="flex items-center justify-between px-4 py-3"
+        className="flex-shrink-0 flex items-center justify-between px-4 py-3"
         style={{ background: 'var(--sidebar)', borderBottom: '1px solid var(--sidebar-border)' }}
       >
         <div className="flex items-center gap-2">
@@ -139,21 +142,37 @@ export function DemoOverlay() {
             <RolePill label={currentStep.roleLabel} color={currentStep.roleColor} />
           )}
         </div>
-        <button
-          onClick={() => {
-            setUserDismissed(true)
-            endDemo()
-          }}
-          className="flex h-6 w-6 items-center justify-center rounded transition-colors hover:bg-white/10"
-          style={{ color: 'var(--sidebar-foreground)', opacity: 0.6 }}
-          aria-label="Close demo tour"
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
+        <div className="flex items-center gap-1">
+          {/* All Steps toggle */}
+          <button
+            onClick={() => setDrawerOpen(o => !o)}
+            className={cn(
+              'flex h-6 w-6 items-center justify-center rounded transition-colors',
+              drawerOpen ? 'bg-white/20' : 'hover:bg-white/10'
+            )}
+            style={{ color: 'var(--sidebar-foreground)', opacity: drawerOpen ? 1 : 0.6 }}
+            aria-label={drawerOpen ? 'Hide step list' : 'Show all steps'}
+            title={drawerOpen ? 'Hide step list' : 'View all steps'}
+          >
+            <List className="h-3.5 w-3.5" />
+          </button>
+          {/* Close */}
+          <button
+            onClick={() => {
+              setUserDismissed(true)
+              endDemo()
+            }}
+            className="flex h-6 w-6 items-center justify-center rounded transition-colors hover:bg-white/10"
+            style={{ color: 'var(--sidebar-foreground)', opacity: 0.6 }}
+            aria-label="Close demo tour"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
       </div>
 
       {/* Step counter + progress */}
-      <div className="px-4 pt-3 pb-1">
+      <div className="flex-shrink-0 px-4 pt-3 pb-1">
         <div className="mb-2 flex items-center justify-between">
           <span className="text-[11px] font-medium text-muted-foreground">
             Step {roleLocalIndex + 1} of {totalSteps}
@@ -167,46 +186,119 @@ export function DemoOverlay() {
         <StepProgress current={roleLocalIndex} total={totalSteps} />
       </div>
 
-      {/* Content — scrollable so footer is always visible */}
-      {currentStep && (
-        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
-          <h3 className="text-sm font-semibold text-foreground leading-snug">
-            {currentStep.title}
-          </h3>
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            {currentStep.description}
-          </p>
+      {/* Step-list drawer — replaces content when open */}
+      {drawerOpen ? (
+        <ul className="flex-1 overflow-y-auto divide-y divide-border">
+          {roleSteps.map((step, i) => {
+            const isCompleted = i < roleLocalIndex
+            const isCurrent = i === roleLocalIndex
+            const globalIdx = activeRole ? globalIndexForRole(activeRole, i) : -1
 
-          {/* Instruction callout */}
-          <div
-            className="rounded-md border-l-2 px-3 py-2 text-xs leading-relaxed"
-            style={{
-              borderColor: currentStep.roleColor,
-              background: `${currentStep.roleColor}11`,
-              color: 'var(--foreground)',
-            }}
-          >
-            <span className="font-semibold" style={{ color: currentStep.roleColor }}>
-              Action:{' '}
-            </span>
-            {currentStep.instruction}
-          </div>
+            return (
+              <li key={step.id}>
+                <button
+                  onClick={() => {
+                    if (globalIdx >= 0) {
+                      goToStep(globalIdx)
+                      setDrawerOpen(false)
+                    }
+                  }}
+                  className={cn(
+                    'w-full flex items-start gap-3 px-4 py-2.5 text-left transition-colors',
+                    isCurrent
+                      ? 'bg-accent'
+                      : 'hover:bg-accent/50'
+                  )}
+                >
+                  {/* Status icon */}
+                  <span className="mt-0.5 flex-shrink-0">
+                    {isCompleted ? (
+                      <CheckCircle2
+                        className="h-3.5 w-3.5"
+                        style={{ color: 'var(--color-lg-success, #059669)' }}
+                      />
+                    ) : isCurrent ? (
+                      <Play
+                        className="h-3.5 w-3.5 fill-current"
+                        style={{ color: step.roleColor }}
+                      />
+                    ) : (
+                      <Circle className="h-3.5 w-3.5 text-muted-foreground/40" />
+                    )}
+                  </span>
 
-          {/* Handoff notice */}
-          {currentStep.isHandoff && currentStep.handoffLabel && (
-            <div className="rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-[11px] text-amber-800 dark:bg-amber-950/30 dark:border-amber-800 dark:text-amber-300">
-              <span className="font-semibold">Handoff: </span>
-              {currentStep.handoffLabel}
-            </div>
-          )}
+                  {/* Step label */}
+                  <span className="flex-1 min-w-0">
+                    <span
+                      className={cn(
+                        'block text-[11px] font-medium leading-snug truncate',
+                        isCompleted
+                          ? 'text-muted-foreground line-through'
+                          : isCurrent
+                          ? 'text-foreground'
+                          : 'text-muted-foreground'
+                      )}
+                    >
+                      {step.title}
+                    </span>
+                    {step.screenNumber && (
+                      <span className="text-[10px] font-mono text-muted-foreground/50">
+                        #{step.screenNumber}
+                      </span>
+                    )}
+                  </span>
 
-          {/* Tab hint */}
-          {currentStep.tabHint && (
-            <p className="text-[10px] text-muted-foreground/60 italic">
-              {currentStep.tabHint}
+                  {/* Step number */}
+                  <span className="flex-shrink-0 text-[10px] text-muted-foreground/40 tabular-nums">
+                    {i + 1}
+                  </span>
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      ) : (
+        /* Content — scrollable so footer is always visible */
+        currentStep && (
+          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
+            <h3 className="text-sm font-semibold text-foreground leading-snug">
+              {currentStep.title}
+            </h3>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {currentStep.description}
             </p>
-          )}
-        </div>
+
+            {/* Instruction callout */}
+            <div
+              className="rounded-md border-l-2 px-3 py-2 text-xs leading-relaxed"
+              style={{
+                borderColor: currentStep.roleColor,
+                background: `${currentStep.roleColor}11`,
+                color: 'var(--foreground)',
+              }}
+            >
+              <span className="font-semibold" style={{ color: currentStep.roleColor }}>
+                Action:{' '}
+              </span>
+              {currentStep.instruction}
+            </div>
+
+            {/* Handoff notice */}
+            {currentStep.isHandoff && currentStep.handoffLabel && (
+              <div className="rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-[11px] text-amber-800 dark:bg-amber-950/30 dark:border-amber-800 dark:text-amber-300">
+                <span className="font-semibold">Handoff: </span>
+                {currentStep.handoffLabel}
+              </div>
+            )}
+
+            {/* Tab hint */}
+            {currentStep.tabHint && (
+              <p className="text-[10px] text-muted-foreground/60 italic">
+                {currentStep.tabHint}
+              </p>
+            )}
+          </div>
+        )
       )}
 
       {/* Footer actions — always pinned to bottom */}
