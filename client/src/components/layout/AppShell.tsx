@@ -20,8 +20,8 @@ import {
   UploadCloud, Scan, Layers, CheckCircle, Folder,
   CloudUpload, Settings, Shield, Bell, ChevronRight,
   RefreshCw, UserCog, ChevronDown, Bot, Play, Palette, Check,
+  Sun, Monitor, Moon,
 } from 'lucide-react'
-import { ColorModeToggle } from './ColorModeToggle'
 import { Breadcrumb } from '../shared/Breadcrumb'
 import { cn } from '../../lib/utils'
 import { NAV_GROUPS, ROUTE_PATHS } from '../../constants/navigationConfig'
@@ -31,7 +31,7 @@ import { useNotifications } from '../../contexts/NotificationContext'
 import { LeaseGovThemeContext } from '../../contexts/LeaseGovThemeContext'
 import type { UserRole } from '../../lib/types'
 import { ROLE_LABELS } from '../../lib/types'
-import type { ThemeKey } from '../../types/shared/ThemeMode'
+import type { ThemeKey, ColorMode } from '../../types/shared/ThemeMode'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -168,7 +168,7 @@ function RoleSwitcher() {
   )
 }
 
-// ─── Theme Picker ─────────────────────────────────────────────────────────────
+// ─── Theme + Mode Picker ──────────────────────────────────────────────────────
 const THEME_OPTIONS: { key: ThemeKey; label: string; swatch: string }[] = [
   { key: 'structured_authority', label: 'Structured Authority', swatch: 'oklch(0.38 0.14 240)' },
   { key: 'modern_violet',        label: 'Modern Violet',        swatch: 'oklch(0.50 0.22 290)' },
@@ -176,19 +176,27 @@ const THEME_OPTIONS: { key: ThemeKey; label: string; swatch: string }[] = [
   { key: 'executive_slate',      label: 'Executive Slate',      swatch: 'oklch(0.55 0.16 65)'  },
 ]
 
+const MODE_OPTIONS: { value: ColorMode; icon: React.ElementType; label: string }[] = [
+  { value: 'light',  icon: Sun,     label: 'Light'  },
+  { value: 'system', icon: Monitor, label: 'System' },
+  { value: 'dark',   icon: Moon,    label: 'Dark'   },
+]
+
 function ThemePicker() {
   const ctx = useContext(LeaseGovThemeContext)
   if (!ctx) return null
-  const { themeKey, setThemeKey } = ctx
+  const { themeKey, setThemeKey, rawMode, setMode, canToggle } = ctx
   const current = THEME_OPTIONS.find(t => t.key === themeKey) ?? THEME_OPTIONS[0]
+  const currentMode = MODE_OPTIONS.find(m => m.value === rawMode) ?? MODE_OPTIONS[0]
+  const ModeIcon = currentMode.icon
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
           className="flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          aria-label="Switch theme"
-          title={`Theme: ${current.label}`}
+          aria-label="Appearance settings"
+          title={`Theme: ${current.label} · Mode: ${currentMode.label}`}
         >
           <span
             className="h-3 w-3 shrink-0 rounded-full"
@@ -196,9 +204,11 @@ function ThemePicker() {
             aria-hidden="true"
           />
           <Palette className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          <ModeIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-52">
+      <DropdownMenuContent align="end" className="w-56">
+        {/* ── Colour Theme section ── */}
         <DropdownMenuLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
           Colour Theme
         </DropdownMenuLabel>
@@ -223,6 +233,47 @@ function ThemePicker() {
             )}
           </DropdownMenuItem>
         ))}
+
+        {/* ── Appearance Mode section (only when toggle is allowed) ── */}
+        {canToggle && (
+          <>
+            <DropdownMenuSeparator className="my-1" />
+            <DropdownMenuLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              Appearance
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {/* Inline segmented control — not individual menu items so it doesn't close on click */}
+            <div className="px-2 py-1.5">
+              <div
+                role="group"
+                aria-label="Color mode"
+                className="inline-flex w-full items-center rounded-md border border-border bg-muted p-0.5 gap-0.5"
+              >
+                {MODE_OPTIONS.map(({ value, icon: Icon, label }) => {
+                  const isActive = rawMode === value
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      aria-pressed={isActive}
+                      aria-label={`${label} mode`}
+                      onClick={() => setMode(value)}
+                      className={cn(
+                        'inline-flex flex-1 items-center justify-center gap-1 rounded px-2 py-1 text-xs font-medium transition-all duration-150',
+                        isActive
+                          ? 'bg-background text-foreground shadow-sm ring-1 ring-border'
+                          : 'text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+                      <span>{label}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   )
@@ -407,11 +458,10 @@ export default function AppShell({
         <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-background px-6">
           {/* Left: breadcrumb — A8 */}
           <Breadcrumb />
-          {/* Right: role switcher + theme picker + color mode + notifications */}
+          {/* Right: role switcher + appearance picker + notifications */}
           <div className="flex items-center gap-3">
             <RoleSwitcher />
             <ThemePicker />
-            <ColorModeToggle />
             <NotificationBell />
           </div>
         </header>
