@@ -39,6 +39,8 @@ interface LeaseGovThemeProviderProps {
 
 function injectTokens(tokens: ThemeTokens): void {
   const el = document.documentElement
+  // Smooth transition when switching themes or colour modes
+  el.style.setProperty('transition', 'background-color 180ms ease, color 180ms ease, border-color 180ms ease')
   el.style.setProperty('--background',              tokens.background)
   el.style.setProperty('--foreground',              tokens.foreground)
   el.style.setProperty('--card',                    tokens.card)

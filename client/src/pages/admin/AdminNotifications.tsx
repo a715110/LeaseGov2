@@ -19,16 +19,17 @@
  * Data model refs: TenantConfiguration, UserPreference (Part 2.1)
  */
 
-import { useState } from "react";
+import { useState, useContext } from "react";
 import { Check, Upload, Eye, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
 import AdminLayout from "@/components/admin/AdminLayout";
+import { LeaseGovThemeContext } from "@/contexts/LeaseGovThemeContext";
+import type { ThemeKey, ColorMode } from "@/types/shared/ThemeMode";
 
-type DesignTheme = "structured_authority" | "modern_violet" | "gradient_pro" | "executive_slate";
-type ColorMode = "light" | "dark";
+type DesignTheme = ThemeKey;
 type NotifPref = "email" | "in_app" | "both" | "off";
 
 interface ThemeCard {
@@ -58,15 +59,26 @@ const NOTIF_CATEGORIES = [
 
 export default function AdminNotifications() {
   const _screenKey = SCREEN_KEYS.ADMIN_NOTIFICATIONS;
-  const [selectedTheme, setSelectedTheme] = useState<DesignTheme>("structured_authority");
-  const [colorMode, setColorMode] = useState<ColorMode>("light");
+  const [dirty, setDirty] = useState(false);
   const [allowToggle, setAllowToggle] = useState(true);
   const [orgName, setOrgName] = useState("Acme Corporation");
   const [accentColor, setAccentColor] = useState("#2563EB");
   const [notifPrefs, setNotifPrefs] = useState<Record<string, NotifPref>>(
     Object.fromEntries(NOTIF_CATEGORIES.map(c => [c, "both"]))
   );
-  const [dirty, setDirty] = useState(false);
+
+  // Read theme + mode from global context so this page stays in sync with the header picker
+  const themeCtx = useContext(LeaseGovThemeContext)
+  const selectedTheme: DesignTheme = themeCtx?.themeKey ?? "structured_authority"
+  const colorMode: ColorMode = themeCtx?.rawMode ?? "light"
+  function setSelectedTheme(id: DesignTheme) {
+    themeCtx?.setThemeKey(id)
+    setDirty(true)
+  }
+  function setColorMode(m: ColorMode) {
+    themeCtx?.setMode(m)
+    setDirty(true)
+  }
   const [previewOpen, setPreviewOpen] = useState(false);
 
   // Starter tier mock — branding locked
