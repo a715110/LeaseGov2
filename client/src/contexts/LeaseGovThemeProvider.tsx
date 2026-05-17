@@ -4,11 +4,11 @@
  * NEW IN V4.
  *
  * Responsibilities:
- * 1. Reads themeKey and colorMode configuration from TenantContext
+ * 1. Manages themeKey in local state (persisted to localStorage under 'leasegov_theme_key')
  * 2. Resolves the active color mode via useColorMode hook
  * 3. Injects CSS custom properties onto document.documentElement
  * 4. Applies .dark class to documentElement for Tailwind dark mode
- * 5. Provides LeaseGovThemeContext to all descendants
+ * 5. Provides LeaseGovThemeContext to all descendants (incl. setThemeKey)
  *
  * SIDEBAR CONSTANT RULE:
  * Sidebar tokens are injected identically for both light and dark modes.
@@ -19,16 +19,19 @@
  * and applies the correct class before React hydrates.
  * See: client/index.html — flash prevention script block.
  */
-import React, { useEffect, useMemo } from 'react'
+import React, { useEffect, useMemo, useState, useCallback } from 'react'
 import { LeaseGovThemeContext } from './LeaseGovThemeContext'
 import { useColorMode } from '../hooks/shared/useColorMode'
 import { THEMES, DEFAULT_THEME, DEFAULT_COLOR_MODE } from '../constants/themes'
 import type { ThemeTokens } from '../constants/themes'
 import type { ThemeKey, ColorMode } from '../types/shared/ThemeMode'
 
+const THEME_KEY_STORAGE = 'leasegov_theme_key'
+
 interface LeaseGovThemeProviderProps {
   children: React.ReactNode
-  themeKey?: ThemeKey
+  /** Initial theme key — overridden by localStorage if a user preference is stored */
+  initialThemeKey?: ThemeKey
   tenantColorModeDefault?: ColorMode
   allowUserModeToggle?: boolean
   userColorModePreference?: ColorMode | null
@@ -74,11 +77,22 @@ function injectTokens(tokens: ThemeTokens): void {
 
 export function LeaseGovThemeProvider({
   children,
-  themeKey = DEFAULT_THEME,
+  initialThemeKey = DEFAULT_THEME,
   tenantColorModeDefault = DEFAULT_COLOR_MODE,
   allowUserModeToggle = true,
   userColorModePreference = null,
 }: LeaseGovThemeProviderProps) {
+  // Internal state — initialised from localStorage, falling back to initialThemeKey
+  const [themeKey, setThemeKeyState] = useState<ThemeKey>(() => {
+    const stored = localStorage.getItem(THEME_KEY_STORAGE)
+    return (stored as ThemeKey) || initialThemeKey
+  })
+
+  const setThemeKey = useCallback((key: ThemeKey) => {
+    setThemeKeyState(key)
+    localStorage.setItem(THEME_KEY_STORAGE, key)
+  }, [])
+
   const { resolvedMode, rawMode, setMode, canToggle } = useColorMode({
     tenantDefault:   tenantColorModeDefault,
     allowUserToggle: allowUserModeToggle,
@@ -101,11 +115,12 @@ export function LeaseGovThemeProvider({
 
   const contextValue = useMemo(() => ({
     themeKey,
+    setThemeKey,
     resolvedMode,
     rawMode,
     setMode,
     canToggle,
-  }), [themeKey, resolvedMode, rawMode, setMode, canToggle])
+  }), [themeKey, setThemeKey, resolvedMode, rawMode, setMode, canToggle])
 
   return (
     <LeaseGovThemeContext.Provider value={contextValue}>

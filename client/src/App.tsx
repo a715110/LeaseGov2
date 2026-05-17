@@ -23,6 +23,7 @@ import { RoleProvider, useRole } from './contexts/RoleContext'
 import { DemoModeProvider } from './contexts/DemoModeContext'
 import { NotificationProvider } from './contexts/NotificationContext'
 import { ExtractionStoreProvider } from './contexts/ExtractionStoreContext'
+import { LeaseGovThemeProvider } from './contexts/LeaseGovThemeProvider'
 import { DemoOverlay } from './components/layout/DemoOverlay'
 import { SCREEN_KEYS } from './constants/screenKeys'
 import AppShell from './components/layout/AppShell'
@@ -513,7 +514,8 @@ function App() {
   return (
     <ErrorBoundary>
       <RoleProvider>
-      <ThemeProvider defaultTheme="light">
+      <ThemeProvider defaultTheme="light" switchable>
+      <LeaseGovThemeProvider initialThemeKey="structured_authority" allowUserModeToggle={true}>
         {/*
           RegistryProvider — scaffold mode: immediately marks registry as loaded.
           isScreenEnabled() already fail-opens when no registry is cached, so
@@ -541,6 +543,7 @@ function App() {
             </NotificationProvider>
           </DemoModeProviderWithRole>
         </RegistryProvider>
+      </LeaseGovThemeProvider>
       </ThemeProvider>
       </RoleProvider>
     </ErrorBoundary>

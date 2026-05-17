@@ -534,14 +534,6 @@ export default function PipelineDashboard() {
                         </td>
                         <td>
                           <div className="flex items-center gap-1">
-                            {/* S1a: Eye button opens DocumentDetailPanel */}
-                            <button
-                              onClick={() => setDetailDoc(doc)}
-                              className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                              aria-label={`View details for ${doc.display_name}`}
-                            >
-                              <Eye className="w-3.5 h-3.5" />
-                            </button>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <button className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">

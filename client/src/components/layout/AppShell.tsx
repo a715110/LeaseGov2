@@ -14,12 +14,12 @@
  * In production, nav items are driven by the screen registry response.
  * During scaffolding, a static MVP nav list is rendered directly.
  */
-import React from 'react'
+import React, { useContext } from 'react'
 import { Link, useLocation } from 'wouter'
 import {
   UploadCloud, Scan, Layers, CheckCircle, Folder,
   CloudUpload, Settings, Shield, Bell, ChevronRight,
-  RefreshCw, UserCog, ChevronDown, Bot, Play,
+  RefreshCw, UserCog, ChevronDown, Bot, Play, Palette, Check,
 } from 'lucide-react'
 import { ColorModeToggle } from './ColorModeToggle'
 import { Breadcrumb } from '../shared/Breadcrumb'
@@ -28,8 +28,10 @@ import { NAV_GROUPS, ROUTE_PATHS } from '../../constants/navigationConfig'
 import { useRole } from '../../contexts/RoleContext'
 import { useDemoMode } from '../../contexts/DemoModeContext'
 import { useNotifications } from '../../contexts/NotificationContext'
+import { LeaseGovThemeContext } from '../../contexts/LeaseGovThemeContext'
 import type { UserRole } from '../../lib/types'
 import { ROLE_LABELS } from '../../lib/types'
+import type { ThemeKey } from '../../types/shared/ThemeMode'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -159,6 +161,66 @@ function RoleSwitcher() {
               <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-primary" />
             )}
             {ROLE_LABELS[role]}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+// ─── Theme Picker ─────────────────────────────────────────────────────────────
+const THEME_OPTIONS: { key: ThemeKey; label: string; swatch: string }[] = [
+  { key: 'structured_authority', label: 'Structured Authority', swatch: 'oklch(0.38 0.14 240)' },
+  { key: 'modern_violet',        label: 'Modern Violet',        swatch: 'oklch(0.50 0.22 290)' },
+  { key: 'gradient_pro',         label: 'Gradient Pro',         swatch: 'oklch(0.48 0.18 195)' },
+  { key: 'executive_slate',      label: 'Executive Slate',      swatch: 'oklch(0.55 0.16 65)'  },
+]
+
+function ThemePicker() {
+  const ctx = useContext(LeaseGovThemeContext)
+  if (!ctx) return null
+  const { themeKey, setThemeKey } = ctx
+  const current = THEME_OPTIONS.find(t => t.key === themeKey) ?? THEME_OPTIONS[0]
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          className="flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label="Switch theme"
+          title={`Theme: ${current.label}`}
+        >
+          <span
+            className="h-3 w-3 shrink-0 rounded-full"
+            style={{ background: current.swatch }}
+            aria-hidden="true"
+          />
+          <Palette className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-52">
+        <DropdownMenuLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          Colour Theme
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {THEME_OPTIONS.map(option => (
+          <DropdownMenuItem
+            key={option.key}
+            onSelect={() => setThemeKey(option.key)}
+            className={cn(
+              'flex items-center gap-2.5 text-xs cursor-pointer',
+              themeKey === option.key && 'font-semibold'
+            )}
+          >
+            <span
+              className="h-3.5 w-3.5 shrink-0 rounded-full ring-1 ring-border"
+              style={{ background: option.swatch }}
+              aria-hidden="true"
+            />
+            <span className="flex-1">{option.label}</span>
+            {themeKey === option.key && (
+              <Check className="h-3 w-3 shrink-0 text-primary" />
+            )}
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>
@@ -345,9 +407,10 @@ export default function AppShell({
         <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-background px-6">
           {/* Left: breadcrumb — A8 */}
           <Breadcrumb />
-          {/* Right: role switcher + color mode + notifications */}
+          {/* Right: role switcher + theme picker + color mode + notifications */}
           <div className="flex items-center gap-3">
             <RoleSwitcher />
+            <ThemePicker />
             <ColorModeToggle />
             <NotificationBell />
           </div>

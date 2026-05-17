@@ -5,6 +5,7 @@
  *
  * Provides:
  * - themeKey: current ThemeKey (structured_authority | modern_violet | gradient_pro | executive_slate)
+ * - setThemeKey: (key: ThemeKey) => void — persists to localStorage
  * - resolvedMode: 'light' | 'dark' (never 'system')
  * - rawMode: ColorMode (may be 'system')
  * - setMode: (mode: ColorMode) => void
@@ -17,6 +18,7 @@ import type { ThemeKey, ColorMode } from '../types/shared/ThemeMode'
 
 export interface LeaseGovThemeContextValue {
   themeKey: ThemeKey
+  setThemeKey: (key: ThemeKey) => void
   resolvedMode: 'light' | 'dark'
   rawMode: ColorMode
   setMode: (mode: ColorMode) => void
