@@ -273,23 +273,32 @@ interface DemoModeContextValue {
 
 const DemoModeContext = createContext<DemoModeContextValue | null>(null);
 
-export function DemoModeProvider({ children }: { children: React.ReactNode }) {
+export function DemoModeProvider({
+  children,
+  activeRole: activeRoleProp,
+}: {
+  children: React.ReactNode;
+  activeRole?: UserRole;
+}) {
   const [isActive, setIsActive] = useState(false);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
 
-  // Read the active role from sessionStorage (tab-isolated)
+  // Prefer the prop (from RoleContext) over sessionStorage fallback.
+  // sessionStorage fallback is kept for cases where DemoModeProvider is used
+  // outside of a RoleProvider (e.g. tests).
   const getActiveRole = useCallback((): UserRole => {
+    if (activeRoleProp) return activeRoleProp;
     try {
       const stored = sessionStorage.getItem('dodesk_active_role');
       return (stored as UserRole) || 'document_submitter';
     } catch {
       return 'document_submitter';
     }
-  }, []);
+  }, [activeRoleProp]);
 
-  // Role steps are fixed per tab (role does not change mid-demo)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const roleSteps = useMemo(() => getStepsForRole(getActiveRole()), [getActiveRole, isActive]);
+  // Role steps depend only on the active role, not on isActive.
+  // Recomputing on isActive change was causing step resets mid-session.
+  const roleSteps = useMemo(() => getStepsForRole(getActiveRole()), [getActiveRole]);
 
   const startDemo = useCallback(() => {
     const role = getActiveRole();

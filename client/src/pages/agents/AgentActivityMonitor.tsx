@@ -576,7 +576,10 @@ export default function AgentActivityMonitor() {
       <div className="flex-1 overflow-y-auto px-6 py-5">
         <div className="grid grid-cols-4 gap-5">
           {COLUMNS.map(col => {
-            const colTasks = byStatus(col.key)
+            const rawTasks = byStatus(col.key)
+            // Completed column capped at last 50 entries for performance
+            const isCapped = col.key === 'completed' && rawTasks.length > 50
+            const colTasks = isCapped ? rawTasks.slice(-50) : rawTasks
             const ColIcon = col.icon
             const count = colTasks.length
 
@@ -612,6 +615,13 @@ export default function AgentActivityMonitor() {
                       onRetry={handleRetry}
                     />
                   ))
+                )}
+
+                {/* Cap footnote — only shown when completed column exceeds 50 entries */}
+                {isCapped && (
+                  <p className="text-center text-[10px] text-muted-foreground/70 pt-1">
+                    Showing last 50 of {rawTasks.length} completed tasks today
+                  </p>
                 )}
               </div>
             )

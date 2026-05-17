@@ -19,7 +19,7 @@ import ErrorBoundary from './components/ErrorBoundary'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { ScreenGate } from './components/shared/ScreenGate'
 import { RegistryProvider } from './contexts/RegistryContext'
-import { RoleProvider } from './contexts/RoleContext'
+import { RoleProvider, useRole } from './contexts/RoleContext'
 import { DemoModeProvider } from './contexts/DemoModeContext'
 import { DemoOverlay } from './components/layout/DemoOverlay'
 import { SCREEN_KEYS } from './constants/screenKeys'
@@ -108,7 +108,7 @@ import ReassessmentRemediation     from './pages/reassessment/ReassessmentRemedi
 import ReassessmentConcurrentWarn  from './pages/reassessment/ReassessmentConcurrentWarn'
 import ReassessmentWatchlist       from './pages/reassessment/ReassessmentWatchlist'
 import ReassessmentSurveyIntake    from './pages/reassessment/ReassessmentSurveyIntake'
-import ReassessmentProjectView     from './pages/reassessment/ReassessmentProjectView'
+import ReassessmentContextualProject from './pages/reassessment/ReassessmentContextualProject'
 
 // ─── FC-8: Administration (Phase 2) ──────────────────────────────────────────
 import AdminAutomation from './pages/admin/AdminAutomation'
@@ -457,7 +457,7 @@ function Router() {
       </Route>
       <Route path="/reassessment/projects/:id">
         <ScreenGate screenKey={SCREEN_KEYS.REASSESSMENT_PROJECT_VIEW} fallback={<NotFound />}>
-          <ReassessmentProjectView />
+          <ReassessmentContextualProject />
         </ScreenGate>
       </Route>
 
@@ -501,6 +501,12 @@ function Router() {
   )
 }
 
+/** Thin wrapper that reads activeRole from RoleContext and passes it to DemoModeProvider */
+function DemoModeProviderWithRole({ children }: { children: React.ReactNode }) {
+  const { activeRole } = useRole()
+  return <DemoModeProvider activeRole={activeRole}>{children}</DemoModeProvider>
+}
+
 function App() {
   return (
     <ErrorBoundary>
@@ -517,7 +523,7 @@ function App() {
           {/* DemoModeProvider must be inside Router context (wouter) so DemoOverlay
               can call useLocation for navigation. Wouter's Router is implicit at
               the top level, so this placement is safe. */}
-          <DemoModeProvider>
+          <DemoModeProviderWithRole>
             <TooltipProvider>
               <Toaster />
               <AppShell>
@@ -527,7 +533,7 @@ function App() {
                   the AppShell scroll container so it is never clipped. */}
               <DemoOverlay />
             </TooltipProvider>
-          </DemoModeProvider>
+          </DemoModeProviderWithRole>
         </RegistryProvider>
       </ThemeProvider>
       </RoleProvider>
