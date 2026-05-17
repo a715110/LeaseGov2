@@ -20,7 +20,7 @@ import {
   UploadCloud, Scan, Layers, CheckCircle, Folder,
   CloudUpload, Settings, Shield, Bell, ChevronRight,
   RefreshCw, UserCog, ChevronDown, Bot, Play, Palette, Check,
-  Sun, Monitor, Moon,
+  Sun, Moon,
 } from 'lucide-react'
 import { Breadcrumb } from '../shared/Breadcrumb'
 import { cn } from '../../lib/utils'
@@ -177,9 +177,8 @@ const THEME_OPTIONS: { key: ThemeKey; label: string; swatch: string }[] = [
 ]
 
 const MODE_OPTIONS: { value: ColorMode; icon: React.ElementType; label: string }[] = [
-  { value: 'light',  icon: Sun,     label: 'Light'  },
-  { value: 'system', icon: Monitor, label: 'System' },
-  { value: 'dark',   icon: Moon,    label: 'Dark'   },
+  { value: 'light', icon: Sun,  label: 'Light' },
+  { value: 'dark',  icon: Moon, label: 'Dark'  },
 ]
 
 function ThemePicker() {

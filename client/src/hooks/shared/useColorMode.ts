@@ -1,21 +1,20 @@
 /**
  * useColorMode — resolves the active color mode.
  *
- * NEW IN V4.
+ * NEW IN V4. Simplified to Light / Dark only (System removed).
  *
  * Priority chain (highest to lowest):
- * 1. Tenant override (allow_user_mode_toggle === false → forces tenant default)
- * 2. User preference (stored in UserPreference.colorMode)
- * 3. System preference (prefers-color-scheme media query)
- * 4. Tenant default (TenantConfiguration.color_mode_default)
- * 5. Platform default ('light')
+ * 1. Tenant override (allowUserToggle === false → forces tenantDefault)
+ * 2. localStorage stored preference ('leasegov_color_mode')
+ * 3. Tenant default (TenantConfiguration.color_mode_default)
+ * 4. Platform default ('light')
  *
- * Returns the resolved mode as 'light' | 'dark' — never 'system'.
- *
- * // TODO: Backend integration required — user preference persistence
+ * Returns resolvedMode as 'light' | 'dark' — always concrete, never ambiguous.
  */
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import type { ColorMode } from '../../types/shared/ThemeMode'
+
+const COLOR_MODE_STORAGE = 'leasegov_color_mode'
 
 export interface UseColorModeOptions {
   tenantDefault: ColorMode
@@ -24,9 +23,9 @@ export interface UseColorModeOptions {
 }
 
 export interface UseColorModeReturn {
-  /** The resolved mode — always 'light' or 'dark', never 'system' */
+  /** The resolved mode — always 'light' or 'dark' */
   resolvedMode: 'light' | 'dark'
-  /** The raw user preference setting (may be 'system') */
+  /** The raw user preference setting (same as resolvedMode — no 'system' anymore) */
   rawMode: ColorMode
   /** Set the user's color mode preference */
   setMode: (mode: ColorMode) => void
@@ -34,46 +33,25 @@ export interface UseColorModeReturn {
   canToggle: boolean
 }
 
-function resolveSystemMode(): 'light' | 'dark' {
-  if (typeof window === 'undefined') return 'light'
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-}
-
 export function useColorMode(options: UseColorModeOptions): UseColorModeReturn {
   const { tenantDefault, allowUserToggle, userPreference } = options
 
   const [rawMode, setRawMode] = useState<ColorMode>(() => {
     if (!allowUserToggle) return tenantDefault
-    return userPreference ?? tenantDefault
+    // localStorage takes priority over prop-passed userPreference
+    const stored = localStorage.getItem(COLOR_MODE_STORAGE) as ColorMode | null
+    if (stored === 'light' || stored === 'dark') return stored
+    if (userPreference === 'light' || userPreference === 'dark') return userPreference
+    return tenantDefault
   })
-
-  const [systemMode, setSystemMode] = useState<'light' | 'dark'>(resolveSystemMode)
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const mq = window.matchMedia('(prefers-color-scheme: dark)')
-    const handler = (e: MediaQueryListEvent) => {
-      setSystemMode(e.matches ? 'dark' : 'light')
-    }
-    mq.addEventListener('change', handler)
-    return () => mq.removeEventListener('change', handler)
-  }, [])
-
-  const resolvedMode: 'light' | 'dark' = (() => {
-    if (!allowUserToggle) {
-      // Tenant override: force tenant default, resolve 'system' to actual
-      const mode = tenantDefault === 'system' ? systemMode : tenantDefault
-      return mode as 'light' | 'dark'
-    }
-    if (rawMode === 'system') return systemMode
-    return rawMode as 'light' | 'dark'
-  })()
 
   const setMode = useCallback((mode: ColorMode) => {
     if (!allowUserToggle) return
     setRawMode(mode)
-    // TODO: Persist to backend via userPreferenceService
+    localStorage.setItem(COLOR_MODE_STORAGE, mode)
   }, [allowUserToggle])
+
+  const resolvedMode: 'light' | 'dark' = allowUserToggle ? rawMode : tenantDefault
 
   return {
     resolvedMode,

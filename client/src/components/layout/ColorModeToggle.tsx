@@ -10,7 +10,7 @@
  * Follows the Structured Authority design philosophy — minimal, precise.
  */
 import React, { useContext } from 'react'
-import { Sun, Monitor, Moon } from 'lucide-react'
+import { Sun, Moon } from 'lucide-react'
 import { LeaseGovThemeContext } from '../../contexts/LeaseGovThemeContext'
 import type { ColorMode } from '../../types/shared/ThemeMode'
 
@@ -30,14 +30,6 @@ const MODES: ModeConfig[] = [
     label: 'Light',
     activeClass: 'bg-white text-amber-600 shadow-sm border border-amber-200/60',
     activeIconClass: 'text-amber-500',
-  },
-  {
-    value: 'system',
-    icon: Monitor,
-    label: 'System',
-    activeClass: 'text-slate-600 shadow-sm border border-slate-300/50',
-    activeIconClass: 'text-slate-500',
-    activeStyle: { background: 'linear-gradient(135deg, #f8fafc 50%, #1e293b 50%)' },
   },
   {
     value: 'dark',

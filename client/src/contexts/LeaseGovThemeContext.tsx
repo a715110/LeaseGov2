@@ -6,8 +6,8 @@
  * Provides:
  * - themeKey: current ThemeKey (structured_authority | modern_violet | gradient_pro | executive_slate)
  * - setThemeKey: (key: ThemeKey) => void — persists to localStorage
- * - resolvedMode: 'light' | 'dark' (never 'system')
- * - rawMode: ColorMode (may be 'system')
+ * - resolvedMode: 'light' | 'dark'
+ * - rawMode: ColorMode ('light' | 'dark')
  * - setMode: (mode: ColorMode) => void
  * - canToggle: boolean (false if tenant disables toggle)
  *

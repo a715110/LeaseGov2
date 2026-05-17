@@ -28,7 +28,7 @@ import { SCREEN_KEYS } from "@/constants/screenKeys";
 import AdminLayout from "@/components/admin/AdminLayout";
 
 type DesignTheme = "structured_authority" | "modern_violet" | "gradient_pro" | "executive_slate";
-type ColorMode = "light" | "dark" | "system";
+type ColorMode = "light" | "dark";
 type NotifPref = "email" | "in_app" | "both" | "off";
 
 interface ThemeCard {
@@ -152,7 +152,7 @@ export default function AdminNotifications() {
               <div className="flex items-center gap-4">
                 <span className="text-[12px] font-semibold text-foreground w-52">Default mode for this organization</span>
                 <div className="flex gap-1">
-                  {(["light","dark","system"] as ColorMode[]).map(m => (
+                  {(["light","dark"] as ColorMode[]).map(m => (
                     <button key={m} onClick={() => { setColorMode(m); setDirty(true); }}
                       className="px-3 py-1.5 rounded text-[11px] font-semibold border capitalize transition-all"
                       style={{

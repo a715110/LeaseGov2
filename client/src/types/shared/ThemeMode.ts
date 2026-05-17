@@ -8,4 +8,4 @@ export type ThemeKey =
   | 'gradient_pro'
   | 'executive_slate'
 
-export type ColorMode = 'light' | 'dark' | 'system'
+export type ColorMode = 'light' | 'dark'

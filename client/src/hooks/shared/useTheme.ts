@@ -20,6 +20,5 @@ export function useTheme(): ThemeTokens {
   const themeKey = ctx?.themeKey ?? DEFAULT_THEME
   const resolvedMode = ctx?.resolvedMode ?? DEFAULT_COLOR_MODE
 
-  const mode = resolvedMode === 'system' ? 'light' : resolvedMode
-  return THEMES[themeKey][mode as 'light' | 'dark']
+  return THEMES[themeKey][resolvedMode]
 }
