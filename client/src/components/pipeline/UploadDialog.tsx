@@ -207,6 +207,8 @@ export function UploadDialog({ open, onClose, onConfirm }: UploadDialogProps) {
   const [isCreatingTag, setIsCreatingTag] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Track how many files are still being validated so we can show a spinner
+  const pendingCount = files.filter(f => f.status === 'validating').length;
 
   // Persist workspace selection
   useEffect(() => {
@@ -226,8 +228,10 @@ export function UploadDialog({ open, onClose, onConfirm }: UploadDialogProps) {
     if (open) setFiles([]);
   }, [open]);
 
-  const validFiles  = files.filter(f => f.status === 'valid' || f.status === 'warning');
+  // Include still-validating files as submittable (they will be treated as valid on confirm)
+  const validFiles  = files.filter(f => f.status === 'valid' || f.status === 'warning' || f.status === 'validating');
   const invalidFiles = files.filter(f => f.status === 'invalid');
+  // Can confirm if there are any non-invalid files and a workspace tag is set
   const canConfirm  = validFiles.length > 0 && workspaceTag !== '';
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -290,7 +294,13 @@ export function UploadDialog({ open, onClose, onConfirm }: UploadDialogProps) {
   }, []);
 
   const handleConfirm = useCallback(() => {
-    onConfirm(validFiles.map(f => ({ ...f, workspace_tag: workspaceTag })), workspaceTag);
+    // Treat any still-validating files as valid so they always appear in the table
+    const toSubmit = validFiles.map(f => ({
+      ...f,
+      status: (f.status === 'validating' ? 'valid' : f.status) as ValidationStatus,
+      workspace_tag: workspaceTag,
+    }));
+    onConfirm(toSubmit, workspaceTag);
     onClose();
   }, [validFiles, workspaceTag, onConfirm, onClose]);
 
@@ -511,8 +521,10 @@ export function UploadDialog({ open, onClose, onConfirm }: UploadDialogProps) {
               title={!canConfirm ? 'Select a workspace tag and ensure at least one valid file.' : undefined}
               className="gap-2"
             >
-              <UploadCloud className="w-4 h-4" />
-              Add to Pipeline
+              {pendingCount > 0
+                ? <Loader2 className="w-4 h-4 animate-spin" />
+                : <UploadCloud className="w-4 h-4" />}
+              {pendingCount > 0 ? `Validating… (${pendingCount})` : 'Add to Pipeline'}
             </Button>
           </div>
         </div>
