@@ -17,7 +17,7 @@
  * Grouping action uses only files currently in the Extraction section.
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import {
   FileText, CheckSquare, Square, ChevronDown, Edit2, Check,
@@ -280,38 +280,89 @@ function SubmissionDetailPanel({
   );
 }
 
+// ─── Session storage key ─────────────────────────────────────────────────────
+
+const SESSION_KEY = 'leasegov_review_grouping_session';
+
+interface ReviewSession {
+  files: ReviewFile[];
+  packageName: string;
+  filterRole: string;
+  activeFileId: string;
+  zoom: number;
+  /** The original filenames used to seed this session (for Back-nav restore) */
+  selectedFileNames: string[];
+}
+
+function loadSession(): ReviewSession | null {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as ReviewSession;
+  } catch {
+    return null;
+  }
+}
+
+function saveSession(session: ReviewSession) {
+  try {
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  } catch { /* quota exceeded — ignore */ }
+}
+
+function clearSession() {
+  try { sessionStorage.removeItem(SESSION_KEY); } catch { /* ignore */ }
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function PipelineReviewGrouping() {
   const _screenKey = SCREEN_KEYS.PIPELINE_REVIEW_GROUPING;
   const [, navigate] = useLocation();
 
-  // Initialise from navigation state (files selected on dashboard), or fall back to mock data
-  const initialFiles = (() => {
+  // ── Initialise state: sessionStorage → history.state → mock data ──────────
+  const [files, setFiles] = useState<ReviewFile[]>(() => {
+    const saved = loadSession();
+    if (saved) return saved.files;
     const state = (window.history.state as { selectedFileNames?: string[] })?.selectedFileNames;
     if (state && state.length > 0) {
       const filtered = MOCK_FILES.filter(f =>
         state.includes(f.original_filename) || state.includes(f.display_name)
       );
       if (filtered.length > 0) {
-        // Ensure invalid files start in No Extraction
         return filtered.map(f => ({ ...f, inExtraction: f.status === 'valid' }));
       }
     }
     return MOCK_FILES;
-  })();
+  });
 
-  const [files, setFiles] = useState<ReviewFile[]>(initialFiles);
+  const [packageName, setPackageName] = useState<string>(() => loadSession()?.packageName ?? 'Contract Package');
+  const [filterRole, setFilterRole] = useState<string>(() => loadSession()?.filterRole ?? 'all');
+  const [activeFileId, setActiveFileId] = useState<string>(() => {
+    const saved = loadSession();
+    return saved?.activeFileId ?? (saved?.files[0]?.id ?? MOCK_FILES[0]?.id ?? '');
+  });
+  const [zoom, setZoom] = useState<number>(() => loadSession()?.zoom ?? 100);
+
   const [lastRename, setLastRename] = useState<{ id: string; prev: string } | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [activeFileId, setActiveFileId] = useState<string>(initialFiles[0]?.id ?? '');
-  const [zoom, setZoom] = useState(100);
-  const [packageName, setPackageName] = useState('Contract Package');
   const [editingPackageName, setEditingPackageName] = useState(false);
   const [packageNameEdit, setPackageNameEdit] = useState(packageName);
   const [showSubmissionPanel, setShowSubmissionPanel] = useState(false);
-  const [filterRole, setFilterRole] = useState<string>('all');
   const [showFilters, setShowFilters] = useState(false);
+
+  // ── Persist state to sessionStorage on every meaningful change ────────────
+  useEffect(() => {
+    const session: ReviewSession = {
+      files,
+      packageName,
+      filterRole,
+      activeFileId,
+      zoom,
+      selectedFileNames: files.map(f => f.display_name),
+    };
+    saveSession(session);
+  }, [files, packageName, filterRole, activeFileId, zoom]);
 
   // Derived sections
   const extractionFiles = files.filter(f => f.inExtraction);
@@ -650,6 +701,8 @@ export default function PipelineReviewGrouping() {
               // Pass back the original selectedFileNames so Back button restores the list
               selectedFileNames: files.map(f => f.display_name),
             };
+            // Clear the review session when the user confirms — they are done with this batch
+            clearSession();
             window.history.pushState(confirmState, '', '/pipeline/confirm');
             navigate('/pipeline/confirm');
           }}
