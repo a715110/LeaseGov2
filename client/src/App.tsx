@@ -23,6 +23,7 @@ import { RoleProvider, useRole } from './contexts/RoleContext'
 import { DemoModeProvider } from './contexts/DemoModeContext'
 import { NotificationProvider } from './contexts/NotificationContext'
 import { ExtractionStoreProvider } from './contexts/ExtractionStoreContext'
+import { PipelineCountsProvider } from './contexts/PipelineCountsContext'
 import { LeaseGovThemeProvider } from './contexts/LeaseGovThemeProvider'
 import { DemoOverlay } from './components/layout/DemoOverlay'
 import { SCREEN_KEYS } from './constants/screenKeys'
@@ -529,6 +530,7 @@ function App() {
               the top level, so this placement is safe. */}
           <DemoModeProviderWithRole>
             <NotificationProvider>
+            <PipelineCountsProvider>
             <ExtractionStoreProvider>
             <TooltipProvider>
               <Toaster />
@@ -540,6 +542,7 @@ function App() {
               <DemoOverlay />
             </TooltipProvider>
             </ExtractionStoreProvider>
+            </PipelineCountsProvider>
             </NotificationProvider>
           </DemoModeProviderWithRole>
         </RegistryProvider>

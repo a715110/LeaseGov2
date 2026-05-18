@@ -41,6 +41,7 @@ import { NAV_GROUPS, ROUTE_PATHS } from '../../constants/navigationConfig'
 import { useRole } from '../../contexts/RoleContext'
 import { useDemoMode } from '../../contexts/DemoModeContext'
 import { useNotifications } from '../../contexts/NotificationContext'
+import { usePipelineCounts } from '../../contexts/PipelineCountsContext'
 import { LeaseGovThemeContext } from '../../contexts/LeaseGovThemeContext'
 import type { UserRole } from '../../lib/types'
 import { ROLE_LABELS } from '../../lib/types'
@@ -124,11 +125,7 @@ const STATIC_NAV: StaticNavEntry[] = [
 
 // ─── Demo badge counts per nav group (static for demo purposes) ───────────────
 // In production these would come from API responses / context.
-const GROUP_BADGE_COUNTS: Record<string, number> = {
-  'approvals':        3,   // pending approvals
-  'document-pipeline': 2,  // ready-to-submit docs
-  'extraction':       5,   // items in extraction queue
-}
+// GROUP_BADGE_COUNTS is now derived from PipelineCountsContext at runtime (see AppShell body)
 
 interface AppShellProps {
   children: React.ReactNode
@@ -336,7 +333,8 @@ export default function AppShell({
 }: AppShellProps) {
   const [location] = useLocation()
   const { activeRole } = useRole()
-  const { addNotification } = useNotifications()
+  const { addNotification, unreadCount } = useNotifications()
+  const { pipelineReadyCount, approvalsCount, extractionQueueCount } = usePipelineCounts()
 
   // ── Seed demo notifications once on mount ──
   const seededRef = useRef(false)
@@ -462,7 +460,12 @@ export default function AppShell({
             const items = grouped[group.key] ?? []
             const isExpanded = expandedGroups.has(group.key)
             const hasActiveChild = items.some(item => isNavItemActive(location, item.path))
-            const badgeCount = GROUP_BADGE_COUNTS[group.key] ?? 0
+            const badgeCount = (
+              group.key === 'approvals' ? approvalsCount
+              : group.key === 'document-pipeline' ? pipelineReadyCount
+              : group.key === 'extraction' ? extractionQueueCount
+              : 0
+            )
 
             return (
               <div key={group.key} className="mb-1">

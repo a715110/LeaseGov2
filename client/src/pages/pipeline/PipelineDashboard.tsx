@@ -17,7 +17,7 @@
  *         Read-only mode for Auditor role
  */
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import {
   UploadCloud, FileText, AlertTriangle, CheckCircle2, XCircle,
@@ -40,6 +40,7 @@ import { toast } from 'sonner';
 import { SCREEN_KEYS } from '@/constants/screenKeys';
 import { publishEvent } from '@/lib/eventBus';
 import { useRole } from '@/contexts/RoleContext';
+import { usePipelineCounts } from '@/contexts/PipelineCountsContext';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1115,6 +1116,7 @@ export default function PipelineDashboard() {
   const [, navigate] = useLocation();
   const { activeRole } = useRole();
   const isReadOnly = activeRole === 'auditor';
+  const { setPipelineReadyCount, setApprovalsCount } = usePipelineCounts();
 
   // ── Upload dialog state ──
   const [showUpload, setShowUpload] = useState(false);
@@ -1164,6 +1166,18 @@ export default function PipelineDashboard() {
     } catch { return null; }
   });
   const [detailSub, setDetailSub] = useState<Submission | null>(null);
+
+  // ── Sync live badge counts to sidebar nav context ──
+  useEffect(() => {
+    const readyCount = stagedDocs.filter(d => d.status === 'ready').length;
+    setPipelineReadyCount(readyCount);
+  }, [stagedDocs, setPipelineReadyCount]);
+
+  useEffect(() => {
+    // Approvals badge = packages that are Ready (awaiting submission/approval)
+    const readyPkgs = contractPackages.filter(p => p.status === 'Ready').length;
+    setApprovalsCount(readyPkgs);
+  }, [contractPackages, setApprovalsCount]);
 
   // ── Derived counts ──
   const counts = {
@@ -1739,7 +1753,7 @@ export default function PipelineDashboard() {
               className="gap-1.5 text-[13px]"
               title={selectedIds.size === 0 ? 'Select files first to review & group' : undefined}
             >
-              Review &amp; Group <ArrowRight className="w-3.5 h-3.5" />
+              Review &amp; Group{selectedIds.size > 0 ? ` (${selectedIds.size})` : ''} <ArrowRight className="w-3.5 h-3.5" />
             </Button>
           </div>
         )}
