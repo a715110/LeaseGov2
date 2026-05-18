@@ -17,6 +17,14 @@
  * - Collapsible groups: expandedGroups state with auto-expand on route change
  * - Scroll active item into view on route change
  * - Tooltips on group icons when collapsed
+ * - Badge counts on group headers (approvals unread, pipeline ready)
+ *
+ * Header features:
+ * - Sidebar collapse toggle (Menu/X)
+ * - Breadcrumb
+ * - Global search placeholder
+ * - Role switcher, theme/mode picker
+ * - Notification bell → NotificationDrawer slide-in panel
  */
 import React, { useContext, useEffect, useRef, useState, useCallback } from 'react'
 import { Link, useLocation } from 'wouter'
@@ -27,6 +35,7 @@ import {
   Sun, Moon, Menu, X, Search,
 } from 'lucide-react'
 import { Breadcrumb } from '../shared/Breadcrumb'
+import { NotificationDrawer } from './NotificationDrawer'
 import { cn } from '../../lib/utils'
 import { NAV_GROUPS, ROUTE_PATHS } from '../../constants/navigationConfig'
 import { useRole } from '../../contexts/RoleContext'
@@ -112,6 +121,14 @@ const STATIC_NAV: StaticNavEntry[] = [
   { label: 'Checkpoint Queue',    path: ROUTE_PATHS.agentCheckpoints,       navGroup: 'agents',       phase: 'mvp' },
   { label: 'Activity Monitor',    path: ROUTE_PATHS.agentMonitor,           navGroup: 'agents',       phase: 'mvp' },
 ]
+
+// ─── Demo badge counts per nav group (static for demo purposes) ───────────────
+// In production these would come from API responses / context.
+const GROUP_BADGE_COUNTS: Record<string, number> = {
+  'approvals':        3,   // pending approvals
+  'document-pipeline': 2,  // ready-to-submit docs
+  'extraction':       5,   // items in extraction queue
+}
 
 interface AppShellProps {
   children: React.ReactNode
@@ -252,13 +269,16 @@ function ThemePicker() {
   )
 }
 
-// ─── Notification Bell ────────────────────────────────────────────────────────
-function NotificationBell() {
+// ─── Notification Bell button ─────────────────────────────────────────────────
+interface NotificationBellProps {
+  onClick: () => void
+}
+function NotificationBell({ onClick }: NotificationBellProps) {
   const { unreadCount } = useNotifications()
   return (
-    <Link
-      href="/notifications"
-      className="relative flex h-8 w-8 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+    <button
+      onClick={onClick}
+      className="relative flex h-8 w-8 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       aria-label={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications'}
     >
       <Bell className="h-4 w-4" />
@@ -270,7 +290,7 @@ function NotificationBell() {
           {unreadCount > 9 ? '9+' : unreadCount}
         </span>
       )}
-    </Link>
+    </button>
   )
 }
 
@@ -295,6 +315,19 @@ function StartDemoButton() {
   )
 }
 
+// ─── Group badge pill ─────────────────────────────────────────────────────────
+function GroupBadge({ count }: { count: number }) {
+  if (count <= 0) return null
+  return (
+    <span
+      className="ml-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-white/20 px-1 text-[9px] font-bold text-white"
+      aria-label={`${count} items`}
+    >
+      {count > 99 ? '99+' : count}
+    </span>
+  )
+}
+
 // ─── Main AppShell ────────────────────────────────────────────────────────────
 export default function AppShell({
   children,
@@ -303,6 +336,22 @@ export default function AppShell({
 }: AppShellProps) {
   const [location] = useLocation()
   const { activeRole } = useRole()
+  const { addNotification } = useNotifications()
+
+  // ── Seed demo notifications once on mount ──
+  const seededRef = useRef(false)
+  useEffect(() => {
+    if (seededRef.current) return
+    seededRef.current = true
+    addNotification({ title: 'PKG-003 is ready for approval', severity: 'success', href: ROUTE_PATHS.approvalsQueue })
+    addNotification({ title: 'Validation warning on Office-Tower-Amendment.pdf', body: 'Page 7 has a low-confidence extraction score. Manual review recommended.', severity: 'warning', href: ROUTE_PATHS.pipelineDashboard })
+    addNotification({ title: '2 documents failed ingestion', body: 'Corrupted-Scan-Draft.pdf and one other file could not be processed.', severity: 'error', href: ROUTE_PATHS.pipelineDashboard })
+    addNotification({ title: 'Scheduled export completed', body: 'Q1-2026 Retail export task finished successfully.', severity: 'info' })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // ── Notification drawer state ──
+  const [notifOpen, setNotifOpen] = useState(false)
 
   // ── Sidebar collapse state (persisted) ──
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(
@@ -413,6 +462,7 @@ export default function AppShell({
             const items = grouped[group.key] ?? []
             const isExpanded = expandedGroups.has(group.key)
             const hasActiveChild = items.some(item => isNavItemActive(location, item.path))
+            const badgeCount = GROUP_BADGE_COUNTS[group.key] ?? 0
 
             return (
               <div key={group.key} className="mb-1">
@@ -430,14 +480,24 @@ export default function AppShell({
                       )}
                       aria-expanded={!sidebarCollapsed ? isExpanded : undefined}
                     >
-                      <span className="flex-shrink-0">
+                      {/* Icon — with badge dot when collapsed */}
+                      <span className="relative flex-shrink-0">
                         <Icon className="h-4 w-4" aria-hidden="true" />
+                        {sidebarCollapsed && badgeCount > 0 && (
+                          <span
+                            className="absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-destructive text-[8px] font-bold text-white"
+                            aria-hidden="true"
+                          >
+                            {badgeCount > 9 ? '9+' : badgeCount}
+                          </span>
+                        )}
                       </span>
                       {!sidebarCollapsed && (
                         <>
                           <span className="flex-1 text-left font-semibold text-[10px] uppercase tracking-widest truncate">
                             {group.label}
                           </span>
+                          <GroupBadge count={badgeCount} />
                           {isExpanded
                             ? <ChevronDown className="h-3 w-3 shrink-0 opacity-60" />
                             : <ChevronRight className="h-3 w-3 shrink-0 opacity-60" />
@@ -449,6 +509,7 @@ export default function AppShell({
                   {sidebarCollapsed && (
                     <TooltipContent side="right" className="text-xs">
                       {group.label}
+                      {badgeCount > 0 && ` (${badgeCount})`}
                     </TooltipContent>
                   )}
                 </Tooltip>
@@ -540,7 +601,7 @@ export default function AppShell({
           <div className="flex items-center gap-2 shrink-0">
             <RoleSwitcher />
             <ThemePicker />
-            <NotificationBell />
+            <NotificationBell onClick={() => setNotifOpen(true)} />
           </div>
         </header>
 
@@ -549,6 +610,9 @@ export default function AppShell({
           {children}
         </main>
       </div>
+
+      {/* ── Notification drawer (portal-style, outside main scroll) ── */}
+      <NotificationDrawer open={notifOpen} onClose={() => setNotifOpen(false)} />
     </div>
   )
 }
