@@ -21,9 +21,9 @@ import { useState, useRef } from 'react';
 import { useLocation } from 'wouter';
 import {
   UploadCloud, FileText, AlertTriangle, CheckCircle2, XCircle,
-  Clock, Send, RefreshCw, Search, MoreHorizontal,
-  Eye, Trash2, ArrowRight, FileUp, CheckSquare, Square, Layers,
-  Package, X, ChevronDown, Edit2, Unlink
+  Clock, Send, RefreshCw, Search, MoreHorizontal, Edit2, Layers,
+  Eye, Trash2, ArrowRight, FileUp, CheckSquare, Square,
+  Package, X, ChevronDown, Unlink
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -628,6 +628,49 @@ function UngroupUndoToast({
   );
 }
 
+// Remove-file undo toast
+function RemoveFileUndoToast({
+  fileName,
+  packageNum,
+  remaining,
+  onUndo,
+  onDismiss,
+}: {
+  fileName: string;
+  packageNum: string;
+  remaining: number;
+  onUndo: () => void;
+  onDismiss: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-3 w-full">
+      <div className="flex-1 min-w-0">
+        <p className="text-[13px] font-semibold text-foreground leading-tight truncate">
+          Removed from {packageNum}
+        </p>
+        <p className="text-[12px] text-muted-foreground truncate" title={fileName}>
+          {fileName}
+        </p>
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        <button
+          onClick={onUndo}
+          className="px-2.5 py-1 rounded text-[12px] font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+        >
+          Undo ({remaining}s)
+        </button>
+        <button
+          onClick={onDismiss}
+          className="p-1 rounded text-muted-foreground hover:text-foreground transition-colors"
+          aria-label="Dismiss"
+        >
+          <X className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // Role badge colour map
 const ROLE_BADGE: Record<DocumentRole, string> = {
   'Base Contract': 'bg-blue-50 text-blue-700 border-blue-200',
@@ -648,14 +691,31 @@ interface PackageDetailPanelProps {
   onSubmit: (pkg: ContractPackage) => void;
   onUngroup: (pkg: ContractPackage) => void;
   onRemoveFile: (pkgId: string, docId: string) => void;
+  onRename: (pkgId: string, newName: string) => void;
 }
 
-function PackageDetailPanel({ pkg, isReadOnly, onClose, onSaveRoles, onSubmit, onUngroup, onRemoveFile }: PackageDetailPanelProps) {
+function PackageDetailPanel({ pkg, isReadOnly, onClose, onSaveRoles, onSubmit, onUngroup, onRemoveFile, onRename }: PackageDetailPanelProps) {
   const [editedRoles, setEditedRoles] = useState<Record<string, DocumentRole>>(
     () => Object.fromEntries(pkg.files.map(f => [f.docId, f.role]))
   );
   const [dirty, setDirty] = useState(false);
   const [confirmingUngroup, setConfirmingUngroup] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [nameValue, setNameValue] = useState(pkg.packageName ?? '');
+  const nameInputRef = useRef<HTMLInputElement>(null);
+
+  const startNameEdit = () => {
+    setNameValue(pkg.packageName ?? '');
+    setEditingName(true);
+    setTimeout(() => nameInputRef.current?.focus(), 20);
+  };
+  const commitNameEdit = () => {
+    setEditingName(false);
+    const trimmed = nameValue.trim();
+    if (trimmed !== (pkg.packageName ?? '')) {
+      onRename(pkg.id, trimmed);
+    }
+  };
 
   const handleRoleChange = (docId: string, role: DocumentRole) => {
     setEditedRoles(prev => ({ ...prev, [docId]: role }));
@@ -680,18 +740,61 @@ function PackageDetailPanel({ pkg, isReadOnly, onClose, onSaveRoles, onSubmit, o
           <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Package Information</p>
           <dl className="space-y-2">
             {[
-              { label: 'Package #',  value: pkg.packageNum },
-              { label: 'Name',       value: pkg.packageName ?? '—' },
-              { label: 'Mode',       value: pkg.mode },
-              { label: 'Workspace',  value: pkg.workspace },
-              { label: 'Created By', value: pkg.createdBy },
-              { label: 'Created',    value: formatDate(pkg.createdAt) },
+              { label: 'Package #', value: pkg.packageNum },
+              { label: 'Mode',      value: pkg.mode },
+              { label: 'Workspace', value: pkg.workspace },
+              { label: 'Created By',value: pkg.createdBy },
+              { label: 'Created',   value: formatDate(pkg.createdAt) },
             ].map(({ label, value }) => (
               <div key={label} className="flex items-start justify-between gap-4">
                 <dt className="text-[12px] text-muted-foreground shrink-0">{label}</dt>
                 <dd className="text-[12px] font-medium text-foreground text-right">{value}</dd>
               </div>
             ))}
+            {/* Editable Name row */}
+            <div className="flex items-center justify-between gap-4">
+              <dt className="text-[12px] text-muted-foreground shrink-0">Name</dt>
+              <dd className="flex items-center gap-1.5 min-w-0">
+                {editingName ? (
+                  <div className="flex items-center gap-1">
+                    <input
+                      ref={nameInputRef}
+                      value={nameValue}
+                      onChange={e => setNameValue(e.target.value)}
+                      onBlur={commitNameEdit}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') commitNameEdit();
+                        if (e.key === 'Escape') { setEditingName(false); }
+                      }}
+                      placeholder="Enter package name…"
+                      className="text-[12px] font-medium border border-primary rounded px-2 py-0.5 bg-background text-foreground w-40 focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                    <button
+                      onClick={commitNameEdit}
+                      className="p-0.5 rounded text-primary hover:bg-primary/10 transition-colors"
+                      aria-label="Save name"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[12px] font-medium text-foreground">
+                      {pkg.packageName ?? <span className="italic text-muted-foreground">— click to name</span>}
+                    </span>
+                    {!isReadOnly && (
+                      <button
+                        onClick={startNameEdit}
+                        className="p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                        aria-label="Edit package name"
+                      >
+                        <Edit2 className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                )}
+              </dd>
+            </div>
           </dl>
         </div>
 
@@ -859,16 +962,126 @@ function PackageDetailPanel({ pkg, isReadOnly, onClose, onSaveRoles, onSubmit, o
   );
 }
 
+// ─── S1e: Add-to-Package Dialog ──────────────────────────────────────────────
+
+function AddToPackageDialog({
+  docs,
+  packages,
+  onConfirm,
+  onCancel,
+}: {
+  docs: StagedDocument[];
+  packages: ContractPackage[];
+  onConfirm: (targetPkgId: string) => void;
+  onCancel: () => void;
+}) {
+  const [selectedPkgId, setSelectedPkgId] = useState<string>('');
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/40" onClick={onCancel} />
+      <div className="relative z-10 w-[480px] rounded-xl border border-border bg-background shadow-2xl">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <div>
+            <h2 className="text-[15px] font-semibold text-foreground">Add to Existing Package</h2>
+            <p className="text-[12px] text-muted-foreground mt-0.5">
+              Adding {docs.length} file{docs.length !== 1 ? 's' : ''} to a package
+            </p>
+          </div>
+          <button onClick={onCancel} className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* File preview */}
+        <div className="px-5 py-3 border-b border-border bg-muted/30">
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Files to add</p>
+          <ul className="space-y-1 max-h-28 overflow-y-auto">
+            {docs.map(d => (
+              <li key={d.id} className="flex items-center gap-2 text-[12px] text-foreground">
+                <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                <span className="truncate">{d.display_name}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Package selector */}
+        <div className="px-5 py-4">
+          <label className="text-[12px] font-semibold text-foreground block mb-2">Select target package</label>
+          {packages.length === 0 ? (
+            <p className="text-[13px] text-muted-foreground italic">No packages available. Create a package first using “Group Selected”.</p>
+          ) : (
+            <div className="space-y-2 max-h-52 overflow-y-auto">
+              {packages.map(pkg => (
+                <label
+                  key={pkg.id}
+                  className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 cursor-pointer transition-colors ${
+                    selectedPkgId === pkg.id
+                      ? 'border-primary bg-primary/5'
+                      : 'border-border hover:border-primary/40 hover:bg-muted/40'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="target-pkg"
+                    value={pkg.id}
+                    checked={selectedPkgId === pkg.id}
+                    onChange={() => setSelectedPkgId(pkg.id)}
+                    className="accent-primary"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[13px] font-semibold text-foreground font-mono">{pkg.packageNum}</span>
+                      {pkg.packageName && (
+                        <span className="text-[12px] text-muted-foreground truncate">{pkg.packageName}</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-[11px] text-muted-foreground">{pkg.files.length} file{pkg.files.length !== 1 ? 's' : ''}</span>
+                      <span className="text-[11px] text-muted-foreground">·</span>
+                      <span className="text-[11px] text-muted-foreground">{pkg.workspace}</span>
+                      <span className={`ml-auto text-[11px] font-semibold px-1.5 py-0.5 rounded ${
+                        pkg.status === 'Ready' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
+                      }`}>{pkg.status}</span>
+                    </div>
+                  </div>
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-border">
+          <Button size="sm" variant="outline" onClick={onCancel} className="text-[13px]">Cancel</Button>
+          <Button
+            size="sm"
+            onClick={() => selectedPkgId && onConfirm(selectedPkgId)}
+            disabled={!selectedPkgId || packages.length === 0}
+            className="text-[13px] gap-1.5"
+          >
+            <Package className="w-3.5 h-3.5" /> Add to Package
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── S1c: Bulk Action Bar ─────────────────────────────────────────────────────
 
 function BulkActionBar({
   selectedCount,
   onGroup,
+  onAddToPackage,
   onRemove,
   onClear,
 }: {
   selectedCount: number;
   onGroup: () => void;
+  onAddToPackage: () => void;
   onRemove: () => void;
   onClear: () => void;
 }) {
@@ -878,7 +1091,10 @@ function BulkActionBar({
       <span className="text-[13px] font-semibold text-foreground">{selectedCount} selected</span>
       <div className="h-4 w-px bg-border" />
       <Button size="sm" onClick={onGroup} className="gap-1.5 text-[13px]">
-        <Package className="w-3.5 h-3.5" /> Group Selected
+        <Package className="w-3.5 h-3.5" /> New Package
+      </Button>
+      <Button size="sm" variant="outline" onClick={onAddToPackage} className="gap-1.5 text-[13px]">
+        <Layers className="w-3.5 h-3.5" /> Add to Package
       </Button>
       <Button size="sm" variant="outline" onClick={onRemove} className="gap-1.5 text-[13px] text-destructive hover:text-destructive">
         <Trash2 className="w-3.5 h-3.5" /> Remove
@@ -912,6 +1128,8 @@ export default function PipelineDashboard() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   // Grouping dialog
   const [groupingDocs, setGroupingDocs] = useState<StagedDocument[] | null>(null);
+  // Add-to-package dialog
+  const [addToPackageDocs, setAddToPackageDocs] = useState<StagedDocument[] | null>(null);
 
   // ── Contract Packages state ──
   const [contractPackages, setContractPackages] = useState<ContractPackage[]>(INITIAL_PACKAGES);
@@ -1105,7 +1323,9 @@ export default function PipelineDashboard() {
     }, 1000);
   }
 
-  // ── Remove single file from package ──
+  // ── Remove single file from package (with 15s undo countdown) ──
+  const removeFileTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   function removeFileFromPackage(pkgId: string, docId: string) {
     const pkg = contractPackages.find(p => p.id === pkgId);
     if (!pkg || pkg.files.length <= 1) return;
@@ -1118,7 +1338,6 @@ export default function PipelineDashboard() {
       mode: updatedFiles.length >= 2 ? 'Package' : 'Single',
       status: updatedFiles.every(f => f.role !== 'Undefined') ? 'Ready' : 'Pending',
     };
-    // Restore the removed file to Stage Documents
     const restoredDoc: StagedDocument = {
       id: `restored-${docId}-${Date.now()}`,
       display_name: removedFile.name,
@@ -1132,9 +1351,60 @@ export default function PipelineDashboard() {
     };
     setContractPackages(prev => prev.map(p => p.id === pkgId ? updatedPkg : p));
     setStagedDocs(prev => [restoredDoc, ...prev]);
-    // Keep panel in sync
     setDetailPkg(prev => prev?.id === pkgId ? updatedPkg : prev);
-    toast.success(`"${removedFile.name}" removed from ${pkg.packageNum}`);
+
+    // Undo toast with 15-second countdown
+    let remaining = 15;
+    const toastId = toast(
+      <RemoveFileUndoToast
+        fileName={removedFile.name}
+        packageNum={pkg.packageNum}
+        remaining={remaining}
+        onUndo={() => {
+          if (removeFileTimerRef.current) clearInterval(removeFileTimerRef.current);
+          toast.dismiss(toastId);
+          // Reverse: remove restored doc, restore original package
+          setStagedDocs(prev => prev.filter(d => d.id !== restoredDoc.id));
+          setContractPackages(prev => prev.map(p => p.id === pkgId ? pkg : p));
+          setDetailPkg(prev => prev?.id === pkgId ? pkg : prev);
+          toast.success(`Undo successful — "${removedFile.name}" restored to ${pkg.packageNum}`);
+        }}
+        onDismiss={() => {
+          if (removeFileTimerRef.current) clearInterval(removeFileTimerRef.current);
+          toast.dismiss(toastId);
+        }}
+      />,
+      { duration: Infinity, id: `remove-file-${Date.now()}` }
+    );
+
+    removeFileTimerRef.current = setInterval(() => {
+      remaining -= 1;
+      if (remaining <= 0) {
+        if (removeFileTimerRef.current) clearInterval(removeFileTimerRef.current);
+        toast.dismiss(toastId);
+        return;
+      }
+      toast(
+        <RemoveFileUndoToast
+          fileName={removedFile.name}
+          packageNum={pkg.packageNum}
+          remaining={remaining}
+          onUndo={() => {
+            if (removeFileTimerRef.current) clearInterval(removeFileTimerRef.current);
+            toast.dismiss(toastId);
+            setStagedDocs(prev => prev.filter(d => d.id !== restoredDoc.id));
+            setContractPackages(prev => prev.map(p => p.id === pkgId ? pkg : p));
+            setDetailPkg(prev => prev?.id === pkgId ? pkg : prev);
+            toast.success(`Undo successful — "${removedFile.name}" restored to ${pkg.packageNum}`);
+          }}
+          onDismiss={() => {
+            if (removeFileTimerRef.current) clearInterval(removeFileTimerRef.current);
+            toast.dismiss(toastId);
+          }}
+        />,
+        { duration: Infinity, id: toastId as string }
+      );
+    }, 1000);
   }
 
   // ── Unsubmit workflow ──
@@ -1610,6 +1880,11 @@ export default function PipelineDashboard() {
           onSubmit={(pkg) => submitPackage(pkg)}
           onUngroup={(pkg) => ungroupPackage(pkg)}
           onRemoveFile={(pkgId, docId) => removeFileFromPackage(pkgId, docId)}
+          onRename={(pkgId, newName) => {
+            setContractPackages(prev => prev.map(p => p.id === pkgId ? { ...p, packageName: newName || undefined } : p));
+            setDetailPkg(prev => prev ? { ...prev, packageName: newName || undefined } : null);
+            toast.success('Package name updated');
+          }}
         />
       )}
       {detailSub && (
@@ -1627,11 +1902,43 @@ export default function PipelineDashboard() {
           onCancel={() => setGroupingDocs(null)}
         />
       )}
+      {addToPackageDocs && (
+        <AddToPackageDialog
+          docs={addToPackageDocs}
+          packages={contractPackages}
+          onConfirm={(targetPkgId) => {
+            const targetPkg = contractPackages.find(p => p.id === targetPkgId);
+            if (!targetPkg || !addToPackageDocs) return;
+            const newFiles: PackageFile[] = addToPackageDocs.map(d => ({
+              docId: d.id,
+              name: d.display_name,
+              role: 'Undefined' as DocumentRole,
+            }));
+            const updatedFiles = [...targetPkg.files, ...newFiles];
+            const updatedPkg: ContractPackage = {
+              ...targetPkg,
+              files: updatedFiles,
+              mode: updatedFiles.length >= 2 ? 'Package' : 'Single',
+              status: updatedFiles.every(f => f.role !== 'Undefined') ? 'Ready' : 'Pending',
+            };
+            setContractPackages(prev => prev.map(p => p.id === targetPkgId ? updatedPkg : p));
+            setStagedDocs(prev => prev.filter(d => !addToPackageDocs.some(ad => ad.id === d.id)));
+            setSelectedIds(new Set());
+            setAddToPackageDocs(null);
+            toast.success(`${addToPackageDocs.length} file${addToPackageDocs.length !== 1 ? 's' : ''} added to ${targetPkg.packageNum}`);
+          }}
+          onCancel={() => setAddToPackageDocs(null)}
+        />
+      )}
 
       {/* S1c: Bulk Action Bar */}
       <BulkActionBar
         selectedCount={selectedIds.size}
         onGroup={openGroupingDialog}
+        onAddToPackage={() => {
+          const docs = stagedDocs.filter(d => selectedIds.has(d.id));
+          if (docs.length > 0) setAddToPackageDocs(docs);
+        }}
         onRemove={() => {
           setStagedDocs(prev => prev.filter(d => !selectedIds.has(d.id)));
           setSelectedIds(new Set());
