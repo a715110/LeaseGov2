@@ -1135,7 +1135,13 @@ export default function PipelineDashboard() {
   const [contractPackages, setContractPackages] = useState<ContractPackage[]>(INITIAL_PACKAGES);
   const [pkgColFilters, setPkgColFilters] = useState({ packageNum: '', name: '', workspace: '', createdBy: '' });
   const [pkgStatusFilter, setPkgStatusFilter] = useState<'all' | 'Ready' | 'Incomplete'>('all');
-  const [pkgSort, setPkgSort] = useState<{ col: string; dir: 'asc' | 'desc' } | null>(null);
+  const [pkgSort, setPkgSort] = useState<{ col: string; dir: 'asc' | 'desc' } | null>(() => {
+    try {
+      const raw = sessionStorage.getItem('leasegov_pkg_sort');
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  });
+  const [confirmSubmitAll, setConfirmSubmitAll] = useState(false);
   const [detailPkg, setDetailPkg] = useState<ContractPackage | null>(null);
   // Inline rename
   const [renamingPkgId, setRenamingPkgId] = useState<string | null>(null);
@@ -1146,6 +1152,12 @@ export default function PipelineDashboard() {
   const [submissions, setSubmissions] = useState<Submission[]>(INITIAL_SUBMISSIONS);
   const [subColFilters, setSubColFilters] = useState({ packageNum: '', name: '', workspace: '', submittedBy: '' });
   const [subStatusFilter, setSubStatusFilter] = useState<'all' | 'Pending' | 'In Progress' | 'Completed' | 'Failed'>('all');
+  const [subSort, setSubSort] = useState<{ col: string; dir: 'asc' | 'desc' } | null>(() => {
+    try {
+      const raw = sessionStorage.getItem('leasegov_sub_sort');
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  });
   const [detailSub, setDetailSub] = useState<Submission | null>(null);
 
   // ── Derived counts ──
@@ -1203,13 +1215,32 @@ export default function PipelineDashboard() {
     });
   })();
 
-  const filteredSubs = submissions.filter(sub =>
-    (subStatusFilter === 'all' || sub.status === subStatusFilter) &&
-    sub.packageNum.toLowerCase().includes(subColFilters.packageNum.toLowerCase()) &&
-    (sub.packageName ?? '').toLowerCase().includes(subColFilters.name.toLowerCase()) &&
-    sub.workspace.toLowerCase().includes(subColFilters.workspace.toLowerCase()) &&
-    sub.submittedBy.toLowerCase().includes(subColFilters.submittedBy.toLowerCase())
-  );
+  const filteredSubs = (() => {
+    const filtered = submissions.filter(sub =>
+      (subStatusFilter === 'all' || sub.status === subStatusFilter) &&
+      sub.packageNum.toLowerCase().includes(subColFilters.packageNum.toLowerCase()) &&
+      (sub.packageName ?? '').toLowerCase().includes(subColFilters.name.toLowerCase()) &&
+      sub.workspace.toLowerCase().includes(subColFilters.workspace.toLowerCase()) &&
+      sub.submittedBy.toLowerCase().includes(subColFilters.submittedBy.toLowerCase())
+    );
+    if (!subSort) return filtered;
+    return [...filtered].sort((a, b) => {
+      let av: string | number = '';
+      let bv: string | number = '';
+      if (subSort.col === 'packageNum')   { av = a.packageNum; bv = b.packageNum; }
+      else if (subSort.col === 'name')    { av = a.packageName ?? ''; bv = b.packageName ?? ''; }
+      else if (subSort.col === 'mode')    { av = a.mode; bv = b.mode; }
+      else if (subSort.col === 'files')   { av = a.fileCount; bv = b.fileCount; }
+      else if (subSort.col === 'workspace')   { av = a.workspace; bv = b.workspace; }
+      else if (subSort.col === 'submittedBy') { av = a.submittedBy; bv = b.submittedBy; }
+      else if (subSort.col === 'submitDate')  { av = a.submitDate; bv = b.submitDate; }
+      else if (subSort.col === 'status')  { av = a.status; bv = b.status; }
+      const cmp = typeof av === 'number' && typeof bv === 'number'
+        ? av - bv
+        : String(av).localeCompare(String(bv));
+      return subSort.dir === 'asc' ? cmp : -cmp;
+    });
+  })();
 
   // ── S1c helpers ──
   const allFilteredSelected = filteredDocs.length > 0 && filteredDocs.every(d => selectedIds.has(d.id));
@@ -1224,13 +1255,24 @@ export default function PipelineDashboard() {
     setSelectedIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   };
 
-  // ── Sort helper ──
+  // ── Sort helpers ──
   function togglePkgSort(col: string) {
-    setPkgSort(prev =>
-      prev?.col === col
-        ? prev.dir === 'asc' ? { col, dir: 'desc' } : null
-        : { col, dir: 'asc' }
-    );
+    setPkgSort(prev => {
+      const next = prev?.col === col
+        ? prev.dir === 'asc' ? { col, dir: 'desc' as const } : null
+        : { col, dir: 'asc' as const };
+      try { next ? sessionStorage.setItem('leasegov_pkg_sort', JSON.stringify(next)) : sessionStorage.removeItem('leasegov_pkg_sort'); } catch {}
+      return next;
+    });
+  }
+  function toggleSubSort(col: string) {
+    setSubSort(prev => {
+      const next = prev?.col === col
+        ? prev.dir === 'asc' ? { col, dir: 'desc' as const } : null
+        : { col, dir: 'asc' as const };
+      try { next ? sessionStorage.setItem('leasegov_sub_sort', JSON.stringify(next)) : sessionStorage.removeItem('leasegov_sub_sort'); } catch {}
+      return next;
+    });
   }
 
   // ── Grouping workflow ──
@@ -1700,10 +1742,7 @@ export default function PipelineDashboard() {
             {/* Submit All Ready */}
             {!isReadOnly && contractPackages.some(p => isPackageReady(p)) && (
               <button
-                onClick={() => {
-                  const readyPkgs = contractPackages.filter(p => isPackageReady(p));
-                  readyPkgs.forEach(p => submitPackage(p));
-                }}
+                onClick={() => setConfirmSubmitAll(true)}
                 className="flex items-center gap-1.5 px-3 py-1 rounded text-[12px] font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
               >
                 <Send className="w-3 h-3" />
@@ -1919,15 +1958,35 @@ export default function PipelineDashboard() {
             <table className="data-table w-full text-[13px]">
               <thead>
                 <tr>
-                  <th className="text-left">Package #</th>
-                  <th className="text-left">Name</th>
-                  <th className="text-left">Mode</th>
-                  <th className="text-left">Files</th>
-                  <th className="text-left">Workspace</th>
-                  <th className="text-left">Submitted By</th>
-                  <th className="text-left">Submit Date</th>
-                  <th className="text-left">Status</th>
-                  <th className="text-left">Actions</th>
+                  {([
+                    { col: 'packageNum',  label: 'Package #' },
+                    { col: 'name',        label: 'Name' },
+                    { col: 'mode',        label: 'Mode' },
+                    { col: 'files',       label: 'Files' },
+                    { col: 'workspace',   label: 'Workspace' },
+                    { col: 'submittedBy', label: 'Submitted By' },
+                    { col: 'submitDate',  label: 'Submit Date' },
+                    { col: 'status',      label: 'Status' },
+                    { col: null,          label: 'Actions' },
+                  ] as { col: string | null; label: string }[]).map(({ col, label }) => (
+                    <th key={label} className="text-left">
+                      {col ? (
+                        <button
+                          onClick={() => toggleSubSort(col)}
+                          className="flex items-center gap-1 group hover:text-foreground transition-colors"
+                        >
+                          {label}
+                          <span className="text-muted-foreground/60 group-hover:text-muted-foreground transition-colors">
+                            {subSort?.col === col
+                              ? subSort.dir === 'asc'
+                                ? <ChevronUp className="w-3 h-3" />
+                                : <ChevronDown className="w-3 h-3" />
+                              : <ChevronsUpDown className="w-3 h-3 opacity-0 group-hover:opacity-100" />}
+                          </span>
+                        </button>
+                      ) : label}
+                    </th>
+                  ))}
                 </tr>
                 <tr className="bg-muted/20">
                   <th className="px-3 py-1"><ColFilter value={subColFilters.packageNum} onChange={v => setSubColFilters(f => ({ ...f, packageNum: v }))} placeholder="Filter #…" /></th>
@@ -2021,6 +2080,53 @@ export default function PipelineDashboard() {
           onUnsubmit={unsubmitPackage}
         />
       )}
+      {/* Confirm Submit All Ready dialog */}
+      {confirmSubmitAll && (() => {
+        const readyPkgs = contractPackages.filter(p => isPackageReady(p));
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/40" onClick={() => setConfirmSubmitAll(false)} />
+            <div className="relative z-10 bg-card border border-border rounded-xl shadow-2xl w-full max-w-md p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                  <Send className="w-4 h-4 text-emerald-700" />
+                </div>
+                <div>
+                  <h3 className="text-[15px] font-semibold text-foreground">Submit {readyPkgs.length} Ready Package{readyPkgs.length !== 1 ? 's' : ''}?</h3>
+                  <p className="text-[12px] text-muted-foreground mt-0.5">This action cannot be undone without unsubmitting each package individually.</p>
+                </div>
+              </div>
+              <div className="rounded-lg border border-border bg-muted/30 divide-y divide-border mb-5 max-h-48 overflow-y-auto">
+                {readyPkgs.map(p => (
+                  <div key={p.id} className="flex items-center justify-between px-3 py-2">
+                    <span className="font-mono text-[12px] text-primary">{p.packageNum}</span>
+                    <span className="text-[12px] text-muted-foreground truncate max-w-[180px]">{p.packageName ?? '—'}</span>
+                    <span className="text-[11px] text-muted-foreground">{p.files.length} file{p.files.length !== 1 ? 's' : ''}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-2 justify-end">
+                <button
+                  onClick={() => setConfirmSubmitAll(false)}
+                  className="px-4 py-1.5 rounded text-[13px] font-medium border border-border bg-background text-foreground hover:bg-muted transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    readyPkgs.forEach(p => submitPackage(p));
+                    setConfirmSubmitAll(false);
+                  }}
+                  className="px-4 py-1.5 rounded text-[13px] font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
+                >
+                  Submit All
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {groupingDocs && (
         <GroupingDialog
           docs={groupingDocs}
