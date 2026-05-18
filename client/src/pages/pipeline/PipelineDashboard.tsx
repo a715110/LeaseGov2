@@ -45,18 +45,20 @@ import { usePipelineCounts } from '@/contexts/PipelineCountsContext';
 import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type StagedStatus = 'uploaded' | 'validating' | 'valid' | 'warning' | 'invalid' | 'ready' | 'submitted';
+type StagedStatus = 'uploaded' | 'uploading' | 'validating' | 'valid' | 'invalid';
 
 interface StagedDocument {
   id: string;
   display_name: string;
   status: StagedStatus;
+  originalStatus: 'valid' | 'invalid';  // restored when returned from a package
   upload_date: string;
   uploader: string;
   mime_type: string;
   file_size_bytes: number;
   page_count: number | null;
   workspace_tag: string;
+  validation_errors?: string[];
 }
 
 interface IntakeBatch {
@@ -107,14 +109,14 @@ interface Submission {
 // ─── Mock data — TODO: Backend integration required ──────────────────────────
 
 const MOCK_DOCUMENTS: StagedDocument[] = [
-  { id: '1', display_name: 'Retail-HQ-Lease-2026.pdf',      status: 'valid',      upload_date: '2026-05-16 09:14', uploader: 'J. Martinez', mime_type: 'application/pdf', file_size_bytes: 4_200_000, page_count: 24, workspace_tag: 'Q1-2026-Retail' },
-  { id: '2', display_name: 'Office-Tower-Amendment-3.pdf',   status: 'warning',    upload_date: '2026-05-16 09:10', uploader: 'J. Martinez', mime_type: 'application/pdf', file_size_bytes: 1_800_000, page_count: 8,  workspace_tag: 'Q1-2026-Office' },
-  { id: '3', display_name: 'Warehouse-Lease-Exhibit-A.tiff', status: 'valid',      upload_date: '2026-05-16 08:55', uploader: 'A. Chen',     mime_type: 'image/tiff',       file_size_bytes: 6_100_000, page_count: 12, workspace_tag: 'Q1-2026-Industrial' },
-  { id: '4', display_name: 'Corrupted-Scan-Draft.pdf',       status: 'invalid',    upload_date: '2026-05-16 08:42', uploader: 'A. Chen',     mime_type: 'application/pdf', file_size_bytes: 320_000,   page_count: null, workspace_tag: 'Q1-2026-Retail' },
-  { id: '5', display_name: 'Ground-Lease-Base-Contract.pdf', status: 'ready',      upload_date: '2026-05-16 08:30', uploader: 'S. Patel',    mime_type: 'application/pdf', file_size_bytes: 9_400_000, page_count: 41, workspace_tag: 'Q2-2026-Land' },
-  { id: '6', display_name: 'Industrial-Park-Schedule.pdf',   status: 'ready',      upload_date: '2026-05-16 08:28', uploader: 'S. Patel',    mime_type: 'application/pdf', file_size_bytes: 2_200_000, page_count: 6,  workspace_tag: 'Q2-2026-Land' },
-  { id: '7', display_name: 'Retail-Sublease-Notice.pdf',     status: 'validating', upload_date: '2026-05-16 09:18', uploader: 'J. Martinez', mime_type: 'application/pdf', file_size_bytes: 890_000,   page_count: null, workspace_tag: 'Q1-2026-Retail' },
-  { id: '8', display_name: 'Corporate-HQ-Renewal-2026.pdf',  status: 'submitted',  upload_date: '2026-05-15 16:44', uploader: 'D. Kim',      mime_type: 'application/pdf', file_size_bytes: 5_700_000, page_count: 28, workspace_tag: 'Q1-2026-Office' },
+  { id: '1', display_name: 'Retail-HQ-Lease-2026.pdf',        status: 'valid',   originalStatus: 'valid',   upload_date: '2026-05-16 09:14', uploader: 'J. Martinez', mime_type: 'application/pdf', file_size_bytes: 4_200_000, page_count: 24,   workspace_tag: 'Q1-2026-Retail' },
+  { id: '2', display_name: 'Office-Tower-Amendment-3.pdf',     status: 'valid',   originalStatus: 'valid',   upload_date: '2026-05-16 09:10', uploader: 'J. Martinez', mime_type: 'application/pdf', file_size_bytes: 1_800_000, page_count: 8,    workspace_tag: 'Q1-2026-Office' },
+  { id: '3', display_name: 'Warehouse-Lease-Exhibit-A.tiff',   status: 'valid',   originalStatus: 'valid',   upload_date: '2026-05-16 08:55', uploader: 'A. Chen',     mime_type: 'image/tiff',       file_size_bytes: 6_100_000, page_count: 12,   workspace_tag: 'Q1-2026-Industrial' },
+  { id: '4', display_name: 'Corrupted-Scan-Draft.pdf',         status: 'invalid', originalStatus: 'invalid', upload_date: '2026-05-16 08:42', uploader: 'A. Chen',     mime_type: 'application/pdf', file_size_bytes: 320_000,   page_count: null, workspace_tag: 'Q1-2026-Retail',     validation_errors: ['OCR confidence below minimum threshold (62%)'] },
+  { id: '5', display_name: 'Ground-Lease-Base-Contract.pdf',   status: 'valid',   originalStatus: 'valid',   upload_date: '2026-05-16 08:30', uploader: 'S. Patel',    mime_type: 'application/pdf', file_size_bytes: 9_400_000, page_count: 41,   workspace_tag: 'Q2-2026-Land' },
+  { id: '6', display_name: 'Industrial-Park-Schedule.pdf',     status: 'valid',   originalStatus: 'valid',   upload_date: '2026-05-16 08:28', uploader: 'S. Patel',    mime_type: 'application/pdf', file_size_bytes: 2_200_000, page_count: 6,    workspace_tag: 'Q2-2026-Land' },
+  { id: '7', display_name: 'Retail-Sublease-Notice.pdf',       status: 'valid',   originalStatus: 'valid',   upload_date: '2026-05-16 09:18', uploader: 'J. Martinez', mime_type: 'application/pdf', file_size_bytes: 890_000,   page_count: null, workspace_tag: 'Q1-2026-Retail' },
+  { id: '8', display_name: 'Document-Does-Not-Resemble-Contract.pdf', status: 'invalid', originalStatus: 'invalid', upload_date: '2026-05-15 16:44', uploader: 'D. Kim', mime_type: 'application/pdf', file_size_bytes: 5_700_000, page_count: 28, workspace_tag: 'Q1-2026-Office', validation_errors: ['Document does not resemble a contract (likeness score: 0.11)'] },
 ];
 
 const MOCK_BATCHES: IntakeBatch[] = [
@@ -242,16 +244,14 @@ function nextPackageNum(): string {
 
 const STATUS_BADGE: Record<StagedStatus, string> = {
   uploaded:   'bg-blue-50 text-blue-700 border border-blue-200',
+  uploading:  'bg-blue-50 text-blue-700 border border-blue-200',
   validating: 'bg-amber-50 text-amber-700 border border-amber-200',
   valid:      'bg-emerald-50 text-emerald-700 border border-emerald-200',
-  warning:    'bg-orange-50 text-orange-700 border border-orange-200',
   invalid:    'bg-red-50 text-red-700 border border-red-200',
-  ready:      'bg-violet-50 text-violet-700 border border-violet-200',
-  submitted:  'bg-slate-100 text-slate-600 border border-slate-200',
 };
 const STATUS_LABEL: Record<StagedStatus, string> = {
-  uploaded: 'Uploaded', validating: 'Validating', valid: 'Valid',
-  warning: 'Warning', invalid: 'Invalid', ready: 'Ready', submitted: 'Submitted',
+  uploaded: 'Uploaded', uploading: 'Uploading', validating: 'Validating',
+  valid: 'Valid', invalid: 'Invalid',
 };
 
 const BATCH_BADGE: Record<IntakeBatch['status'], string> = {
@@ -1173,8 +1173,8 @@ export default function PipelineDashboard() {
 
   // ── Sync live badge counts to sidebar nav context ──
   useEffect(() => {
-    const readyCount = stagedDocs.filter(d => d.status === 'ready').length;
-    setPipelineReadyCount(readyCount);
+    const validCount = stagedDocs.filter(d => d.status === 'valid').length;
+    setPipelineReadyCount(validCount);
   }, [stagedDocs, setPipelineReadyCount]);
 
   useEffect(() => {
@@ -1185,12 +1185,10 @@ export default function PipelineDashboard() {
 
   // ── Derived counts ──
   const counts = {
-    uploaded:   stagedDocs.filter(d => d.status === 'uploaded').length,
+    uploading:  stagedDocs.filter(d => d.status === 'uploading').length,
     validating: stagedDocs.filter(d => d.status === 'validating').length,
     valid:      stagedDocs.filter(d => d.status === 'valid').length,
-    warning:    stagedDocs.filter(d => d.status === 'warning').length,
     invalid:    stagedDocs.filter(d => d.status === 'invalid').length,
-    ready:      stagedDocs.filter(d => d.status === 'ready').length,
     submitted:  submissions.length,
   };
 
@@ -1282,17 +1280,22 @@ export default function PipelineDashboard() {
   function handleUploadConfirm(uploadedFiles: UploadedFile[], workspaceTag: string) {
     const now = new Date();
     const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-    const newDocs: StagedDocument[] = uploadedFiles.map(f => ({
-      id: f.id,
-      display_name: f.name,
-      status: (f.status === 'warning' ? 'warning' : 'valid') as StagedStatus,
-      upload_date: dateStr,
-      uploader: activeRole === 'document_submitter' ? 'You' : 'Current User',
-      mime_type: f.mime_type,
-      file_size_bytes: f.size,
-      page_count: null,
-      workspace_tag: workspaceTag,
-    }));
+    const newDocs: StagedDocument[] = uploadedFiles.map(f => {
+      const resolvedStatus: 'valid' | 'invalid' = f.status === 'invalid' ? 'invalid' : 'valid';
+      return {
+        id: f.id,
+        display_name: f.name,
+        status: resolvedStatus,
+        originalStatus: resolvedStatus,
+        upload_date: dateStr,
+        uploader: activeRole === 'document_submitter' ? 'You' : 'Current User',
+        mime_type: f.mime_type,
+        file_size_bytes: f.size,
+        page_count: null,
+        workspace_tag: workspaceTag,
+        validation_errors: f.status === 'invalid' ? ['File failed security scan'] : undefined,
+      };
+    });
     setStagedDocs(prev => [...newDocs, ...prev]);
     toast.success(`${newDocs.length} file${newDocs.length !== 1 ? 's' : ''} added to the pipeline.`);
   }
@@ -1374,17 +1377,21 @@ export default function PipelineDashboard() {
   const ungroupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function ungroupPackage(pkg: ContractPackage) {
-    const restoredDocs: StagedDocument[] = pkg.files.map(f => ({
-      id: `restored-${f.docId}-${Date.now()}`,
-      display_name: f.name,
-      status: 'valid' as StagedStatus,
-      upload_date: new Date().toLocaleString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', ''),
-      uploader: pkg.createdBy,
-      mime_type: f.name.toLowerCase().endsWith('.tiff') || f.name.toLowerCase().endsWith('.tif') ? 'image/tiff' : 'application/pdf',
-      file_size_bytes: 0,
-      page_count: null,
-      workspace_tag: pkg.workspace,
-    }));
+    const restoredDocs: StagedDocument[] = pkg.files.map(f => {
+      const orig: 'valid' | 'invalid' = (f as { originalStatus?: 'valid' | 'invalid' }).originalStatus ?? 'valid';
+      return {
+        id: `restored-${f.docId}-${Date.now()}`,
+        display_name: f.name,
+        status: orig,
+        originalStatus: orig,
+        upload_date: new Date().toLocaleString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', ''),
+        uploader: pkg.createdBy,
+        mime_type: f.name.toLowerCase().endsWith('.tiff') || f.name.toLowerCase().endsWith('.tif') ? 'image/tiff' : 'application/pdf',
+        file_size_bytes: 0,
+        page_count: null,
+        workspace_tag: pkg.workspace,
+      };
+    });
     setContractPackages(prev => prev.filter(p => p.id !== pkg.id));
     setStagedDocs(prev => [...restoredDocs, ...prev]);
 
@@ -1458,10 +1465,12 @@ export default function PipelineDashboard() {
       mode: updatedFiles.length >= 2 ? 'Package' : 'Single',
       status: updatedFiles.every(f => f.role !== 'Undefined') ? 'Ready' : 'Pending',
     };
+    const origStatus: 'valid' | 'invalid' = (removedFile as { originalStatus?: 'valid' | 'invalid' }).originalStatus ?? 'valid';
     const restoredDoc: StagedDocument = {
       id: `restored-${docId}-${Date.now()}`,
       display_name: removedFile.name,
-      status: 'valid',
+      status: origStatus,
+      originalStatus: origStatus,
       upload_date: new Date().toLocaleString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', ''),
       uploader: pkg.createdBy,
       mime_type: removedFile.name.toLowerCase().endsWith('.tiff') || removedFile.name.toLowerCase().endsWith('.tif') ? 'image/tiff' : 'application/pdf',
@@ -1574,15 +1583,13 @@ export default function PipelineDashboard() {
         </Button>
       </div>
 
-      {/* ── 7 Summary cards ── */}
-      <div className="grid grid-cols-7 gap-3">
-        {([
-          { key: 'uploaded',   label: 'Uploaded',   icon: <FileUp className="w-5 h-5" />,        accent: 'lg-primary-light' },
+      {/* ── 5 Summary cards ── */}
+      <div className="grid grid-cols-5 gap-3">
+                {([
+          { key: 'uploading',  label: 'Uploading',  icon: <FileUp className="w-5 h-5" />,        accent: 'lg-primary-light' },
           { key: 'validating', label: 'Validating', icon: <RefreshCw className="w-5 h-5" />,     accent: 'lg-primary-light', spinning: counts.validating > 0 },
           { key: 'valid',      label: 'Valid',      icon: <CheckCircle2 className="w-5 h-5" />,  accent: 'lg-success' },
-          { key: 'warning',    label: 'Warning',    icon: <AlertTriangle className="w-5 h-5" />, accent: 'lg-warning' },
           { key: 'invalid',    label: 'Invalid',    icon: <XCircle className="w-5 h-5" />,       accent: 'lg-error' },
-          { key: 'ready',      label: 'Ready',      icon: <Clock className="w-5 h-5" />,         accent: 'lg-primary-light' },
           { key: 'submitted',  label: 'Submitted',  icon: <Send className="w-5 h-5" />,          accent: 'lg-success' },
         ] as const).map(card => (
           <SummaryCard
