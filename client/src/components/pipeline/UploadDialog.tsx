@@ -11,6 +11,7 @@
  */
 
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 import {
   UploadCloud, FileText, CheckCircle2, AlertTriangle, XCircle,
   ChevronDown, ChevronUp, X, Plus, Info, Tag, Loader2, RefreshCw
@@ -316,7 +317,10 @@ export function UploadDialog({ open, onClose, onConfirm }: UploadDialogProps) {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-card">
           <div>
-            <h2 className="text-[16px] font-semibold text-foreground">Upload Files</h2>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-[16px] font-semibold text-foreground">Upload Files</h2>
+              <ScreenNumberBadge screenKey="pipeline-upload" />
+            </div>
             <p className="text-[12px] text-muted-foreground mt-0.5">Step 1 of 2 — Upload and validate documents before adding to the pipeline.</p>
           </div>
           <button
