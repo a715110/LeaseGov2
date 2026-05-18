@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
 
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 // TODO: Backend integration required — GET /api/reassessments/dashboard-summary
 const SUMMARY = {
   open_cases:              12,
@@ -104,7 +105,10 @@ export default function ReassessmentDashboard() {
       {/* Page header */}
       <div className="page-header">
         <div>
-          <h1 className="page-title">Reassessment Dashboard</h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="page-title">Reassessment Dashboard</h1>
+            <ScreenNumberBadge screenKey="reassessment-dashboard" />
+          </div>
           <p className="page-subtitle">Monitor and manage all reassessment and modification cases</p>
         </div>
         <div className="flex items-center gap-2">

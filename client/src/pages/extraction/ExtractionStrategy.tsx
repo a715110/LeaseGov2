@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
 
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 type AutomationLevel = "ai_assisted" | "hybrid" | "manual";
 
 interface StrategyOption {
@@ -109,7 +110,10 @@ export default function ExtractionStrategy() {
             <ArrowLeft className="w-4 h-4" />
           </button>
           <div>
-            <h1 className="page-title">Extraction Strategy</h1>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="page-title">Extraction Strategy</h1>
+              <ScreenNumberBadge screenKey="extraction-strategy" />
+            </div>
             <p className="page-subtitle">Choose how fields will be extracted from this document.</p>
           </div>
         </div>

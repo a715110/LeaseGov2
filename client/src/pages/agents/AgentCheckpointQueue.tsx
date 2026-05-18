@@ -39,6 +39,7 @@ import NotFound from '@/pages/NotFound'
 import { useRole } from '@/contexts/RoleContext'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 
 const _screenKey = SCREEN_KEYS.AGENT_CHECKPOINT_QUEUE
 

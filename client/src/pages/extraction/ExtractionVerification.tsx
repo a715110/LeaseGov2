@@ -36,6 +36,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
 
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 type Disposition = "accepted" | "corrected" | "not_found" | "deferred" | null;
 type AnchorStatus = "confirmed" | "proposed" | "missing";
 
@@ -146,7 +147,10 @@ export default function ExtractionVerification() {
             <ArrowLeft className="w-4 h-4" />
           </button>
           <div>
-            <h1 className="page-title">Verification Workspace</h1>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="page-title">Verification Workspace</h1>
+              <ScreenNumberBadge screenKey="extraction-verification" />
+            </div>
             <p className="page-subtitle">Office-Tower-Amendment-3.pdf · JOB-2026-0442</p>
           </div>
         </div>

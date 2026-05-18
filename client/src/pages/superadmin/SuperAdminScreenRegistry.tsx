@@ -19,6 +19,7 @@ import { Input } from '@/components/ui/input';
 import { SCREEN_KEYS } from '@/constants/screenKeys';
 import SuperAdminBanner from '@/components/superadmin/SuperAdminBanner';
 import NotFound from '@/pages/NotFound';
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 
 type ScreenPhase = 'mvp' | 'phase_2' | 'phase_3';
 type ScreenStatus = 'active' | 'hidden' | 'development';
@@ -183,7 +184,10 @@ export default function SuperAdminScreenRegistry() {
 
       <div className="page-header">
         <div>
-          <h1 className="page-title" style={{ fontSize: '24px', fontWeight: 700 }}>Screen Registry</h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="page-title" style={{ fontSize: '24px', fontWeight: 700 }}>Screen Registry</h1>
+            <ScreenNumberBadge screenKey="superadmin-screen-registry" />
+          </div>
           <p className="page-subtitle">Manage platform screen activation, visibility, and tenant overrides</p>
         </div>
         <div className="flex items-center gap-2">

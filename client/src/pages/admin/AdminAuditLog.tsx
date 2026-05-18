@@ -26,6 +26,7 @@ import { SCREEN_KEYS } from "@/constants/screenKeys";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { useRole } from "@/contexts/RoleContext";
 
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 type ActorType = "human" | "agent" | "system";
 type SubjectType = "contract_record" | "staged_document" | "extraction_record" | "user" | "tenant_config" | "threshold_config";
 
@@ -132,7 +133,10 @@ export default function AdminAuditLog() {
       <div className="flex flex-col min-h-full bg-[var(--color-lg-page-bg)]">
         <div className="page-header">
           <div>
-            <h1 className="page-title">Audit Log</h1>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="page-title">Audit Log</h1>
+              <ScreenNumberBadge screenKey="admin-audit-log" />
+            </div>
             <p className="page-subtitle">
               {isAuditor ? "Full read access — all organization entries" : "Read access — own organization entries"}
               {" · "}Immutable — no edits or deletions permitted

@@ -30,6 +30,7 @@ import RecordTabWorkflow      from "@/pages/contracts/propertyLease/PropertyLeas
 import RecordTabReassessment  from "@/pages/contracts/propertyLease/PropertyLeaseRecordReassessment";
 import RecordTabHistory       from "@/pages/contracts/propertyLease/PropertyLeaseRecordHistory";
 import RecordTabAgent         from "@/pages/contracts/propertyLease/PropertyLeaseRecordAgent";
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 
 type RecordStatus = "draft" | "under_review" | "pending_approval" | "approved" | "correction_in_progress" | "completed" | "archived";
 type LockStatus = "unlocked" | "pending_review" | "pending_approval" | "upload_task_active" | "correction_in_progress" | "agent_processing" | "checkpoint_pending";

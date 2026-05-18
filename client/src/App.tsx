@@ -24,6 +24,7 @@ import { DemoModeProvider } from './contexts/DemoModeContext'
 import { NotificationProvider } from './contexts/NotificationContext'
 import { ExtractionStoreProvider } from './contexts/ExtractionStoreContext'
 import { PipelineCountsProvider } from './contexts/PipelineCountsContext'
+import { DevModeProvider } from './contexts/DevModeContext'
 import { LeaseGovThemeProvider } from './contexts/LeaseGovThemeProvider'
 import { DemoOverlay } from './components/layout/DemoOverlay'
 import { SCREEN_KEYS } from './constants/screenKeys'
@@ -524,6 +525,7 @@ function App() {
           When the backend registry endpoint is ready, set scaffoldMode={false}
           and wire fetchScreenRegistry() inside RegistryProvider.
         */}
+        <DevModeProvider>
         <RegistryProvider scaffoldMode={true}>
           {/* DemoModeProvider must be inside Router context (wouter) so DemoOverlay
               can call useLocation for navigation. Wouter's Router is implicit at
@@ -546,6 +548,7 @@ function App() {
             </NotificationProvider>
           </DemoModeProviderWithRole>
         </RegistryProvider>
+        </DevModeProvider>
       </LeaseGovThemeProvider>
       </ThemeProvider>
       </RoleProvider>

@@ -45,6 +45,7 @@ import { InterventionButton } from '@/components/automation/InterventionButton'
 import { AgentExceptionPanel, type AgentException } from '@/components/agents/AgentExceptionPanel'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 
 const _screenKey = SCREEN_KEYS.AGENT_ACTIVITY_MONITOR
 

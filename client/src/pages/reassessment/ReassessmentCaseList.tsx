@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
 
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 // TODO: Backend integration required — GET /api/reassessments/cases
 const MOCK_CASES = [
   { id:"c1",  case_ref:"RC-2026-0014", contract:"CR-2026-0088", title:"Office Tower — 350 Fifth Ave",   path_type:"modification", trigger_type:"mod_term",     status:"pending_approval",       is_remediation:false, is_no_action:false, assigned:"M. Thompson", created:"2026-05-10" },
@@ -123,7 +124,10 @@ export default function ReassessmentCaseList() {
     <div className="flex flex-col min-h-full bg-[var(--color-lg-page-bg)]">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Reassessment Hub</h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="page-title">Reassessment Hub</h1>
+            <ScreenNumberBadge screenKey="reassessment-case-list" />
+          </div>
           <p className="page-subtitle">Cases, watchlist, surveys, and period reviews</p>
         </div>
         <Button size="sm" className="gap-1.5 h-8 text-[12px]" onClick={() => navigate("/reassessment/trigger")}>

@@ -11,6 +11,7 @@ import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { SCREEN_KEYS } from '@/constants/screenKeys';
 import SuperAdminBanner from '@/components/superadmin/SuperAdminBanner';
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 
 const STEPS = [
   { n: 1, label: 'Organization' },

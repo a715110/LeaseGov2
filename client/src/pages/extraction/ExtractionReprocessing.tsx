@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 
 interface PageData { page: number; confidence: number; flagged: boolean; }
 

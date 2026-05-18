@@ -23,6 +23,7 @@ import { Slider } from "@/components/ui/slider";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
 import AdminLayout from "@/components/admin/AdminLayout";
 
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 type NotifType = "email" | "in_app" | "both";
 type EscalationTarget = "manager" | "controller" | "both";
 
@@ -187,7 +188,10 @@ export default function AdminThresholds() {
       <div className="flex flex-col min-h-full bg-[var(--color-lg-page-bg)]">
         <div className="page-header">
           <div>
-            <h1 className="page-title">Thresholds &amp; SLA Configuration</h1>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="page-title">Thresholds &amp; SLA Configuration</h1>
+              <ScreenNumberBadge screenKey="admin-thresholds" />
+            </div>
             <p className="page-subtitle">Every save creates a new version — previous versions can be restored</p>
           </div>
           <div className="flex items-center gap-2">

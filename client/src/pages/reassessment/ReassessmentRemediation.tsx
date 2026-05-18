@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
 
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 // TODO: Backend integration required — GET /api/reassessments/cases/:id
 const MOCK_CASE = {
   id: "c6",
@@ -104,7 +105,10 @@ export default function ReassessmentRemediation() {
             <span className="text-muted-foreground">·</span>
             <span className="text-[12px] text-muted-foreground">{MOCK_CASE.contract_number}</span>
           </div>
-          <h1 className="page-title">Remediation Workspace</h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="page-title">Remediation Workspace</h1>
+            <ScreenNumberBadge screenKey="reassessment-remediation" />
+          </div>
           <p className="page-subtitle">{MOCK_CASE.title}</p>
         </div>
         <div className="text-right">

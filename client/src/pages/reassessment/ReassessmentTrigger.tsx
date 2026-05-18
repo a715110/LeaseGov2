@@ -23,6 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
 
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 type PathType = "modification" | "reassessment";
 
 const TRIGGER_GROUPS: { group: string; triggers: { value: string; label: string }[] }[] = [
@@ -117,7 +118,10 @@ export default function ReassessmentTrigger() {
     <div className="flex flex-col min-h-full bg-[var(--color-lg-page-bg)]">
       <div className="page-header">
         <div>
-          <h1 className="page-title">New Trigger Report</h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="page-title">New Trigger Report</h1>
+            <ScreenNumberBadge screenKey="reassessment-trigger" />
+          </div>
           <p className="page-subtitle">Report a reassessment or modification event for a contract record</p>
         </div>
         <Button variant="outline" onClick={() => navigate("/reassessment/dashboard")}>Cancel</Button>

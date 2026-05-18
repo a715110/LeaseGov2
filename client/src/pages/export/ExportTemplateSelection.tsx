@@ -18,6 +18,7 @@ import { CheckCircle2, Lock, FileSpreadsheet, FileText, RefreshCw } from "lucide
 import { Button } from "@/components/ui/button";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
 
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 // TODO: Backend integration required — GET /api/export/templates?record_type=property_lease
 const MOCK_TEMPLATES = [
   {
@@ -105,7 +106,10 @@ export default function ExportTemplateSelection() {
     <div className="flex flex-col min-h-full bg-[var(--color-lg-page-bg)]">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Select Export Template</h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="page-title">Select Export Template</h1>
+            <ScreenNumberBadge screenKey="export-template-selection" />
+          </div>
           <p className="page-subtitle">Choose the template that matches this contract record type</p>
         </div>
       </div>

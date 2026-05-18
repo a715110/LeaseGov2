@@ -42,6 +42,7 @@ import { publishEvent } from '@/lib/eventBus';
 import { useRole } from '@/contexts/RoleContext';
 import { usePipelineCounts } from '@/contexts/PipelineCountsContext';
 
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type StagedStatus = 'uploaded' | 'validating' | 'valid' | 'warning' | 'invalid' | 'ready' | 'submitted';
@@ -1559,7 +1560,10 @@ export default function PipelineDashboard() {
       {/* ── Page header ── */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="page-title">Document Pipeline</h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="page-title">Document Pipeline</h1>
+            <ScreenNumberBadge screenKey="pipeline-dashboard" />
+          </div>
           <p className="page-subtitle">Monitor and manage staged documents before submission to processing.</p>
         </div>
         <Button onClick={() => setShowUpload(true)} className="gap-2">

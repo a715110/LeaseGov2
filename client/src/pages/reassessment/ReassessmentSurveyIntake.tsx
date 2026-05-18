@@ -49,6 +49,7 @@ import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 import { SCREEN_KEYS } from '@/constants/screenKeys'
 import { toast } from 'sonner'
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 
 // ─── Prompt type definitions ──────────────────────────────────────────────────
 type PromptType =

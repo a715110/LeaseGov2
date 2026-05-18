@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { SCREEN_KEYS } from '@/constants/screenKeys'
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface SnapshotData {

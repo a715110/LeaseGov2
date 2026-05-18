@@ -18,6 +18,7 @@ import { SCREEN_KEYS } from '@/constants/screenKeys';
 import { useRole } from '@/contexts/RoleContext';
 import { ROLE_LABELS } from '@/lib/types';
 import type { UserRole } from '@/lib/types';
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 
 type NotAuthorizedState = 'screen_inactive' | 'role_not_permitted';
 

@@ -19,6 +19,7 @@ import { Bell, BellOff, Plus, X, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
 
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 // TODO: Backend integration required — GET /api/reassessments/watchlist/rules
 const MOCK_RULES = [
   {
@@ -106,7 +107,10 @@ export default function ReassessmentWatchlist() {
     <div className="flex flex-col min-h-full bg-[var(--color-lg-page-bg)]">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Watchlist</h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="page-title">Watchlist</h1>
+            <ScreenNumberBadge screenKey="reassessment-watchlist" />
+          </div>
           <p className="page-subtitle">Automated monitoring rules for reassessment triggers</p>
         </div>
         <Button className="gap-1.5" onClick={() => setShowAddModal(true)}>

@@ -35,6 +35,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { cn } from '@/lib/utils'
 import { SCREEN_KEYS } from '@/constants/screenKeys'
 import { toast } from 'sonner'
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type ResolutionType = 'accept_ai' | 'enter_value' | 'not_found'

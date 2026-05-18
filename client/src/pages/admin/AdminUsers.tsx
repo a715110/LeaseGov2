@@ -25,6 +25,7 @@ import { ROLE_LABELS, ROLE_COLORS } from "@/lib/types";
 import AdminLayout from "@/components/admin/AdminLayout";
 import type { UserRole } from "@/lib/types";
 
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 // TODO: Backend integration required — GET /api/admin/users
 type UserStatus = "active" | "inactive" | "pending_activation";
 type ScopeLevel = "global" | "workspace" | "own";
@@ -156,7 +157,10 @@ export default function AdminUsers() {
       <div className="flex flex-col min-h-full bg-[var(--color-lg-page-bg)]">
         <div className="page-header">
           <div>
-            <h1 className="page-title">Users &amp; Roles</h1>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="page-title">Users &amp; Roles</h1>
+              <ScreenNumberBadge screenKey="admin-users" />
+            </div>
             <p className="page-subtitle">{users.filter(u => u.status === "active").length} active users</p>
           </div>
           <div className="flex items-center gap-2">

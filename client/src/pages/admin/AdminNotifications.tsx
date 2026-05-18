@@ -29,6 +29,7 @@ import AdminLayout from "@/components/admin/AdminLayout";
 import { LeaseGovThemeContext } from "@/contexts/LeaseGovThemeContext";
 import type { ThemeKey, ColorMode } from "@/types/shared/ThemeMode";
 
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 type DesignTheme = ThemeKey;
 type NotifPref = "email" | "in_app" | "both" | "off";
 
@@ -100,7 +101,10 @@ export default function AdminNotifications() {
       <div className="flex flex-col min-h-full bg-[var(--color-lg-page-bg)]">
         <div className="page-header">
           <div>
-            <h1 className="page-title">Appearance &amp; Notifications</h1>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="page-title">Appearance &amp; Notifications</h1>
+              <ScreenNumberBadge screenKey="admin-notifications" />
+            </div>
             <p className="page-subtitle">Changes create a new TenantConfiguration version — previous versions can be restored</p>
           </div>
           <Button className="h-8 text-[12px] gap-1.5" disabled={!dirty} onClick={saveChanges}>

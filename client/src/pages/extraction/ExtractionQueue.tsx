@@ -32,6 +32,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type JobStatus = 'processing' | 'ocr_complete' | 'warning' | 'failed';
@@ -801,7 +802,10 @@ export default function ExtractionQueue() {
       {/* Header */}
       <div className="page-header">
         <div>
-          <h1 className="page-title">Processing Queue</h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="page-title">Processing Queue</h1>
+            <ScreenNumberBadge screenKey="extraction-processing-queue" />
+          </div>
           <p className="page-subtitle">Monitor document OCR and AI extraction jobs.</p>
         </div>
         <Button variant="outline" size="sm" className="gap-2">

@@ -40,6 +40,7 @@ import { Button } from "@/components/ui/button";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
 import AdminLayout from "@/components/admin/AdminLayout";
 
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 type FieldCategory = "core_metadata" | "property" | "financial" | "legal" | "tables" | "amendment";
 type DataType = "string" | "date" | "decimal" | "integer" | "boolean" | "currency" | "percentage" | "table";
 type TemplateStatus = "active" | "draft" | "deprecated";
@@ -229,7 +230,10 @@ export default function AdminSchema() {
         <div className="page-header">
           <div>
             <div className="flex items-center gap-3 mb-1">
-              <h1 className="page-title">Schema Configuration</h1>
+              <div className="flex items-center gap-3 flex-wrap">
+                <h1 className="page-title">Schema Configuration</h1>
+                <ScreenNumberBadge screenKey="admin-schema" />
+              </div>
               <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold ${isDraft ? "badge-warning" : "badge-valid"}`}>
                 {isDraft ? "Draft" : "Active"} v{activeTemplate.version}
               </span>

@@ -21,6 +21,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
 
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 type RecordStatus = "draft" | "under_review" | "pending_approval" | "approved" | "correction_in_progress" | "completed" | "archived";
 type LeaseClassification = "operating" | "finance" | "short_term" | "low_value";
 
@@ -132,7 +133,10 @@ export default function RecordsSearch() {
     <div className="flex flex-col min-h-full bg-[var(--color-lg-page-bg)]">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Contract Records</h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="page-title">Contract Records</h1>
+            <ScreenNumberBadge screenKey="records-search" />
+          </div>
           <p className="page-subtitle">{filtered.length} records found</p>
         </div>
         <Button size="sm" className="gap-1.5" onClick={() => navigate("/pipeline/new-record")}>

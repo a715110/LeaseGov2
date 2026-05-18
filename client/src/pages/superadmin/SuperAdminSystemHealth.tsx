@@ -15,6 +15,7 @@ import { SCREEN_KEYS } from '@/constants/screenKeys';
 import SuperAdminBanner from '@/components/superadmin/SuperAdminBanner';
 import NotFound from '@/pages/NotFound';
 
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 type PlatformStatus = 'operational' | 'degraded' | 'outage';
 
 // TODO: Backend integration required — GET /superadmin/health
@@ -81,7 +82,10 @@ export default function SuperAdminSystemHealth() {
 
       <div className="page-header">
         <div>
-          <h1 className="page-title">System Health</h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="page-title">System Health</h1>
+            <ScreenNumberBadge screenKey="superadmin-system-health" />
+          </div>
           <p className="page-subtitle">Platform-wide operational status</p>
         </div>
         <Button variant="outline" className="h-8 text-[12px] gap-1.5" onClick={refresh} disabled={refreshing}>

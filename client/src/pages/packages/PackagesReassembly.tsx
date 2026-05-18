@@ -22,6 +22,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
 
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 type DocumentRole = "base_contract" | "amendment" | "addendum" | "exhibit" | "schedule" | "notice" | "supporting";
 
 interface DocSnapshot {
@@ -102,7 +103,10 @@ export default function PackagesReassembly() {
     <div className="flex flex-col min-h-full bg-[var(--color-lg-page-bg)]">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Package Re-Assembly</h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="page-title">Package Re-Assembly</h1>
+            <ScreenNumberBadge screenKey="packages-reassembly" />
+          </div>
           <p className="page-subtitle">PKG-2026-0041 · Office Tower — 350 Fifth Ave</p>
         </div>
       </div>

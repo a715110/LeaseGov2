@@ -23,6 +23,7 @@ import { CheckCircle2, XCircle, AlertTriangle, RefreshCw, ChevronRight, Loader2 
 import { Button } from "@/components/ui/button";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
 
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 type StepStatus = "pass" | "fail" | "warning" | "pending";
 
 interface PreflightStep {
@@ -120,7 +121,10 @@ export default function ExportPreflight() {
     <div className="flex flex-col min-h-full bg-[var(--color-lg-page-bg)]">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Pre-Flight Validation</h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="page-title">Pre-Flight Validation</h1>
+            <ScreenNumberBadge screenKey="export-preflight" />
+          </div>
           <p className="page-subtitle">All 6 checks must pass before the Upload Task can begin</p>
         </div>
         <div className="flex items-center gap-2">

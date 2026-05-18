@@ -14,6 +14,7 @@ import { SCREEN_KEYS } from '@/constants/screenKeys';
 import SuperAdminBanner from '@/components/superadmin/SuperAdminBanner';
 import NotFound from '@/pages/NotFound';
 
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 type SubscriptionTier = 'starter' | 'professional' | 'enterprise';
 
 interface TenantSub {
@@ -100,7 +101,10 @@ export default function SuperAdminSubscriptionManagement() {
 
       <div className="page-header">
         <div>
-          <h1 className="page-title">Subscription Management</h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="page-title">Subscription Management</h1>
+            <ScreenNumberBadge screenKey="superadmin-subscriptions" />
+          </div>
           <p className="page-subtitle">Manage tenant tiers and feature flag overrides</p>
         </div>
         <Button variant="outline" className="h-8 text-[12px] gap-1.5" onClick={exportCsv} disabled={exporting}>

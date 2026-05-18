@@ -33,6 +33,7 @@ import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 import { SCREEN_KEYS } from '@/constants/screenKeys'
 import { toast } from 'sonner'
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 // TODO: Backend integration required — GET /extraction/records?contract_record_id={id}

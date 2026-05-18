@@ -35,6 +35,7 @@ import AdminLayout from "@/components/admin/AdminLayout";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type TemplateType = "property_lease" | "equipment_lease" | "ground_lease";
@@ -674,7 +675,10 @@ export default function AdminTemplates() {
         {/* Page header */}
         <div className="page-header">
           <div>
-            <h1 className="page-title">Template Management</h1>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="page-title">Template Management</h1>
+              <ScreenNumberBadge screenKey="admin-templates" />
+            </div>
             <p className="page-subtitle">Manage export templates and field mappings for FASB ASC 842 / IFRS 16 compliance.</p>
           </div>
           <Button onClick={openCreate} className="gap-1.5">

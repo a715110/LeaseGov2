@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
 
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 type TaskStatus = "initialized" | "in_progress" | "evidence_submitted" | "anchors_entered" | "evidence_verified" | "completed" | "failed";
 
 const STATUS_STEPS: { status: TaskStatus; label: string }[] = [
@@ -194,7 +195,10 @@ export default function ExportUploadTask() {
             <span className="text-muted-foreground">·</span>
             <span className="text-[12px] text-muted-foreground">New Lease Onboarding v3.2</span>
           </div>
-          <h1 className="page-title">Upload Task</h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="page-title">Upload Task</h1>
+            <ScreenNumberBadge screenKey="export-upload-task" />
+          </div>
         </div>
         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[12px] font-semibold badge-processing">
           {STATUS_STEPS.find(s => s.status === taskStatus)?.label}

@@ -19,6 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
 
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 // TODO: Backend integration required — GET /api/approvals/tasks/:id/recall-status
 const MOCK_RECALL_AVAILABLE = {
   task_reference: "AT-2026-0041",
@@ -51,7 +52,10 @@ export default function ApprovalsRecall() {
     <div className="flex flex-col min-h-full bg-[var(--color-lg-page-bg)]">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Recall Submission</h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="page-title">Recall Submission</h1>
+            <ScreenNumberBadge screenKey="approvals-recall" />
+          </div>
           <p className="page-subtitle">Recall a submitted record before the reviewer opens it</p>
         </div>
         <Button variant="outline" size="sm" className="gap-1.5" onClick={() => navigate("/approvals/queue")}>

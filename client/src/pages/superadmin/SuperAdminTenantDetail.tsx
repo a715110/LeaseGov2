@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { SCREEN_KEYS } from '@/constants/screenKeys';
 import SuperAdminBanner from '@/components/superadmin/SuperAdminBanner';
 import NotFound from '@/pages/NotFound';
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 
 // TODO: Backend integration required — GET /superadmin/tenants/:id
 const MOCK_TENANT = {

@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SCREEN_KEYS } from '@/constants/screenKeys';
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

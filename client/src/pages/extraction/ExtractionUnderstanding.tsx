@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/select';
 import { SCREEN_KEYS } from '@/constants/screenKeys';
 
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 // ─── Mock data — TODO: Backend integration required ───────────────────────────
 
 const MOCK_SEARCH_RESULTS = [
@@ -61,7 +62,10 @@ export default function ExtractionUnderstanding() {
       {/* Header */}
       <div className="page-header">
         <div>
-          <h1 className="page-title">Document Understanding</h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="page-title">Document Understanding</h1>
+            <ScreenNumberBadge screenKey="extraction-document-understanding" />
+          </div>
           <p className="page-subtitle">Classify document and associate with a contract record.</p>
         </div>
       </div>

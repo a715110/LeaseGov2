@@ -16,6 +16,7 @@ import { FileText, CheckCircle2, Download, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
 
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 // TODO: Backend integration required — GET /api/reassessments/cases/:id/package
 const MOCK_CASE = {
   id: "c7",
@@ -84,7 +85,10 @@ export default function ReassessmentPackagePreview() {
             <span className="text-muted-foreground">·</span>
             <span className="text-[12px] text-muted-foreground">{MOCK_CASE.contract_number}</span>
           </div>
-          <h1 className="page-title">Package Preview</h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="page-title">Package Preview</h1>
+            <ScreenNumberBadge screenKey="reassessment-package-preview" />
+          </div>
           <p className="page-subtitle">{MOCK_CASE.title} — {PACKAGE_DOCS.length} documents ready for approval</p>
         </div>
         <div className="flex items-center gap-2">

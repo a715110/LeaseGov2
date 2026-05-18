@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
 
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 type SubjectType = "contract_record" | "reassessment_case";
 type ApprovalStage = "review" | "final_approval";
 type TaskStatus = "pending" | "opened" | "approved" | "rejected" | "rework_in_progress" | "resubmitted";
@@ -126,7 +127,10 @@ export default function ApprovalsQueue() {
     <div className="flex flex-col min-h-full bg-[var(--color-lg-page-bg)]">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Approval Queue</h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="page-title">Approval Queue</h1>
+            <ScreenNumberBadge screenKey="approvals-queue" />
+          </div>
           <p className="page-subtitle">Review and approve contract records and reassessment cases</p>
         </div>
         <Button variant="outline" size="sm" className="gap-1.5">

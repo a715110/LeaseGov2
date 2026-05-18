@@ -31,6 +31,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
 
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 type FlagType = "missing_base_contract" | "multiple_base_contracts" | "conflicting_terms" | "duplicate_amendment" | "missing_exhibit" | "supersession_ambiguity";
 type FlagSeverity = "blocking" | "warning";
 type FlagStatus = "open" | "resolved" | "deferred" | "escalated";
@@ -140,7 +141,10 @@ export default function PackagesFlags() {
       <div className="page-header">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <h1 className="page-title">Package Flags</h1>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="page-title">Package Flags</h1>
+              <ScreenNumberBadge screenKey="packages-flags" />
+            </div>
             {openCount > 0 && (
               <span className="badge-invalid inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold">
                 <XCircle className="w-3.5 h-3.5" /> {openCount} Open

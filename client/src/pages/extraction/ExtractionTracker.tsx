@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
 
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 type FieldStatus = "confirmed" | "accepted" | "corrected" | "deferred" | "not_found" | "unresolved";
 
 interface TrackerField {
@@ -81,7 +82,10 @@ export default function ExtractionTracker() {
     <div className="flex flex-col" style={{ height: "100vh" }}>
       <div className="page-header shrink-0">
         <div>
-          <h1 className="page-title">Verification Progress Tracker</h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="page-title">Verification Progress Tracker</h1>
+            <ScreenNumberBadge screenKey="extraction-verification-tracker" />
+          </div>
           <p className="page-subtitle">Office-Tower-Amendment-3.pdf · JOB-2026-0442</p>
         </div>
         <Button variant="outline" size="sm" className="gap-2" onClick={() => navigate("/extraction/verify")}>

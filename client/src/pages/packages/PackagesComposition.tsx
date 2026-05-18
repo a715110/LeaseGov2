@@ -30,6 +30,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
 
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 type DocumentRole = "base_contract" | "amendment" | "addendum" | "exhibit" | "schedule" | "notice" | "supporting";
 type ExtractionStatus = "complete" | "in_progress" | "not_started" | "failed";
 
@@ -122,7 +123,10 @@ export default function PackagesComposition() {
       <div className="page-header">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <h1 className="page-title">Contract Package</h1>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="page-title">Contract Package</h1>
+              <ScreenNumberBadge screenKey="packages-composition" />
+            </div>
             <span className="badge-valid inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold">
               <CheckCircle2 className="w-3.5 h-3.5" /> Validated
             </span>

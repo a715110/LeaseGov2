@@ -37,6 +37,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 
 type FieldCategory = "core_metadata" | "property" | "financial" | "legal" | "tables" | "amendment";
 type Disposition = "accepted" | "corrected" | "not_found" | "deferred" | "rejected";

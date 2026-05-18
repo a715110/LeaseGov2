@@ -18,6 +18,7 @@ import { AlertTriangle, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
 
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 // TODO: Backend integration required — GET /api/reassessments/cases/:id/concurrent
 const MOCK_CASE = {
   id: "c4",
@@ -74,7 +75,10 @@ export default function ReassessmentConcurrentWarn() {
             <span className="text-muted-foreground">·</span>
             <span className="text-[12px] text-muted-foreground">{MOCK_CASE.contract_number}</span>
           </div>
-          <h1 className="page-title">Concurrent Case Warning</h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="page-title">Concurrent Case Warning</h1>
+            <ScreenNumberBadge screenKey="reassessment-concurrent-warning" />
+          </div>
           <p className="page-subtitle">{MOCK_CASE.title}</p>
         </div>
       </div>

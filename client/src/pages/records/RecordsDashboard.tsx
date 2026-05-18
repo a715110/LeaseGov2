@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
 
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 // TODO: Backend integration required — GET /api/records/dashboard-summary
 const SUMMARY_CARDS = [
   { label:"Total Active",        value:247, icon:<FileText className="w-5 h-5" />,      color:"var(--color-lg-primary)",  bg:"var(--color-lg-accent-subtle)" },
@@ -77,7 +78,10 @@ export default function RecordsDashboard() {
     <div className="flex flex-col min-h-full bg-[var(--color-lg-page-bg)]">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Contract Records</h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="page-title">Contract Records</h1>
+            <ScreenNumberBadge screenKey="records-dashboard" />
+          </div>
           <p className="page-subtitle">Portfolio overview and recent activity</p>
         </div>
         <div className="flex items-center gap-2">

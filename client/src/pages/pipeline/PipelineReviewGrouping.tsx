@@ -30,6 +30,7 @@ import { FlagSlidingPanel } from '@/components/shared/FlagSlidingPanel';
 import { toast } from 'sonner';
 import { SCREEN_KEYS } from '@/constants/screenKeys';
 
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type DocumentRole =
@@ -343,7 +344,10 @@ export default function PipelineReviewGrouping() {
       {/* Header */}
       <div className="page-header">
         <div>
-          <h1 className="page-title">Review &amp; Group</h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="page-title">Review &amp; Group</h1>
+            <ScreenNumberBadge screenKey="pipeline-review-grouping" />
+          </div>
           <p className="page-subtitle">Assign document roles and confirm groupings before submission.</p>
         </div>
         <div className="flex items-center gap-2">

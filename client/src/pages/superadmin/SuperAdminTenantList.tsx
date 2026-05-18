@@ -18,6 +18,7 @@ import SuperAdminBanner from '@/components/superadmin/SuperAdminBanner';
 import NotFound from '@/pages/NotFound';
 import { useTenantContext } from '@/contexts/TenantContext';
 
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 type OrgStatus = 'active' | 'onboarding' | 'suspended' | 'offboarded';
 type SubscriptionTier = 'starter' | 'professional' | 'enterprise';
 
@@ -92,7 +93,10 @@ export default function SuperAdminTenantList() {
 
       <div className="page-header">
         <div>
-          <h1 className="page-title">Tenant Management</h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="page-title">Tenant Management</h1>
+            <ScreenNumberBadge screenKey="superadmin-tenant-list" />
+          </div>
           <p className="page-subtitle">All organizations provisioned on the LeaseGov platform</p>
         </div>
         <Link href="/onboarding/organization">

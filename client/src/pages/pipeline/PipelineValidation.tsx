@@ -20,6 +20,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { SCREEN_KEYS } from '@/constants/screenKeys';
 
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 // ─── Mock data — TODO: Backend integration required ───────────────────────────
 
 interface PageOcr { page: number; confidence: number; }
@@ -125,7 +126,10 @@ export default function PipelineValidation() {
             <ArrowLeft className="w-4 h-4" />
           </button>
           <div>
-            <h1 className="page-title">Validation Detail</h1>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="page-title">Validation Detail</h1>
+              <ScreenNumberBadge screenKey="pipeline-validation" />
+            </div>
             <p className="page-subtitle">Reviewing: {doc.display_name}</p>
           </div>
         </div>

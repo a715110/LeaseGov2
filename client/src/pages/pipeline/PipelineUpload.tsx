@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/select';
 import { SCREEN_KEYS } from '@/constants/screenKeys';
 
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type ValidationStatus = 'valid' | 'warning' | 'invalid' | 'validating';
@@ -281,7 +282,10 @@ export default function PipelineUpload() {
     <div className="flex flex-col min-h-full bg-[var(--color-lg-page-bg)]">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Upload Files</h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="page-title">Upload Files</h1>
+            <ScreenNumberBadge screenKey="pipeline-upload" />
+          </div>
           <p className="page-subtitle">Step 1 of 2 — Upload and validate documents</p>
         </div>
       </div>

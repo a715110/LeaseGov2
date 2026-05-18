@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
 
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 interface ManualField {
   id: string;
   tab_order: number;
@@ -75,7 +76,10 @@ export default function ExtractionManualWorkspace() {
     <div className="flex flex-col" style={{ height: "100vh" }}>
       <div className="page-header shrink-0">
         <div>
-          <h1 className="page-title">Manual Extraction Workspace</h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="page-title">Manual Extraction Workspace</h1>
+            <ScreenNumberBadge screenKey="extraction-manual-workspace" />
+          </div>
           <p className="page-subtitle">Office-Tower-Amendment-3.pdf · JOB-2026-0442</p>
         </div>
         <div className="flex items-center gap-2">

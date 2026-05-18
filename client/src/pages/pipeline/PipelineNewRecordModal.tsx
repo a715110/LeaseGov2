@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/select';
 import { SCREEN_KEYS } from '@/constants/screenKeys';
 import { ACTIVE_CONTRACT_TYPES, CONTRACT_TYPE_LABELS, PHASE_2_CONTRACT_TYPES } from '@/constants/contractTypes';
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 
 // ─── Mock workspace tags — TODO: Backend integration required ─────────────────
 const WORKSPACE_TAGS = [

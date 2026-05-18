@@ -21,6 +21,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
 
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 // TODO: Backend integration required — GET /api/approvals/tasks/:id/rework
 const MOCK_REWORK = {
   task_reference: "AT-2026-0038",
@@ -69,7 +70,10 @@ export default function ApprovalsRework() {
     <div className="flex flex-col min-h-full bg-[var(--color-lg-page-bg)]">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Rework Required</h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="page-title">Rework Required</h1>
+            <ScreenNumberBadge screenKey="approvals-rework" />
+          </div>
           <p className="page-subtitle">{r.record_id} · {r.record_title}</p>
         </div>
         <div className="flex items-center gap-2">

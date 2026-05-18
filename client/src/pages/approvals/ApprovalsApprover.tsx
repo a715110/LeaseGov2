@@ -31,6 +31,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 
 // TODO: Backend integration required — GET /api/approvals/tasks/:id/summary
 const MOCK_SUMMARY = {

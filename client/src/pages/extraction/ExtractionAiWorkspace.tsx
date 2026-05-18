@@ -32,6 +32,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
 
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Disposition = "accepted" | "corrected" | "not_found" | "deferred" | null;
@@ -268,7 +269,10 @@ export default function ExtractionAiWorkspace() {
             <ArrowLeft className="w-4 h-4" />
           </button>
           <div>
-            <h1 className="page-title">AI Extraction Workspace</h1>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="page-title">AI Extraction Workspace</h1>
+              <ScreenNumberBadge screenKey="extraction-ai-workspace" />
+            </div>
             <p className="page-subtitle">Office-Tower-Amendment-3.pdf · JOB-2026-0442</p>
           </div>
         </div>

@@ -28,6 +28,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
 
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 type AutoLevel = "autonomous" | "collaborative" | "manual";
 type ClassResult = "reassessment" | "separate_contract" | "modification_not_separate" | null;
 
@@ -160,7 +161,10 @@ export default function ReassessmentClassification() {
             <span className="text-muted-foreground">·</span>
             <span className="text-[12px] text-muted-foreground">{MOCK_CASE.contract_number}</span>
           </div>
-          <h1 className="page-title">Classification Decision Gate</h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="page-title">Classification Decision Gate</h1>
+            <ScreenNumberBadge screenKey="reassessment-classification" />
+          </div>
           <p className="page-subtitle">{MOCK_CASE.title}</p>
         </div>
         {/* FC-9: AutomationPolicyBadge */}

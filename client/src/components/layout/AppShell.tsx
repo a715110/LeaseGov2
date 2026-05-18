@@ -42,6 +42,7 @@ import { useRole } from '../../contexts/RoleContext'
 import { useDemoMode } from '../../contexts/DemoModeContext'
 import { useNotifications } from '../../contexts/NotificationContext'
 import { usePipelineCounts } from '../../contexts/PipelineCountsContext'
+import { useDevMode } from '../../contexts/DevModeContext'
 import { LeaseGovThemeContext } from '../../contexts/LeaseGovThemeContext'
 import type { UserRole } from '../../lib/types'
 import { ROLE_LABELS } from '../../lib/types'
@@ -285,6 +286,52 @@ function NotificationBell({ onClick }: NotificationBellProps) {
           aria-hidden="true"
         >
           {unreadCount > 9 ? '9+' : unreadCount}
+        </span>
+      )}
+    </button>
+  )
+}
+
+// ─── Dev: Screen Number Toggle ──────────────────────────────────────────────────
+function DevScreenToggle({ collapsed }: { collapsed: boolean }) {
+  const { showScreenNumbers, toggleScreenNumbers } = useDevMode()
+  return (
+    <button
+      onClick={toggleScreenNumbers}
+      title={showScreenNumbers ? 'Hide screen numbers' : 'Show screen numbers'}
+      className={cn(
+        'flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs transition-colors mb-1',
+        showScreenNumbers
+          ? 'bg-amber-400/20 text-amber-300 hover:bg-amber-400/30'
+          : 'text-white/40 hover:bg-white/10 hover:text-white/70',
+        collapsed && 'justify-center px-0',
+      )}
+    >
+      {/* Hash icon inline SVG — no extra import needed */}
+      <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8">
+        <line x1="5" y1="2" x2="4" y2="14" />
+        <line x1="11" y1="2" x2="10" y2="14" />
+        <line x1="2" y1="6" x2="14" y2="6" />
+        <line x1="2" y1="10" x2="14" y2="10" />
+      </svg>
+      {!collapsed && (
+        <span className="truncate font-mono text-[10px] tracking-wide">
+          {showScreenNumbers ? 'Screen #s ON' : 'Screen #s OFF'}
+        </span>
+      )}
+      {!collapsed && (
+        <span
+          className={cn(
+            'ml-auto h-4 w-7 rounded-full transition-colors flex items-center px-0.5 shrink-0',
+            showScreenNumbers ? 'bg-amber-400' : 'bg-white/20',
+          )}
+        >
+          <span
+            className={cn(
+              'h-3 w-3 rounded-full bg-white transition-transform',
+              showScreenNumbers ? 'translate-x-3' : 'translate-x-0',
+            )}
+          />
         </span>
       )}
     </button>
@@ -558,6 +605,8 @@ export default function AppShell({
           style={{ borderColor: 'var(--sidebar-border)' }}
         >
           {!sidebarCollapsed && <StartDemoButton />}
+          {/* DEV ONLY: Screen number toggle */}
+          <DevScreenToggle collapsed={sidebarCollapsed} />
           <div className={cn('flex items-center gap-2.5 rounded px-2 py-1.5', sidebarCollapsed && 'justify-center px-0')}>
             <div
               className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold"

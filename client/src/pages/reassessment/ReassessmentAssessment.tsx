@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
 
+import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 type AutoLevel = "autonomous" | "collaborative" | "manual";
 type Determination = "reasonably_certain" | "not_reasonably_certain" | null;
 
@@ -200,7 +201,10 @@ export default function ReassessmentAssessment() {
             <span className="text-muted-foreground">·</span>
             <span className="text-[12px] text-muted-foreground">{MOCK_CASE.contract_number}</span>
           </div>
-          <h1 className="page-title">Option Exercise Assessment</h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="page-title">Option Exercise Assessment</h1>
+            <ScreenNumberBadge screenKey="reassessment-assessment" />
+          </div>
           <p className="page-subtitle">{MOCK_CASE.title} — {MOCK_CASE.option_type} option, {MOCK_CASE.option_exercise_date}</p>
         </div>
         <AutomationPolicyBadge level={badgeLevel} size="sm" />
