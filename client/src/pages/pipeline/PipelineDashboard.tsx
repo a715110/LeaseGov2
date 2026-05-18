@@ -23,7 +23,7 @@ import {
   UploadCloud, FileText, AlertTriangle, CheckCircle2, XCircle,
   Clock, Send, RefreshCw, Search, MoreHorizontal, Edit2, Layers,
   Eye, Trash2, ArrowRight, FileUp, CheckSquare, Square,
-  Package, X, ChevronDown, Unlink
+  Package, X, ChevronDown, ChevronUp, ChevronsUpDown, Unlink
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -1135,6 +1135,7 @@ export default function PipelineDashboard() {
   const [contractPackages, setContractPackages] = useState<ContractPackage[]>(INITIAL_PACKAGES);
   const [pkgColFilters, setPkgColFilters] = useState({ packageNum: '', name: '', workspace: '', createdBy: '' });
   const [pkgStatusFilter, setPkgStatusFilter] = useState<'all' | 'Ready' | 'Incomplete'>('all');
+  const [pkgSort, setPkgSort] = useState<{ col: string; dir: 'asc' | 'desc' } | null>(null);
   const [detailPkg, setDetailPkg] = useState<ContractPackage | null>(null);
   // Inline rename
   const [renamingPkgId, setRenamingPkgId] = useState<string | null>(null);
@@ -1144,6 +1145,7 @@ export default function PipelineDashboard() {
   // ── Submissions state ──
   const [submissions, setSubmissions] = useState<Submission[]>(INITIAL_SUBMISSIONS);
   const [subColFilters, setSubColFilters] = useState({ packageNum: '', name: '', workspace: '', submittedBy: '' });
+  const [subStatusFilter, setSubStatusFilter] = useState<'all' | 'Pending' | 'In Progress' | 'Completed' | 'Failed'>('all');
   const [detailSub, setDetailSub] = useState<Submission | null>(null);
 
   // ── Derived counts ──
@@ -1171,18 +1173,38 @@ export default function PipelineDashboard() {
     return matchesStatus && matchesSearch && matchesCol;
   });
 
-  const filteredPkgs = contractPackages.filter(pkg => {
-    const matchesStatus = pkgStatusFilter === 'all' ||
-      (pkgStatusFilter === 'Ready' && isPackageReady(pkg)) ||
-      (pkgStatusFilter === 'Incomplete' && !isPackageReady(pkg));
-    return matchesStatus &&
-      pkg.packageNum.toLowerCase().includes(pkgColFilters.packageNum.toLowerCase()) &&
-      (pkg.packageName ?? '').toLowerCase().includes(pkgColFilters.name.toLowerCase()) &&
-      pkg.workspace.toLowerCase().includes(pkgColFilters.workspace.toLowerCase()) &&
-      pkg.createdBy.toLowerCase().includes(pkgColFilters.createdBy.toLowerCase());
-  });
+  const filteredPkgs = (() => {
+    const filtered = contractPackages.filter(pkg => {
+      const matchesStatus = pkgStatusFilter === 'all' ||
+        (pkgStatusFilter === 'Ready' && isPackageReady(pkg)) ||
+        (pkgStatusFilter === 'Incomplete' && !isPackageReady(pkg));
+      return matchesStatus &&
+        pkg.packageNum.toLowerCase().includes(pkgColFilters.packageNum.toLowerCase()) &&
+        (pkg.packageName ?? '').toLowerCase().includes(pkgColFilters.name.toLowerCase()) &&
+        pkg.workspace.toLowerCase().includes(pkgColFilters.workspace.toLowerCase()) &&
+        pkg.createdBy.toLowerCase().includes(pkgColFilters.createdBy.toLowerCase());
+    });
+    if (!pkgSort) return filtered;
+    return [...filtered].sort((a, b) => {
+      let av: string | number = '';
+      let bv: string | number = '';
+      if (pkgSort.col === 'packageNum')  { av = a.packageNum; bv = b.packageNum; }
+      else if (pkgSort.col === 'name')   { av = a.packageName ?? ''; bv = b.packageName ?? ''; }
+      else if (pkgSort.col === 'mode')   { av = a.mode; bv = b.mode; }
+      else if (pkgSort.col === 'files')  { av = a.files.length; bv = b.files.length; }
+      else if (pkgSort.col === 'workspace') { av = a.workspace; bv = b.workspace; }
+      else if (pkgSort.col === 'createdBy') { av = a.createdBy; bv = b.createdBy; }
+      else if (pkgSort.col === 'createdAt') { av = a.createdAt; bv = b.createdAt; }
+      else if (pkgSort.col === 'status') { av = isPackageReady(a) ? 'Ready' : 'Incomplete'; bv = isPackageReady(b) ? 'Ready' : 'Incomplete'; }
+      const cmp = typeof av === 'number' && typeof bv === 'number'
+        ? av - bv
+        : String(av).localeCompare(String(bv));
+      return pkgSort.dir === 'asc' ? cmp : -cmp;
+    });
+  })();
 
   const filteredSubs = submissions.filter(sub =>
+    (subStatusFilter === 'all' || sub.status === subStatusFilter) &&
     sub.packageNum.toLowerCase().includes(subColFilters.packageNum.toLowerCase()) &&
     (sub.packageName ?? '').toLowerCase().includes(subColFilters.name.toLowerCase()) &&
     sub.workspace.toLowerCase().includes(subColFilters.workspace.toLowerCase()) &&
@@ -1201,6 +1223,15 @@ export default function PipelineDashboard() {
   const toggleOne = (id: string) => {
     setSelectedIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   };
+
+  // ── Sort helper ──
+  function togglePkgSort(col: string) {
+    setPkgSort(prev =>
+      prev?.col === col
+        ? prev.dir === 'asc' ? { col, dir: 'desc' } : null
+        : { col, dir: 'asc' }
+    );
+  }
 
   // ── Grouping workflow ──
   function openGroupingDialog() {
@@ -1666,6 +1697,19 @@ export default function PipelineDashboard() {
                 </button>
               ))}
             </div>
+            {/* Submit All Ready */}
+            {!isReadOnly && contractPackages.some(p => isPackageReady(p)) && (
+              <button
+                onClick={() => {
+                  const readyPkgs = contractPackages.filter(p => isPackageReady(p));
+                  readyPkgs.forEach(p => submitPackage(p));
+                }}
+                className="flex items-center gap-1.5 px-3 py-1 rounded text-[12px] font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
+              >
+                <Send className="w-3 h-3" />
+                Submit All Ready ({contractPackages.filter(p => isPackageReady(p)).length})
+              </button>
+            )}
             <span className="text-[12px] text-muted-foreground">{filteredPkgs.length}{filteredPkgs.length !== contractPackages.length ? ` / ${contractPackages.length}` : ''} package{contractPackages.length !== 1 ? 's' : ''}</span>
           </div>
         </div>
@@ -1683,16 +1727,36 @@ export default function PipelineDashboard() {
             <table className="data-table w-full text-[13px]">
               <thead>
                 <tr>
-                  <th className="text-left">Package #</th>
-                  <th className="text-left">Name</th>
-                  <th className="text-left">Mode</th>
-                  <th className="text-left">Files</th>
-                  <th className="text-left">Roles</th>
-                  <th className="text-left">Workspace</th>
-                  <th className="text-left">Created By</th>
-                  <th className="text-left">Created</th>
-                  <th className="text-left">Role Status</th>
-                  <th className="text-left">Actions</th>
+                  {([
+                    { col: 'packageNum', label: 'Package #' },
+                    { col: 'name',       label: 'Name' },
+                    { col: 'mode',       label: 'Mode' },
+                    { col: 'files',      label: 'Files' },
+                    { col: null,         label: 'Roles' },
+                    { col: 'workspace',  label: 'Workspace' },
+                    { col: 'createdBy',  label: 'Created By' },
+                    { col: 'createdAt',  label: 'Created' },
+                    { col: 'status',     label: 'Role Status' },
+                    { col: null,         label: 'Actions' },
+                  ] as { col: string | null; label: string }[]).map(({ col, label }) => (
+                    <th key={label} className="text-left">
+                      {col ? (
+                        <button
+                          onClick={() => togglePkgSort(col)}
+                          className="flex items-center gap-1 group hover:text-foreground transition-colors"
+                        >
+                          {label}
+                          <span className="text-muted-foreground/60 group-hover:text-muted-foreground transition-colors">
+                            {pkgSort?.col === col
+                              ? pkgSort.dir === 'asc'
+                                ? <ChevronUp className="w-3 h-3" />
+                                : <ChevronDown className="w-3 h-3" />
+                              : <ChevronsUpDown className="w-3 h-3 opacity-0 group-hover:opacity-100" />}
+                          </span>
+                        </button>
+                      ) : label}
+                    </th>
+                  ))}
                 </tr>
                 <tr className="bg-muted/20">
                   <th className="px-3 py-1"><ColFilter value={pkgColFilters.packageNum} onChange={v => setPkgColFilters(f => ({ ...f, packageNum: v }))} placeholder="Filter #…" /></th>
@@ -1814,7 +1878,32 @@ export default function PipelineDashboard() {
             <h2 className="text-base font-semibold text-foreground">Submissions</h2>
             <p className="text-[12px] text-muted-foreground mt-0.5">Packages submitted for processing. Use the eye icon to view details or unsubmit.</p>
           </div>
-          <span className="text-[12px] text-muted-foreground">{submissions.length} submission{submissions.length !== 1 ? 's' : ''}</span>
+          <div className="flex items-center gap-3">
+            {/* Submission status filter */}
+            <div className="flex items-center rounded-md border border-border overflow-hidden text-[12px] font-medium">
+              {(['all', 'Pending', 'In Progress', 'Completed', 'Failed'] as const).map((opt, i) => {
+                const activeStyle = opt === 'Pending' ? 'bg-slate-600 text-white'
+                  : opt === 'In Progress' ? 'bg-blue-600 text-white'
+                  : opt === 'Completed' ? 'bg-emerald-600 text-white'
+                  : opt === 'Failed' ? 'bg-red-600 text-white'
+                  : 'bg-primary text-primary-foreground';
+                return (
+                  <button
+                    key={opt}
+                    onClick={() => setSubStatusFilter(opt)}
+                    className={`px-3 py-1 transition-colors ${
+                      subStatusFilter === opt
+                        ? activeStyle
+                        : 'bg-background text-muted-foreground hover:bg-muted hover:text-foreground'
+                    } ${i > 0 ? 'border-l border-border' : ''}`}
+                  >
+                    {opt === 'all' ? 'All' : opt}
+                  </button>
+                );
+              })}
+            </div>
+            <span className="text-[12px] text-muted-foreground">{filteredSubs.length}{filteredSubs.length !== submissions.length ? ` / ${submissions.length}` : ''} submission{submissions.length !== 1 ? 's' : ''}</span>
+          </div>
         </div>
 
         {submissions.length === 0 ? (
