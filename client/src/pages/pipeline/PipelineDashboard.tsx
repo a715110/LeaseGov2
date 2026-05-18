@@ -1134,6 +1134,7 @@ export default function PipelineDashboard() {
   // ── Contract Packages state ──
   const [contractPackages, setContractPackages] = useState<ContractPackage[]>(INITIAL_PACKAGES);
   const [pkgColFilters, setPkgColFilters] = useState({ packageNum: '', name: '', workspace: '', createdBy: '' });
+  const [pkgStatusFilter, setPkgStatusFilter] = useState<'all' | 'Ready' | 'Incomplete'>('all');
   const [detailPkg, setDetailPkg] = useState<ContractPackage | null>(null);
   // Inline rename
   const [renamingPkgId, setRenamingPkgId] = useState<string | null>(null);
@@ -1170,12 +1171,16 @@ export default function PipelineDashboard() {
     return matchesStatus && matchesSearch && matchesCol;
   });
 
-  const filteredPkgs = contractPackages.filter(pkg =>
-    pkg.packageNum.toLowerCase().includes(pkgColFilters.packageNum.toLowerCase()) &&
-    (pkg.packageName ?? '').toLowerCase().includes(pkgColFilters.name.toLowerCase()) &&
-    pkg.workspace.toLowerCase().includes(pkgColFilters.workspace.toLowerCase()) &&
-    pkg.createdBy.toLowerCase().includes(pkgColFilters.createdBy.toLowerCase())
-  );
+  const filteredPkgs = contractPackages.filter(pkg => {
+    const matchesStatus = pkgStatusFilter === 'all' ||
+      (pkgStatusFilter === 'Ready' && isPackageReady(pkg)) ||
+      (pkgStatusFilter === 'Incomplete' && !isPackageReady(pkg));
+    return matchesStatus &&
+      pkg.packageNum.toLowerCase().includes(pkgColFilters.packageNum.toLowerCase()) &&
+      (pkg.packageName ?? '').toLowerCase().includes(pkgColFilters.name.toLowerCase()) &&
+      pkg.workspace.toLowerCase().includes(pkgColFilters.workspace.toLowerCase()) &&
+      pkg.createdBy.toLowerCase().includes(pkgColFilters.createdBy.toLowerCase());
+  });
 
   const filteredSubs = submissions.filter(sub =>
     sub.packageNum.toLowerCase().includes(subColFilters.packageNum.toLowerCase()) &&
@@ -1640,7 +1645,29 @@ export default function PipelineDashboard() {
             <h2 className="text-base font-semibold text-foreground">Contract Packages</h2>
             <p className="text-[12px] text-muted-foreground mt-0.5">Group staged documents into packages, then submit for processing.</p>
           </div>
-          <span className="text-[12px] text-muted-foreground">{contractPackages.length} package{contractPackages.length !== 1 ? 's' : ''}</span>
+          <div className="flex items-center gap-3">
+            {/* Status filter toggle */}
+            <div className="flex items-center rounded-md border border-border overflow-hidden text-[12px] font-medium">
+              {(['all', 'Ready', 'Incomplete'] as const).map((opt, i) => (
+                <button
+                  key={opt}
+                  onClick={() => setPkgStatusFilter(opt)}
+                  className={`px-3 py-1 transition-colors ${
+                    pkgStatusFilter === opt
+                      ? opt === 'Ready'
+                        ? 'bg-emerald-600 text-white'
+                        : opt === 'Incomplete'
+                          ? 'bg-amber-500 text-white'
+                          : 'bg-primary text-primary-foreground'
+                      : 'bg-background text-muted-foreground hover:bg-muted hover:text-foreground'
+                  } ${i > 0 ? 'border-l border-border' : ''}`}
+                >
+                  {opt === 'all' ? 'All' : opt}
+                </button>
+              ))}
+            </div>
+            <span className="text-[12px] text-muted-foreground">{filteredPkgs.length}{filteredPkgs.length !== contractPackages.length ? ` / ${contractPackages.length}` : ''} package{contractPackages.length !== 1 ? 's' : ''}</span>
+          </div>
         </div>
 
         {contractPackages.length === 0 ? (
@@ -1681,7 +1708,17 @@ export default function PipelineDashboard() {
                   const ready = isPackageReady(pkg);
                   const uniqueRoles = Array.from(new Set(pkg.files.map(f => f.role))).filter(r => r !== 'Undefined');
                   return (
-                    <tr key={pkg.id}>
+                    <tr
+                      key={pkg.id}
+                      tabIndex={0}
+                      onKeyDown={e => {
+                        if (e.key === 'F2' && !isReadOnly) {
+                          e.preventDefault();
+                          startRename(pkg);
+                        }
+                      }}
+                      className="focus:outline-none focus:ring-1 focus:ring-primary/40 focus:ring-inset"
+                    >
                       <td className="font-mono text-[12px] text-primary">{pkg.packageNum}</td>
                       <td>
                         {renamingPkgId === pkg.id ? (
@@ -1925,7 +1962,9 @@ export default function PipelineDashboard() {
             setStagedDocs(prev => prev.filter(d => !addToPackageDocs.some(ad => ad.id === d.id)));
             setSelectedIds(new Set());
             setAddToPackageDocs(null);
-            toast.success(`${addToPackageDocs.length} file${addToPackageDocs.length !== 1 ? 's' : ''} added to ${targetPkg.packageNum}`);
+            // Auto-open PackageDetailPanel so user can assign roles to newly added files
+            setDetailPkg(updatedPkg);
+            toast.success(`${addToPackageDocs.length} file${addToPackageDocs.length !== 1 ? 's' : ''} added to ${targetPkg.packageNum} — assign roles below`);
           }}
           onCancel={() => setAddToPackageDocs(null)}
         />
