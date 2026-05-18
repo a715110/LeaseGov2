@@ -1050,8 +1050,8 @@ export default function PipelineDashboard() {
     setContractPackages(prev => prev.filter(p => p.id !== pkg.id));
     setStagedDocs(prev => [...restoredDocs, ...prev]);
 
-    // Undo toast with 10-second countdown
-    let remaining = 10;
+    // Undo toast with 15-second countdown
+    let remaining = 15;
     const toastId = toast(
       <UngroupUndoToast
         packageNum={pkg.packageNum}
