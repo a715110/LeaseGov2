@@ -8,6 +8,13 @@
  *   filename (lowercased) contains 'corrupt', 'invalid', 'error', 'bad', 'scan_fail'
  *   → invalid; otherwise → valid
  *
+ * Animation system:
+ *   uploading  — shimmer progress bar + blue pulsing border
+ *   validating — amber scanning sweep + bouncing dots
+ *   valid      — spring-scale checkmark entrance + emerald flash on border
+ *   invalid    — shake + red X entrance
+ *   card entry — slide-up fade-in with stagger
+ *
  * Design: Structured Authority — Structured Clarity (Modern Gov-Tech)
  */
 
@@ -88,34 +95,165 @@ function makeStagedFile(name: string, size: number, mime: string): StagedFile {
   };
 }
 
+// ─── CSS keyframes injected once ─────────────────────────────────────────────
+
+const ANIMATION_STYLES = `
+@keyframes upload-card-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+@keyframes scan-sweep {
+  0%   { transform: translateX(-100%); opacity: 0.6; }
+  50%  { opacity: 1; }
+  100% { transform: translateX(100%);  opacity: 0.6; }
+}
+@keyframes result-pop {
+  0%   { opacity: 0; transform: scale(0.4) rotate(-10deg); }
+  60%  { transform: scale(1.25) rotate(4deg); }
+  80%  { transform: scale(0.92) rotate(-2deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%       { transform: translateX(-5px); }
+  40%       { transform: translateX(5px); }
+  60%       { transform: translateX(-3px); }
+  80%       { transform: translateX(3px); }
+}
+@keyframes border-flash-valid {
+  0%   { border-left-color: #6ee7b7; box-shadow: -4px 0 12px rgba(16,185,129,0.5); }
+  60%  { border-left-color: #10b981; box-shadow: -4px 0 20px rgba(16,185,129,0.7); }
+  100% { border-left-color: var(--color-lg-success); box-shadow: none; }
+}
+@keyframes border-flash-invalid {
+  0%   { border-left-color: #fca5a5; box-shadow: -4px 0 12px rgba(239,68,68,0.5); }
+  60%  { border-left-color: #ef4444; box-shadow: -4px 0 20px rgba(239,68,68,0.7); }
+  100% { border-left-color: var(--color-lg-error); box-shadow: none; }
+}
+@keyframes dot-bounce {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40%            { transform: scale(1.0); opacity: 1; }
+}
+.upload-card-enter { animation: upload-card-in 220ms cubic-bezier(0.23,1,0.32,1) both; }
+.shimmer-bar {
+  background: linear-gradient(90deg, #3b82f6 0%, #93c5fd 40%, #3b82f6 60%, #2563eb 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.2s linear infinite;
+}
+.scan-sweep-bar {
+  position: absolute; inset-y-0; width: 40%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(251,191,36,0.6), transparent);
+  animation: scan-sweep 1.4s ease-in-out infinite;
+}
+.result-pop-icon { animation: result-pop 380ms cubic-bezier(0.23,1,0.32,1) both; }
+.card-shake { animation: shake 350ms cubic-bezier(0.23,1,0.32,1) both; }
+.border-flash-valid   { animation: border-flash-valid   600ms ease-out both; }
+.border-flash-invalid { animation: border-flash-invalid 600ms ease-out both; }
+`;
+
+let stylesInjected = false;
+function injectAnimationStyles() {
+  if (stylesInjected) return;
+  const el = document.createElement('style');
+  el.textContent = ANIMATION_STYLES;
+  document.head.appendChild(el);
+  stylesInjected = true;
+}
+
+// ─── BouncingDots ─────────────────────────────────────────────────────────────
+
+function BouncingDots() {
+  return (
+    <span className="inline-flex items-center gap-[3px]">
+      {[0, 1, 2].map(i => (
+        <span
+          key={i}
+          className="w-1 h-1 rounded-full bg-amber-500 inline-block"
+          style={{ animation: `dot-bounce 1.2s ease-in-out ${i * 0.2}s infinite` }}
+        />
+      ))}
+    </span>
+  );
+}
+
 // ─── FileCard ─────────────────────────────────────────────────────────────────
 
 interface FileCardProps {
   file: StagedFile;
+  index: number;
   onRemove: (id: string) => void;
 }
 
-function FileCard({ file, onRemove }: FileCardProps) {
+function FileCard({ file, index, onRemove }: FileCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const [prevStatus, setPrevStatus] = useState<ValidationStatus>(file.status);
+  const [flashClass, setFlashClass] = useState('');
+  const [shaking, setShaking] = useState(false);
 
-  const statusConfig = {
-    uploading:  { icon: <Loader2 className="w-4 h-4 animate-spin" />, badgeClass: 'bg-blue-50 text-blue-700 border border-blue-200',     label: 'Uploading' },
-    validating: { icon: <Loader2 className="w-4 h-4 animate-spin" />, badgeClass: 'bg-amber-50 text-amber-700 border border-amber-200',   label: 'Validating' },
-    valid:      { icon: <CheckCircle2 className="w-4 h-4" />,          badgeClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200', label: 'Valid' },
-    invalid:    { icon: <XCircle className="w-4 h-4" />,               badgeClass: 'bg-red-50 text-red-700 border border-red-200',         label: 'Invalid' },
-  }[file.status];
+  // Detect status transitions to trigger animations
+  useEffect(() => {
+    if (file.status === prevStatus) return;
+    if (file.status === 'valid') {
+      setFlashClass('border-flash-valid');
+      setTimeout(() => setFlashClass(''), 650);
+    } else if (file.status === 'invalid') {
+      setFlashClass('border-flash-invalid');
+      setShaking(true);
+      setTimeout(() => { setFlashClass(''); setShaking(false); }, 650);
+    }
+    setPrevStatus(file.status);
+  }, [file.status, prevStatus]);
 
-  const borderColorStyle = {
+  const borderColorStyle: React.CSSProperties = {
     uploading:  { borderLeftColor: '#93c5fd' },
     validating: { borderLeftColor: '#fbbf24' },
     valid:      { borderLeftColor: 'var(--color-lg-success)' },
     invalid:    { borderLeftColor: 'var(--color-lg-error)' },
   }[file.status];
 
+  const statusConfig = {
+    uploading: {
+      badgeClass: 'bg-blue-50 text-blue-700 border border-blue-200',
+      label: 'Uploading',
+      icon: <Loader2 className="w-3.5 h-3.5 animate-spin" />,
+    },
+    validating: {
+      badgeClass: 'bg-amber-50 text-amber-700 border border-amber-200',
+      label: 'Validating',
+      icon: <BouncingDots />,
+    },
+    valid: {
+      badgeClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+      label: 'Valid',
+      icon: (
+        <span className="result-pop-icon">
+          <CheckCircle2 className="w-3.5 h-3.5" />
+        </span>
+      ),
+    },
+    invalid: {
+      badgeClass: 'bg-red-50 text-red-700 border border-red-200',
+      label: 'Invalid',
+      icon: (
+        <span className="result-pop-icon">
+          <XCircle className="w-3.5 h-3.5" />
+        </span>
+      ),
+    },
+  }[file.status];
+
   return (
     <div
-      className="rounded-lg bg-card border border-border shadow-sm overflow-hidden"
-      style={{ borderLeftWidth: '3px', ...borderColorStyle }}
+      className={`rounded-lg bg-card border border-border shadow-sm overflow-hidden upload-card-enter ${shaking ? 'card-shake' : ''} ${flashClass}`}
+      style={{
+        borderLeftWidth: '3px',
+        ...borderColorStyle,
+        animationDelay: `${index * 60}ms`,
+      }}
     >
       <div className="flex items-center gap-3 px-4 py-3">
         <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
@@ -123,7 +261,7 @@ function FileCard({ file, onRemove }: FileCardProps) {
           <p className="text-[13px] font-medium text-foreground truncate">{file.name}</p>
           <p className="text-[11px] text-muted-foreground">{formatBytes(file.size)}</p>
         </div>
-        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold ${statusConfig.badgeClass}`}>
+        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold ${statusConfig.badgeClass}`}>
           {statusConfig.icon}
           {statusConfig.label}
         </span>
@@ -145,16 +283,26 @@ function FileCard({ file, onRemove }: FileCardProps) {
         </button>
       </div>
 
-      {/* Upload progress bar */}
+      {/* Upload progress bar — shimmer */}
       {file.status === 'uploading' && (
         <div className="mx-4 mb-3">
           <div className="h-1.5 bg-muted rounded-full overflow-hidden">
             <div
-              className="h-full bg-blue-500 rounded-full transition-all duration-200"
+              className="h-full rounded-full shimmer-bar transition-[width] duration-150"
               style={{ width: `${file.uploadProgress}%` }}
             />
           </div>
-          <p className="text-[11px] text-muted-foreground mt-1">{file.uploadProgress}%</p>
+          <p className="text-[11px] text-blue-600 mt-1 font-mono">{file.uploadProgress}%</p>
+        </div>
+      )}
+
+      {/* Validating scan sweep */}
+      {file.status === 'validating' && (
+        <div className="mx-4 mb-3">
+          <div className="relative h-1.5 bg-amber-100 rounded-full overflow-hidden">
+            <div className="scan-sweep-bar" />
+          </div>
+          <p className="text-[11px] text-amber-600 mt-1">Running validation checks…</p>
         </div>
       )}
 
@@ -176,8 +324,12 @@ function FileCard({ file, onRemove }: FileCardProps) {
             Validation Checks
           </p>
           <div className="grid grid-cols-2 gap-1.5">
-            {file.categories.map(cat => (
-              <div key={cat.name} className="flex items-start gap-2 text-[12px]">
+            {file.categories.map((cat, ci) => (
+              <div
+                key={cat.name}
+                className="flex items-start gap-2 text-[12px]"
+                style={{ animation: `upload-card-in 180ms cubic-bezier(0.23,1,0.32,1) ${ci * 40}ms both` }}
+              >
                 {cat.passed ? (
                   <CheckCircle2 className="w-3.5 h-3.5 text-[var(--color-lg-success)] mt-0.5 shrink-0" />
                 ) : (
@@ -217,10 +369,12 @@ export function UploadDialog({ open, onClose, onConfirm }: UploadDialogProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const progressTimers = useRef<Map<string, ReturnType<typeof setInterval>>>(new Map());
 
+  // Inject animation CSS once
+  useEffect(() => { injectAnimationStyles(); }, []);
+
   const pendingCount = files.filter(f => f.status === 'uploading' || f.status === 'validating').length;
   const validFiles   = files.filter(f => f.status === 'valid');
   const invalidFiles = files.filter(f => f.status === 'invalid');
-  // Enabled only when no files are pending AND at least one valid file exists
   const canConfirm   = pendingCount === 0 && validFiles.length > 0 && workspaceTag !== '';
 
   // Persist workspace selection
@@ -240,7 +394,6 @@ export function UploadDialog({ open, onClose, onConfirm }: UploadDialogProps) {
   useEffect(() => {
     if (open) {
       setFiles([]);
-      // Clear any running timers
       progressTimers.current.forEach(t => clearInterval(t));
       progressTimers.current.clear();
     }
@@ -255,20 +408,22 @@ export function UploadDialog({ open, onClose, onConfirm }: UploadDialogProps) {
 
   function simulateFileLifecycle(fileId: string, fileName: string) {
     const willBeInvalid = isInvalidFilename(fileName);
-    // Step 1: Animate upload progress 0→100 over ~1000ms
     let progress = 0;
+    // Step 1: Animate upload progress 0→100 with variable speed (feels organic)
     const progressInterval = setInterval(() => {
-      progress += Math.floor(Math.random() * 20) + 10;
+      // Slow down near 100 for realism
+      const remaining = 100 - progress;
+      const step = Math.max(2, Math.floor(Math.random() * (remaining > 30 ? 18 : 8)) + 3);
+      progress = Math.min(100, progress + step);
       if (progress >= 100) {
-        progress = 100;
         clearInterval(progressInterval);
         progressTimers.current.delete(`progress-${fileId}`);
         // Step 2: Transition to validating
         setFiles(prev => prev.map(f =>
           f.id === fileId ? { ...f, status: 'validating', uploadProgress: 100 } : f
         ));
-        // Step 3: Resolve after 2000–3000ms
-        const delay = 2000 + Math.random() * 1000;
+        // Step 3: Resolve after 2000–3200ms
+        const delay = 2000 + Math.random() * 1200;
         const resolveTimer = setTimeout(() => {
           progressTimers.current.delete(`resolve-${fileId}`);
           setFiles(prev => prev.map(f => {
@@ -281,7 +436,7 @@ export function UploadDialog({ open, onClose, onConfirm }: UploadDialogProps) {
                 categories: f.categories.map(c => ({
                   ...c,
                   passed: c.name !== 'Security Scan',
-                  detail: c.name === 'Security Scan' ? 'Scan failed' : c.detail,
+                  detail: c.name === 'Security Scan' ? 'Scan failed — file may be corrupted' : c.detail,
                 })),
               };
             }
@@ -303,7 +458,7 @@ export function UploadDialog({ open, onClose, onConfirm }: UploadDialogProps) {
           f.id === fileId ? { ...f, uploadProgress: progress } : f
         ));
       }
-    }, 80);
+    }, 70);
     progressTimers.current.set(`progress-${fileId}`, progressInterval);
   }
 
@@ -334,7 +489,6 @@ export function UploadDialog({ open, onClose, onConfirm }: UploadDialogProps) {
   }, [addFiles]);
 
   const handleRemove = useCallback((id: string) => {
-    // Cancel any running timers for this file
     progressTimers.current.forEach((_, key) => {
       if (key.includes(id)) {
         clearInterval(progressTimers.current.get(key)!);
@@ -359,8 +513,11 @@ export function UploadDialog({ open, onClose, onConfirm }: UploadDialogProps) {
       {/* Backdrop */}
       <div className="fixed inset-0 bg-black/40 backdrop-blur-[2px]" onClick={onClose} />
 
-      {/* Dialog */}
-      <div className="relative z-10 w-full max-w-4xl bg-[var(--color-lg-page-bg)] rounded-xl shadow-2xl border border-border flex flex-col overflow-hidden">
+      {/* Dialog — entrance animation */}
+      <div
+        className="relative z-10 w-full max-w-4xl bg-[var(--color-lg-page-bg)] rounded-xl shadow-2xl border border-border flex flex-col overflow-hidden"
+        style={{ animation: 'upload-card-in 260ms cubic-bezier(0.23,1,0.32,1) both' }}
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-card">
           <div>
@@ -393,14 +550,16 @@ export function UploadDialog({ open, onClose, onConfirm }: UploadDialogProps) {
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
-              className={`relative flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed py-10 cursor-pointer transition-colors ${
+              className={`relative flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed py-10 cursor-pointer transition-all duration-200 ${
                 isDragging
-                  ? 'border-primary bg-primary/5'
+                  ? 'border-primary bg-primary/5 scale-[1.01]'
                   : 'border-border bg-muted/30 hover:border-primary/50 hover:bg-muted/50'
               }`}
               onClick={() => fileInputRef.current?.click()}
             >
-              <UploadCloud className={`w-10 h-10 ${isDragging ? 'text-primary' : 'text-muted-foreground'}`} />
+              <UploadCloud
+                className={`w-10 h-10 transition-all duration-200 ${isDragging ? 'text-primary scale-110' : 'text-muted-foreground'}`}
+              />
               <div className="text-center">
                 <p className="text-[14px] font-medium text-foreground">
                   {isDragging ? 'Drop files here' : 'Drag & drop files here'}
@@ -420,8 +579,8 @@ export function UploadDialog({ open, onClose, onConfirm }: UploadDialogProps) {
             {/* File list */}
             {files.length > 0 && (
               <div className="flex flex-col gap-2 max-h-72 overflow-y-auto pr-1">
-                {files.map(f => (
-                  <FileCard key={f.id} file={f} onRemove={handleRemove} />
+                {files.map((f, i) => (
+                  <FileCard key={f.id} file={f} index={i} onRemove={handleRemove} />
                 ))}
               </div>
             )}
@@ -488,29 +647,26 @@ export function UploadDialog({ open, onClose, onConfirm }: UploadDialogProps) {
               </div>
             </div>
 
-            {/* Summary */}
+            {/* Summary — live counter with transition */}
             <div className="rounded-lg border border-border bg-card p-4 flex flex-col gap-2">
               <span className="text-[12px] font-semibold text-foreground">Submission Summary</span>
-              <div className="flex justify-between text-[12px]">
-                <span className="text-muted-foreground">Total files</span>
-                <span className="font-medium">{files.length}</span>
-              </div>
-              <div className="flex justify-between text-[12px]">
-                <span className="text-muted-foreground">Uploading</span>
-                <span className="font-medium text-blue-600">{files.filter(f => f.status === 'uploading').length}</span>
-              </div>
-              <div className="flex justify-between text-[12px]">
-                <span className="text-muted-foreground">Validating</span>
-                <span className="font-medium text-amber-600">{files.filter(f => f.status === 'validating').length}</span>
-              </div>
-              <div className="flex justify-between text-[12px]">
-                <span className="text-muted-foreground">Valid</span>
-                <span className="font-medium text-emerald-600">{validFiles.length}</span>
-              </div>
-              <div className="flex justify-between text-[12px]">
-                <span className="text-muted-foreground">Invalid</span>
-                <span className="font-medium text-red-600">{invalidFiles.length}</span>
-              </div>
+              {[
+                { label: 'Total files',  value: files.length,                                     color: 'text-foreground' },
+                { label: 'Uploading',    value: files.filter(f => f.status === 'uploading').length, color: 'text-blue-600' },
+                { label: 'Validating',   value: files.filter(f => f.status === 'validating').length, color: 'text-amber-600' },
+                { label: 'Valid',        value: validFiles.length,                                 color: 'text-emerald-600' },
+                { label: 'Invalid',      value: invalidFiles.length,                               color: 'text-red-600' },
+              ].map(row => (
+                <div key={row.label} className="flex justify-between text-[12px]">
+                  <span className="text-muted-foreground">{row.label}</span>
+                  <span
+                    className={`font-medium tabular-nums transition-all duration-200 ${row.color}`}
+                    style={{ minWidth: '1.5rem', textAlign: 'right' }}
+                  >
+                    {row.value}
+                  </span>
+                </div>
+              ))}
               {!workspaceTag && files.length > 0 && (
                 <p className="text-[11px] text-amber-600 mt-1">⚠ Select a workspace tag to continue.</p>
               )}
@@ -524,7 +680,7 @@ export function UploadDialog({ open, onClose, onConfirm }: UploadDialogProps) {
             {pendingCount > 0 ? (
               <span className="flex items-center gap-1.5 text-amber-600">
                 <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                Validating {pendingCount} file{pendingCount !== 1 ? 's' : ''}… please wait
+                Processing {pendingCount} file{pendingCount !== 1 ? 's' : ''}…
               </span>
             ) : files.length > 0 ? (
               <span>{validFiles.length} valid · {invalidFiles.length} invalid</span>
