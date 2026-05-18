@@ -8,19 +8,23 @@
  * - Minimal, precise interactions
  *
  * Structure:
- * - Sidebar (fixed, 240px): logo + nav groups + user section
- * - Main content area: header bar (with role switcher) + page content
+ * - Sidebar (fixed, 240px expanded / 64px collapsed): logo + nav groups + user section
+ * - Main content area: header bar (role switcher, theme picker, search, bell) + page content
  *
- * In production, nav items are driven by the screen registry response.
- * During scaffolding, a static MVP nav list is rendered directly.
+ * Sidebar features:
+ * - Collapsible: 240px ↔ 64px icon-only, persisted to localStorage
+ * - Role-aware: groups filtered by allowedRoles from navigationConfig
+ * - Collapsible groups: expandedGroups state with auto-expand on route change
+ * - Scroll active item into view on route change
+ * - Tooltips on group icons when collapsed
  */
-import React, { useContext } from 'react'
+import React, { useContext, useEffect, useRef, useState, useCallback } from 'react'
 import { Link, useLocation } from 'wouter'
 import {
   UploadCloud, Scan, Layers, CheckCircle, Folder,
   CloudUpload, Settings, Shield, Bell, ChevronRight,
   RefreshCw, UserCog, ChevronDown, Bot, Play, Palette, Check,
-  Sun, Moon,
+  Sun, Moon, Menu, X, Search,
 } from 'lucide-react'
 import { Breadcrumb } from '../shared/Breadcrumb'
 import { cn } from '../../lib/utils'
@@ -40,6 +44,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '../ui/tooltip'
+import { Input } from '../ui/input'
+import { toast } from 'sonner'
 
 // ─── Icon map ────────────────────────────────────────────────────────────────
 const ICON_MAP: Record<string, React.ElementType> = {
@@ -109,28 +120,17 @@ interface AppShellProps {
   userDisplayName?: string
 }
 
-function SidebarNavItem({ label, path, isActive }: { label: string; path: string; isActive: boolean }) {
-  return (
-    <Link
-      href={path}
-      className={cn(
-        'flex items-center gap-2.5 rounded px-3 py-2 text-sm font-medium transition-colors duration-150 no-underline',
-        isActive
-          ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-          : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
-      )}
-      aria-current={isActive ? 'page' : undefined}
-    >
-      <ChevronRight className="h-3 w-3 shrink-0 opacity-40" aria-hidden="true" />
-      <span className="truncate">{label}</span>
-    </Link>
-  )
+// ─── Active route helper ──────────────────────────────────────────────────────
+function isNavItemActive(location: string, itemPath: string): boolean {
+  if (location === itemPath) return true
+  const cleanLocation = location.split('?')[0]
+  if (cleanLocation === itemPath) return true
+  return cleanLocation.startsWith(itemPath + '/')
 }
 
-/** Demo role switcher — shown in the top header bar */
+// ─── Role Switcher ────────────────────────────────────────────────────────────
 function RoleSwitcher() {
   const { activeRole, setActiveRole, roleLabel } = useRole()
-
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -152,10 +152,7 @@ function RoleSwitcher() {
           <DropdownMenuItem
             key={role}
             onSelect={() => setActiveRole(role)}
-            className={cn(
-              'text-xs cursor-pointer',
-              activeRole === role && 'font-semibold text-primary'
-            )}
+            className={cn('text-xs cursor-pointer', activeRole === role && 'font-semibold text-primary')}
           >
             {activeRole === role && (
               <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-primary" />
@@ -197,17 +194,12 @@ function ThemePicker() {
           aria-label="Appearance settings"
           title={`Theme: ${current.label} · Mode: ${currentMode.label}`}
         >
-          <span
-            className="h-3 w-3 shrink-0 rounded-full"
-            style={{ background: current.swatch }}
-            aria-hidden="true"
-          />
+          <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: current.swatch }} aria-hidden="true" />
           <Palette className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           <ModeIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
-        {/* ── Colour Theme section ── */}
         <DropdownMenuLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
           Colour Theme
         </DropdownMenuLabel>
@@ -216,24 +208,13 @@ function ThemePicker() {
           <DropdownMenuItem
             key={option.key}
             onSelect={() => setThemeKey(option.key)}
-            className={cn(
-              'flex items-center gap-2.5 text-xs cursor-pointer',
-              themeKey === option.key && 'font-semibold'
-            )}
+            className={cn('flex items-center gap-2.5 text-xs cursor-pointer', themeKey === option.key && 'font-semibold')}
           >
-            <span
-              className="h-3.5 w-3.5 shrink-0 rounded-full ring-1 ring-border"
-              style={{ background: option.swatch }}
-              aria-hidden="true"
-            />
+            <span className="h-3.5 w-3.5 shrink-0 rounded-full ring-1 ring-border" style={{ background: option.swatch }} aria-hidden="true" />
             <span className="flex-1">{option.label}</span>
-            {themeKey === option.key && (
-              <Check className="h-3 w-3 shrink-0 text-primary" />
-            )}
+            {themeKey === option.key && <Check className="h-3 w-3 shrink-0 text-primary" />}
           </DropdownMenuItem>
         ))}
-
-        {/* ── Appearance Mode section (only when toggle is allowed) ── */}
         {canToggle && (
           <>
             <DropdownMenuSeparator className="my-1" />
@@ -241,13 +222,8 @@ function ThemePicker() {
               Appearance
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            {/* Inline segmented control — not individual menu items so it doesn't close on click */}
             <div className="px-2 py-1.5">
-              <div
-                role="group"
-                aria-label="Color mode"
-                className="inline-flex w-full items-center rounded-md border border-border bg-muted p-0.5 gap-0.5"
-              >
+              <div role="group" aria-label="Color mode" className="inline-flex w-full items-center rounded-md border border-border bg-muted p-0.5 gap-0.5">
                 {MODE_OPTIONS.map(({ value, icon: Icon, label }) => {
                   const isActive = rawMode === value
                   return (
@@ -259,9 +235,7 @@ function ThemePicker() {
                       onClick={() => setMode(value)}
                       className={cn(
                         'inline-flex flex-1 items-center justify-center gap-1 rounded px-2 py-1 text-xs font-medium transition-all duration-150',
-                        isActive
-                          ? 'bg-background text-foreground shadow-sm ring-1 ring-border'
-                          : 'text-muted-foreground hover:text-foreground'
+                        isActive ? 'bg-background text-foreground shadow-sm ring-1 ring-border' : 'text-muted-foreground hover:text-foreground'
                       )}
                     >
                       <Icon className="h-3.5 w-3.5" aria-hidden="true" />
@@ -278,7 +252,7 @@ function ThemePicker() {
   )
 }
 
-// ─── Notification Bell — A7 ──────────────────────────────────────────────────
+// ─── Notification Bell ────────────────────────────────────────────────────────
 function NotificationBell() {
   const { unreadCount } = useNotifications()
   return (
@@ -300,34 +274,14 @@ function NotificationBell() {
   )
 }
 
-// ─── Sidebar active state helper — A9 ──────────────────────────────────────
-/**
- * Returns true when the current location matches the nav item path.
- * Uses prefix matching so nested routes (e.g. /records/123) keep the
- * parent nav item (e.g. /records) highlighted.
- * Special case: root-level paths like /pipeline/dashboard must not
- * match /pipeline/upload, so we use the full path for exact items
- * and prefix matching only for section roots.
- */
-function isNavItemActive(location: string, itemPath: string): boolean {
-  if (location === itemPath) return true
-  // Strip query string for comparison
-  const cleanLocation = location.split('?')[0]
-  if (cleanLocation === itemPath) return true
-  // Prefix match: /records/123 → /records is active
-  // But avoid /pipeline matching /pipeline/upload AND /pipeline/dashboard simultaneously
-  // by requiring the prefix to be followed by / or end of string
-  return cleanLocation.startsWith(itemPath + '/')
-}
-
-// ─── Start Demo sidebar button ──────────────────────────────────────────────
+// ─── Start Demo sidebar button ────────────────────────────────────────────────
 function StartDemoButton() {
   const { isActive, startDemo } = useDemoMode()
   if (isActive) return null
   return (
     <button
       onClick={startDemo}
-      className="mb-2 flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold transition-all duration-150 active:scale-95 ring-1"
+      className="mb-2 flex w-full items-center gap-2 rounded-md px-3 py-2 text-xs font-semibold transition-colors"
       style={{
         background: 'var(--color-lg-blue)',
         color: '#fff',
@@ -341,124 +295,249 @@ function StartDemoButton() {
   )
 }
 
+// ─── Main AppShell ────────────────────────────────────────────────────────────
 export default function AppShell({
   children,
   organizationName = 'LeaseGov',
   userDisplayName = 'User',
 }: AppShellProps) {
   const [location] = useLocation()
+  const { activeRole } = useRole()
 
-  // Only show MVP items during scaffolding
+  // ── Sidebar collapse state (persisted) ──
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(
+    () => localStorage.getItem('leasegov_sidebar_collapsed') === 'true'
+  )
+  const toggleSidebar = useCallback(() => {
+    setSidebarCollapsed(prev => {
+      const next = !prev
+      localStorage.setItem('leasegov_sidebar_collapsed', String(next))
+      return next
+    })
+  }, [])
+
+  // ── Build visible, ordered groups ──
   const visibleItems = STATIC_NAV.filter(item => item.phase === 'mvp')
-
-  // Group by navGroup
   const grouped = visibleItems.reduce<Record<string, StaticNavEntry[]>>((acc, item) => {
     if (!acc[item.navGroup]) acc[item.navGroup] = []
     acc[item.navGroup].push(item)
     return acc
   }, {})
 
-  // Render groups in NAV_GROUPS sort order (MVP only)
   const orderedGroups = NAV_GROUPS
-    .filter(g => g.phase === 'mvp' && grouped[g.key])
+    .filter(g => {
+      if (g.phase !== 'mvp') return false
+      if (!grouped[g.key]) return false
+      if (!g.allowedRoles) return true
+      return g.allowedRoles.includes(activeRole)
+    })
     .sort((a, b) => a.sortOrder - b.sortOrder)
+
+  // ── Expanded groups state ──
+  const defaultOpen = new Set(orderedGroups.slice(0, 2).map(g => g.key))
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(defaultOpen)
+
+  const toggleGroup = useCallback((key: string) => {
+    setExpandedGroups(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }, [])
+
+  // ── Auto-expand group containing current route ──
+  useEffect(() => {
+    const activeGroup = orderedGroups.find(g =>
+      (grouped[g.key] ?? []).some(item => isNavItemActive(location, item.path))
+    )
+    if (activeGroup) {
+      setExpandedGroups(prev => {
+        if (prev.has(activeGroup.key)) return prev
+        const next = new Set(prev)
+        next.add(activeGroup.key)
+        return next
+      })
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location])
+
+  // ── Scroll active nav item into view ──
+  const activeNavRef = useRef<HTMLAnchorElement | null>(null)
+  useEffect(() => {
+    activeNavRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  })
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background">
-      {/* Sidebar */}
+      {/* ── Sidebar ── */}
       <aside
-        className="flex h-full w-60 shrink-0 flex-col overflow-y-auto"
+        className={cn(
+          'flex h-full shrink-0 flex-col overflow-y-auto overflow-x-hidden transition-all duration-200',
+          sidebarCollapsed ? 'w-16' : 'w-60'
+        )}
         style={{ background: 'var(--sidebar)' }}
         aria-label="Main navigation"
       >
         {/* Logo */}
-        <div className="flex h-14 items-center border-b px-4" style={{ borderColor: 'var(--sidebar-border)' }}>
-          <Link
-            href="/pipeline/dashboard"
-            className="flex items-center gap-2.5 no-underline"
-          >
+        <div
+          className={cn('flex h-14 items-center border-b shrink-0', sidebarCollapsed ? 'justify-center px-0' : 'px-4')}
+          style={{ borderColor: 'var(--sidebar-border)' }}
+        >
+          {sidebarCollapsed ? (
             <div
               className="flex h-7 w-7 items-center justify-center rounded text-xs font-bold"
               style={{ background: 'var(--sidebar-primary)', color: 'var(--sidebar-primary-foreground)' }}
             >
               LG
             </div>
-            <span
-              className="text-sm font-semibold tracking-tight"
-              style={{ color: 'var(--sidebar-foreground)' }}
-            >
-              {organizationName}
-            </span>
-          </Link>
+          ) : (
+            <Link href="/pipeline/dashboard" className="flex items-center gap-2.5 no-underline">
+              <div
+                className="flex h-7 w-7 items-center justify-center rounded text-xs font-bold shrink-0"
+                style={{ background: 'var(--sidebar-primary)', color: 'var(--sidebar-primary-foreground)' }}
+              >
+                LG
+              </div>
+              <span className="text-sm font-semibold tracking-tight" style={{ color: 'var(--sidebar-foreground)' }}>
+                {organizationName}
+              </span>
+            </Link>
+          )}
         </div>
 
         {/* Nav groups */}
-        <nav className="flex-1 space-y-5 px-3 py-4">
+        <nav className={cn('flex-1 space-y-1 py-3', sidebarCollapsed ? 'px-2' : 'px-3')}>
           {orderedGroups.map(group => {
             const Icon = ICON_MAP[group.icon] ?? ChevronRight
             const items = grouped[group.key] ?? []
+            const isExpanded = expandedGroups.has(group.key)
+            const hasActiveChild = items.some(item => isNavItemActive(location, item.path))
+
             return (
-              <div key={group.key}>
-                <div className="mb-1 flex items-center gap-1.5 px-3">
-                  <Icon
-                    className="h-3 w-3 shrink-0"
-                    style={{ color: 'var(--sidebar-foreground)', opacity: 0.4 }}
-                    aria-hidden="true"
-                  />
-                  <p
-                    className="text-[10px] font-semibold uppercase tracking-widest"
-                    style={{ color: 'var(--sidebar-foreground)', opacity: 0.4 }}
+              <div key={group.key} className="mb-1">
+                {/* Group header */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => !sidebarCollapsed && toggleGroup(group.key)}
+                      className={cn(
+                        'w-full flex items-center rounded-md transition-colors duration-150',
+                        sidebarCollapsed ? 'justify-center px-0 py-2' : 'gap-2 px-2 py-1.5',
+                        hasActiveChild
+                          ? 'text-white bg-white/10'
+                          : 'text-white/60 hover:text-white hover:bg-white/8'
+                      )}
+                      aria-expanded={!sidebarCollapsed ? isExpanded : undefined}
+                    >
+                      <span className="flex-shrink-0">
+                        <Icon className="h-4 w-4" aria-hidden="true" />
+                      </span>
+                      {!sidebarCollapsed && (
+                        <>
+                          <span className="flex-1 text-left font-semibold text-[10px] uppercase tracking-widest truncate">
+                            {group.label}
+                          </span>
+                          {isExpanded
+                            ? <ChevronDown className="h-3 w-3 shrink-0 opacity-60" />
+                            : <ChevronRight className="h-3 w-3 shrink-0 opacity-60" />
+                          }
+                        </>
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                  {sidebarCollapsed && (
+                    <TooltipContent side="right" className="text-xs">
+                      {group.label}
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+
+                {/* Nav items — only when expanded and not collapsed */}
+                {!sidebarCollapsed && isExpanded && (
+                  <ul
+                    className="mt-0.5 space-y-0.5 ml-4 border-l pl-2.5"
+                    style={{ borderColor: 'rgba(255,255,255,0.10)' }}
+                    role="list"
                   >
-                    {group.label}
-                  </p>
-                </div>
-                <ul className="space-y-0.5" role="list">
-                  {items.map(item => (
-                    <li key={item.path}>
-                      <SidebarNavItem
-                        label={item.label}
-                        path={item.path}
-                        isActive={isNavItemActive(location, item.path)}
-                      />
-                    </li>
-                  ))}
-                </ul>
+                    {items.map(item => {
+                      const active = isNavItemActive(location, item.path)
+                      return (
+                        <li key={item.path}>
+                          <Link
+                            href={item.path}
+                            ref={active ? (activeNavRef as React.Ref<HTMLAnchorElement>) : undefined}
+                            className={cn(
+                              'block rounded px-2 py-1.5 text-xs transition-colors duration-150 no-underline',
+                              active
+                                ? 'text-white bg-white/15 font-medium -ml-[13px] pl-[15px] border-l-2 border-blue-400'
+                                : 'text-white/60 hover:text-white hover:bg-white/8'
+                            )}
+                            aria-current={active ? 'page' : undefined}
+                          >
+                            {item.label}
+                          </Link>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
               </div>
             )
           })}
         </nav>
 
-        {/* User section */}
+        {/* Sidebar footer */}
         <div
-          className="border-t px-3 py-3"
+          className={cn('border-t shrink-0', sidebarCollapsed ? 'px-2 py-3' : 'px-3 py-3')}
           style={{ borderColor: 'var(--sidebar-border)' }}
         >
-          <StartDemoButton />
-          <div className="flex items-center gap-2.5 rounded px-2 py-1.5">
+          {!sidebarCollapsed && <StartDemoButton />}
+          <div className={cn('flex items-center gap-2.5 rounded px-2 py-1.5', sidebarCollapsed && 'justify-center px-0')}>
             <div
               className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold"
               style={{ background: 'var(--sidebar-accent)', color: 'var(--sidebar-accent-foreground)' }}
             >
               {userDisplayName.charAt(0).toUpperCase()}
             </div>
-            <span
-              className="truncate text-xs font-medium"
-              style={{ color: 'var(--sidebar-foreground)', opacity: 0.8 }}
-            >
-              {userDisplayName}
-            </span>
+            {!sidebarCollapsed && (
+              <span className="truncate text-xs font-medium" style={{ color: 'var(--sidebar-foreground)', opacity: 0.8 }}>
+                {userDisplayName}
+              </span>
+            )}
           </div>
         </div>
       </aside>
 
-      {/* Main content */}
+      {/* ── Main content ── */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Top header bar */}
-        <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-background px-6">
-          {/* Left: breadcrumb — A8 */}
-          <Breadcrumb />
+        <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-background px-4 gap-3">
+          {/* Left: collapse toggle + breadcrumb */}
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              onClick={toggleSidebar}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            >
+              {sidebarCollapsed ? <Menu className="h-4 w-4" /> : <X className="h-4 w-4" />}
+            </button>
+            <Breadcrumb />
+          </div>
+
+          {/* Centre: global search placeholder */}
+          <div className="relative hidden md:flex items-center w-56 shrink-0">
+            <Search className="absolute left-2.5 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+            <Input
+              placeholder="Search…"
+              className="pl-8 h-8 text-xs bg-muted/50 border-0 focus-visible:ring-1"
+              onClick={() => toast.info('Global search coming soon')}
+              readOnly
+            />
+          </div>
+
           {/* Right: role switcher + appearance picker + notifications */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 shrink-0">
             <RoleSwitcher />
             <ThemePicker />
             <NotificationBell />

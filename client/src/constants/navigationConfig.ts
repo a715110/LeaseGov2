@@ -13,6 +13,7 @@
  */
 import { SCREEN_KEYS } from './screenKeys'
 import type { ScreenKey } from './screenKeys'
+import type { UserRole } from '../lib/types'
 
 // ─── Nav Group Metadata ───────────────────────────────────────────────────────
 // Matches nav_group values in ScreenDefinition.
@@ -24,19 +25,51 @@ export interface NavGroupConfig {
   icon: string   // Lucide icon name
   sortOrder: number
   phase: 'mvp' | 'phase_2'
+  /** If omitted the group is visible to all roles */
+  allowedRoles?: UserRole[]
 }
 
 export const NAV_GROUPS: NavGroupConfig[] = [
-  { key: 'document-pipeline', label: 'Document Pipeline', icon: 'UploadCloud',   sortOrder: 1, phase: 'mvp'     },
-  { key: 'extraction',        label: 'Extraction',        icon: 'Scan',          sortOrder: 2, phase: 'mvp'     },
-  { key: 'packages',          label: 'Packages',          icon: 'Layers',        sortOrder: 3, phase: 'mvp'     },
-  { key: 'approvals',         label: 'Approvals',         icon: 'CheckCircle',   sortOrder: 4, phase: 'mvp'     },
-  { key: 'records',           label: 'Records',           icon: 'Folder',        sortOrder: 5, phase: 'mvp'     },
-  { key: 'export',            label: 'Governed Export',   icon: 'CloudUpload',   sortOrder: 6, phase: 'mvp'     },
-  { key: 'admin',             label: 'Admin',             icon: 'Settings',      sortOrder: 7, phase: 'mvp'     },
-  { key: 'reassessment',      label: 'Reassessment',      icon: 'RefreshCw',     sortOrder: 8, phase: 'mvp'     },
-  { key: 'agents',            label: 'Agents',            icon: 'Bot',           sortOrder: 9, phase: 'mvp'     },
-  { key: 'superadmin',        label: 'SuperAdmin',        icon: 'Shield',        sortOrder: 10, phase: 'mvp'    },
+  {
+    key: 'document-pipeline', label: 'Document Pipeline', icon: 'UploadCloud', sortOrder: 1, phase: 'mvp',
+    allowedRoles: ['document_submitter', 'auditor', 'lease_admin'],
+  },
+  {
+    key: 'extraction', label: 'Extraction', icon: 'Scan', sortOrder: 2, phase: 'mvp',
+    allowedRoles: ['preparer', 'reviewer', 'auditor', 'lease_admin'],
+  },
+  {
+    key: 'packages', label: 'Packages', icon: 'Layers', sortOrder: 3, phase: 'mvp',
+    allowedRoles: ['preparer', 'reviewer', 'approver', 'auditor', 'lease_admin'],
+  },
+  {
+    key: 'approvals', label: 'Approvals', icon: 'CheckCircle', sortOrder: 4, phase: 'mvp',
+    allowedRoles: ['preparer', 'reviewer', 'approver', 'auditor', 'lease_admin'],
+  },
+  {
+    key: 'records', label: 'Records', icon: 'Folder', sortOrder: 5, phase: 'mvp',
+    allowedRoles: ['preparer', 'reviewer', 'approver', 'accountant', 'controller', 'auditor', 'lease_admin'],
+  },
+  {
+    key: 'export', label: 'Governed Export', icon: 'CloudUpload', sortOrder: 6, phase: 'mvp',
+    allowedRoles: ['controller', 'auditor', 'lease_admin'],
+  },
+  {
+    key: 'admin', label: 'Admin', icon: 'Settings', sortOrder: 7, phase: 'mvp',
+    allowedRoles: ['lease_admin'],
+  },
+  {
+    key: 'reassessment', label: 'Reassessment', icon: 'RefreshCw', sortOrder: 8, phase: 'mvp',
+    allowedRoles: ['preparer', 'reviewer', 'approver', 'accountant', 'controller', 'auditor', 'lease_admin'],
+  },
+  {
+    key: 'agents', label: 'Agents', icon: 'Bot', sortOrder: 9, phase: 'mvp',
+    allowedRoles: ['lease_admin', 'auditor'],
+  },
+  {
+    key: 'superadmin', label: 'SuperAdmin', icon: 'Shield', sortOrder: 10, phase: 'mvp',
+    // No allowedRoles — visible to all (gated separately by ScreenGate)
+  },
 ]
 
 // ─── Static Nav Item Type ─────────────────────────────────────────────────────
