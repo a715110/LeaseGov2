@@ -34,6 +34,8 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import { FlagSlidingPanel } from '@/components/shared/FlagSlidingPanel';
+import { UploadDialog } from '@/components/pipeline/UploadDialog';
+import type { StagedFile as UploadedFile } from '@/components/pipeline/UploadDialog';
 import { toast } from 'sonner';
 import { SCREEN_KEYS } from '@/constants/screenKeys';
 import { publishEvent } from '@/lib/eventBus';
@@ -1114,6 +1116,9 @@ export default function PipelineDashboard() {
   const { activeRole } = useRole();
   const isReadOnly = activeRole === 'auditor';
 
+  // ── Upload dialog state ──
+  const [showUpload, setShowUpload] = useState(false);
+
   // ── Stage Documents state ──
   const [stagedDocs, setStagedDocs] = useState<StagedDocument[]>(MOCK_DOCUMENTS);
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -1254,6 +1259,25 @@ export default function PipelineDashboard() {
   const toggleOne = (id: string) => {
     setSelectedIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   };
+
+  // ── Upload confirm handler ──
+  function handleUploadConfirm(uploadedFiles: UploadedFile[], workspaceTag: string) {
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const newDocs: StagedDocument[] = uploadedFiles.map(f => ({
+      id: f.id,
+      display_name: f.name,
+      status: (f.status === 'warning' ? 'warning' : 'valid') as StagedStatus,
+      upload_date: dateStr,
+      uploader: activeRole === 'document_submitter' ? 'You' : 'Current User',
+      mime_type: f.mime_type,
+      file_size_bytes: f.size,
+      page_count: null,
+      workspace_tag: workspaceTag,
+    }));
+    setStagedDocs(prev => [...newDocs, ...prev]);
+    toast.success(`${newDocs.length} file${newDocs.length !== 1 ? 's' : ''} added to the pipeline.`);
+  }
 
   // ── Sort helpers ──
   function togglePkgSort(col: string) {
@@ -1524,7 +1548,7 @@ export default function PipelineDashboard() {
           <h1 className="page-title">Document Pipeline</h1>
           <p className="page-subtitle">Monitor and manage staged documents before submission to processing.</p>
         </div>
-        <Button onClick={() => navigate('/pipeline/upload')} className="gap-2">
+        <Button onClick={() => setShowUpload(true)} className="gap-2">
           <UploadCloud className="w-4 h-4" /> Upload Files
         </Button>
       </div>
@@ -1594,7 +1618,7 @@ export default function PipelineDashboard() {
             </div>
             <p className="text-[15px] font-medium text-foreground">No documents in pipeline</p>
             <p className="text-[13px] text-muted-foreground">Upload files to begin the intake process.</p>
-            <Button size="sm" onClick={() => navigate('/pipeline/upload')} className="mt-1 gap-2">
+              <Button size="sm" onClick={() => setShowUpload(true)} className="mt-1 gap-2">
               <UploadCloud className="w-4 h-4" /> Upload Files
             </Button>
           </div>
@@ -2134,6 +2158,13 @@ export default function PipelineDashboard() {
           onCancel={() => setGroupingDocs(null)}
         />
       )}
+      {/* Upload dialog */}
+      <UploadDialog
+        open={showUpload}
+        onClose={() => setShowUpload(false)}
+        onConfirm={handleUploadConfirm}
+      />
+
       {addToPackageDocs && (
         <AddToPackageDialog
           docs={addToPackageDocs}
