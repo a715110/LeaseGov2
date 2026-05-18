@@ -531,9 +531,10 @@ export default function AppShell({
                             className={cn(
                               'block rounded px-2 py-1.5 text-xs transition-colors duration-150 no-underline',
                               active
-                                ? 'text-white bg-white/15 font-medium -ml-[13px] pl-[15px] border-l-2 border-blue-400'
-                                : 'text-white/60 hover:text-white hover:bg-white/8'
+                                ? 'text-white font-semibold -ml-[13px] pl-[15px] border-l-2 border-sky-400'
+                                : 'text-white/55 hover:text-white hover:bg-white/10'
                             )}
+                            style={active ? { background: 'rgba(255,255,255,0.18)', boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.10)' } : undefined}
                             aria-current={active ? 'page' : undefined}
                           >
                             {item.label}
