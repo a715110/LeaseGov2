@@ -13,6 +13,12 @@
  *   "View in Processing Queue" link.
  * Data model refs: IntakeBatch (batch_reference, submission_mode, document_count, status),
  *                  StagedDocument (display_name, status, document_role)
+ *
+ * Navigation state (from PipelineReviewGrouping):
+ *   extractionFiles: ConfirmFile[]
+ *   packageName: string
+ *   submissionMode: 'Single Contract' | 'Contract Package'
+ *   selectedFileNames: string[]  — used to restore Review & Group on Back
  */
 
 import { useState } from 'react';
@@ -31,35 +37,40 @@ interface ConfirmFile {
   id: string;
   display_name: string;
   document_role: string;
-  status: 'valid' | 'warning';
+  status: 'valid' | 'invalid' | 'warning';
   page_count: number;
   file_size_bytes: number;
 }
 
-// ─── Mock data — TODO: Backend integration required ───────────────────────────
+interface ConfirmNavState {
+  extractionFiles?: ConfirmFile[];
+  packageName?: string;
+  submissionMode?: string;
+  selectedFileNames?: string[];
+}
 
-const MOCK_BATCH = {
-  batch_reference: 'BATCH-2026-0042',
-  submission_mode: 'contract_package' as const,
-  document_count: 4,
-};
+// ─── Fallback mock data (used only when navigated to directly) ────────────────
 
 const MOCK_FILES: ConfirmFile[] = [
-  { id: 'f1', display_name: 'Retail-HQ-Lease-2026.pdf', document_role: 'Base Contract', status: 'valid', page_count: 24, file_size_bytes: 4_200_000 },
-  { id: 'f2', display_name: 'Office-Tower-Amendment-3.pdf', document_role: 'Amendment', status: 'warning', page_count: 8, file_size_bytes: 1_800_000 },
-  { id: 'f3', display_name: 'Warehouse-Lease-Exhibit-A.tiff', document_role: 'Exhibit', status: 'valid', page_count: 12, file_size_bytes: 6_100_000 },
-  { id: 'f5', display_name: 'Ground-Lease-Base-Contract.pdf', document_role: 'Base Contract', status: 'valid', page_count: 41, file_size_bytes: 9_400_000 },
+  { id: 'f1', display_name: 'Retail-HQ-Lease-2026.pdf',        document_role: 'Base Contract', status: 'valid',   page_count: 24, file_size_bytes: 4_200_000 },
+  { id: 'f2', display_name: 'Office-Tower-Amendment-3.pdf',     document_role: 'Amendment',     status: 'warning', page_count: 8,  file_size_bytes: 1_800_000 },
+  { id: 'f3', display_name: 'Warehouse-Lease-Exhibit-A.tiff',   document_role: 'Exhibit',       status: 'valid',   page_count: 12, file_size_bytes: 6_100_000 },
+  { id: 'f5', display_name: 'Ground-Lease-Base-Contract.pdf',   document_role: 'Base Contract', status: 'valid',   page_count: 41, file_size_bytes: 9_400_000 },
 ];
 
 const MODE_LABELS: Record<string, string> = {
-  single_contract: 'Single Contract',
-  contract_package: 'Contract Package',
-  bulk_batch: 'Bulk Batch',
+  'Single Contract':  'Single Contract',
+  'Contract Package': 'Contract Package',
+  single_contract:    'Single Contract',
+  contract_package:   'Contract Package',
+  bulk_batch:         'Bulk Batch',
 };
 
 function formatBytes(bytes: number): string {
   return `${(bytes / 1_000_000).toFixed(1)} MB`;
 }
+
+// ─── Main component ───────────────────────────────────────────────────────────
 
 export default function PipelineSubmitConfirm() {
   const _screenKey = SCREEN_KEYS.PIPELINE_SUBMIT_CONFIRM;
@@ -67,11 +78,24 @@ export default function PipelineSubmitConfirm() {
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // TODO: Backend integration required — GET /api/intake-batches/pending
-  const batch = MOCK_BATCH;
-  const files = MOCK_FILES;
+  // Read state passed by PipelineReviewGrouping
+  const navState = (window.history.state ?? {}) as ConfirmNavState;
+  const files: ConfirmFile[] = navState.extractionFiles?.length
+    ? navState.extractionFiles
+    : MOCK_FILES;
+  const packageName = navState.packageName ?? 'Contract Package';
+  const submissionMode = navState.submissionMode ?? (files.length >= 2 ? 'Contract Package' : 'Single Contract');
+  const selectedFileNames = navState.selectedFileNames ?? [];
 
+  const batchReference = 'BATCH-2026-' + String(Math.floor(Math.random() * 9000) + 1000);
   const warningCount = files.filter(f => f.status === 'warning').length;
+
+  function handleBack() {
+    // Restore the Review & Group page with the original file list
+    const reviewState = { selectedFileNames };
+    window.history.pushState(reviewState, '', '/pipeline/review');
+    navigate('/pipeline/review');
+  }
 
   function handleConfirm() {
     setIsSubmitting(true);
@@ -96,7 +120,7 @@ export default function PipelineSubmitConfirm() {
           </p>
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-muted border border-border mb-8">
             <span className="text-[12px] text-muted-foreground">Batch ID</span>
-            <span className="font-mono text-[14px] font-semibold text-primary">{batch.batch_reference}</span>
+            <span className="font-mono text-[14px] font-semibold text-primary">{batchReference}</span>
           </div>
           <div className="flex items-center justify-center gap-3">
             <Button
@@ -127,16 +151,17 @@ export default function PipelineSubmitConfirm() {
         <div className="flex items-center justify-between px-6 py-5 border-b border-border">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => navigate('/pipeline/review')}
+              onClick={handleBack}
               className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
             </button>
             <h2 className="text-[18px] font-semibold text-foreground">Confirm Submission</h2>
+            <ScreenNumberBadge screenKey={_screenKey} />
           </div>
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded bg-accent border border-border text-[12px] font-semibold text-primary">
             <Layers className="w-3.5 h-3.5" />
-            {MODE_LABELS[batch.submission_mode]}
+            {MODE_LABELS[submissionMode] ?? submissionMode}
           </span>
         </div>
 
@@ -150,12 +175,12 @@ export default function PipelineSubmitConfirm() {
               <p className="text-[22px] font-bold text-foreground">{files.length}</p>
             </div>
             <div className="rounded-lg bg-muted/40 border border-border px-4 py-3 text-center">
-              <p className="text-[11px] text-muted-foreground uppercase tracking-[0.05em] font-semibold mb-1">Mode</p>
-              <p className="text-[13px] font-semibold text-foreground mt-1">{MODE_LABELS[batch.submission_mode]}</p>
+              <p className="text-[11px] text-muted-foreground uppercase tracking-[0.05em] font-semibold mb-1">Package</p>
+              <p className="text-[12px] font-semibold text-foreground mt-1 truncate" title={packageName}>{packageName}</p>
             </div>
             <div className="rounded-lg bg-muted/40 border border-border px-4 py-3 text-center">
               <p className="text-[11px] text-muted-foreground uppercase tracking-[0.05em] font-semibold mb-1">Batch ID</p>
-              <p className="font-mono text-[12px] font-semibold text-primary mt-1">{batch.batch_reference}</p>
+              <p className="font-mono text-[11px] font-semibold text-primary mt-1">{batchReference}</p>
             </div>
           </div>
 
@@ -181,14 +206,22 @@ export default function PipelineSubmitConfirm() {
                         </span>
                       </div>
                     </td>
-                    <td className="px-4 py-2.5 text-muted-foreground">{file.document_role}</td>
+                    <td className="px-4 py-2.5 text-muted-foreground capitalize">
+                      {typeof file.document_role === 'string'
+                        ? file.document_role.replace(/_/g, ' ')
+                        : file.document_role}
+                    </td>
                     <td className="px-4 py-2.5 text-muted-foreground">{file.page_count}</td>
                     <td className="px-4 py-2.5">
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold ${file.status === 'valid' ? 'badge-valid' : 'badge-warning'}`}>
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold ${
+                        file.status === 'valid'   ? 'badge-valid' :
+                        file.status === 'warning' ? 'badge-warning' :
+                        'badge-invalid'
+                      }`}>
                         {file.status === 'valid'
                           ? <CheckCircle2 className="w-3 h-3" />
                           : <AlertTriangle className="w-3 h-3" />}
-                        {file.status === 'valid' ? 'Valid' : 'Warning'}
+                        {file.status === 'valid' ? 'Valid' : file.status === 'warning' ? 'Warning' : 'Invalid'}
                       </span>
                     </td>
                   </tr>
@@ -200,7 +233,11 @@ export default function PipelineSubmitConfirm() {
           {/* Pre-check */}
           <div className="flex items-start gap-2 px-4 py-3 rounded-lg bg-green-50 border border-green-200 text-[13px] text-green-800">
             <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" />
-            <span>All validation checks passed. {warningCount > 0 ? `${warningCount} warning${warningCount > 1 ? 's' : ''} noted — submission is not blocked.` : 'Files are ready for processing.'}</span>
+            <span>
+              {warningCount > 0
+                ? `${warningCount} warning${warningCount > 1 ? 's' : ''} noted — submission is not blocked.`
+                : 'All validation checks passed. Files are ready for processing.'}
+            </span>
           </div>
 
           {/* Read-only warning */}
@@ -214,7 +251,7 @@ export default function PipelineSubmitConfirm() {
 
         {/* Footer */}
         <div className="flex items-center justify-between px-6 py-4 border-t border-border bg-muted/20">
-          <Button variant="outline" onClick={() => navigate('/pipeline/review')}>
+          <Button variant="outline" onClick={handleBack}>
             <ArrowLeft className="w-4 h-4 mr-1.5" />
             Back
           </Button>

@@ -635,6 +635,22 @@ export default function PipelineReviewGrouping() {
           onClose={() => setShowSubmissionPanel(false)}
           onConfirm={() => {
             setShowSubmissionPanel(false);
+            // Pass extraction files + metadata to Confirm page via history state
+            const confirmState = {
+              extractionFiles: extractionFiles.map(f => ({
+                id: f.id,
+                display_name: f.display_name,
+                document_role: f.document_role,
+                status: f.status,
+                page_count: f.page_count,
+                file_size_bytes: f.file_size_bytes,
+              })),
+              packageName,
+              submissionMode,
+              // Pass back the original selectedFileNames so Back button restores the list
+              selectedFileNames: files.map(f => f.display_name),
+            };
+            window.history.pushState(confirmState, '', '/pipeline/confirm');
             navigate('/pipeline/confirm');
           }}
         />
