@@ -1726,7 +1726,19 @@ export default function PipelineDashboard() {
               Showing {filteredDocs.length} of {stagedDocs.length} documents
               {selectedIds.size > 0 && ` · ${selectedIds.size} selected`}
             </p>
-            <Button variant="outline" size="sm" onClick={() => navigate('/pipeline/review')} className="gap-1.5 text-[13px]">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={selectedIds.size === 0}
+              onClick={() => {
+                const selected = stagedDocs.filter(d => selectedIds.has(d.id));
+                navigate('/pipeline/review', {
+                  state: { selectedFileNames: selected.map(d => d.display_name) }
+                } as any);
+              }}
+              className="gap-1.5 text-[13px]"
+              title={selectedIds.size === 0 ? 'Select files first to review & group' : undefined}
+            >
               Review &amp; Group <ArrowRight className="w-3.5 h-3.5" />
             </Button>
           </div>

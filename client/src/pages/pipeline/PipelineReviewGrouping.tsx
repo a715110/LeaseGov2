@@ -252,9 +252,20 @@ function SubmissionDetailPanel({
 
 export default function PipelineReviewGrouping() {
   const _screenKey = SCREEN_KEYS.PIPELINE_REVIEW_GROUPING;
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
 
-  const [files, setFiles] = useState<ReviewFile[]>(MOCK_FILES);
+  // Filter to only the files selected on the dashboard (passed via navigation state).
+  // Fall back to all MOCK_FILES when navigated to directly (e.g. demo / direct URL).
+  const initialFiles = (() => {
+    const state = (window.history.state as any)?.selectedFileNames as string[] | undefined;
+    if (state && state.length > 0) {
+      const filtered = MOCK_FILES.filter(f => state.includes(f.original_filename) || state.includes(f.display_name));
+      return filtered.length > 0 ? filtered : MOCK_FILES;
+    }
+    return MOCK_FILES;
+  })();
+
+  const [files, setFiles] = useState<ReviewFile[]>(initialFiles);
   // S3c: undo last rename
   const [lastRename, setLastRename] = useState<{ id: string; prev: string } | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
