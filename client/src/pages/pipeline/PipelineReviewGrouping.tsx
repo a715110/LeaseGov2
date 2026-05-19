@@ -284,6 +284,17 @@ function SubmissionDetailPanel({
 
 const SESSION_KEY = 'leasegov_review_grouping_session';
 
+// Matches the StagedDocument shape passed from PipelineDashboard via history.state
+interface IncomingDoc {
+  id: string;
+  display_name: string;
+  status: 'uploaded' | 'uploading' | 'validating' | 'valid' | 'invalid';
+  mime_type: string;
+  file_size_bytes: number;
+  page_count: number | null;
+  workspace_tag: string;
+}
+
 interface ReviewSession {
   files: ReviewFile[];
   packageName: string;
@@ -292,6 +303,8 @@ interface ReviewSession {
   zoom: number;
   /** The original filenames used to seed this session (for Back-nav restore) */
   selectedFileNames: string[];
+  /** navToken of the navigation that created this session */
+  navToken?: number;
 }
 
 function loadSession(): ReviewSession | null {
@@ -320,24 +333,85 @@ export default function PipelineReviewGrouping() {
   const _screenKey = SCREEN_KEYS.PIPELINE_REVIEW_GROUPING;
   const [, navigate] = useLocation();
 
-  // ── Initialise state: sessionStorage → history.state → mock data ──────────
+  // ── Initialise state ─────────────────────────────────────────────────────
+  //
+  // Priority order:
+  //   1. Fresh navigation from Dashboard (history.state.navToken is present and
+  //      newer than the token stored in the saved session) → discard stale
+  //      session, build ReviewFile list from the real StagedDocument objects
+  //      passed in history.state.selectedDocs.
+  //   2. Restored back-navigation from Confirm page (history.state has
+  //      selectedFileNames but no navToken) → use saved session if it exists,
+  //      otherwise fall back to name-based reconstruction.
+  //   3. Direct URL access / hard refresh with no navigation state → use saved
+  //      session if it exists, otherwise fall back to MOCK_FILES.
+  //
   const [files, setFiles] = useState<ReviewFile[]>(() => {
+    const histState = window.history.state as {
+      selectedDocs?: IncomingDoc[];
+      navToken?: number;
+      selectedFileNames?: string[];
+    } | null;
+
+    const incomingDocs = histState?.selectedDocs;
+    const incomingToken = histState?.navToken;
     const saved = loadSession();
+
+    // Case 1 — fresh navigation from Dashboard
+    if (incomingDocs && incomingDocs.length > 0 && incomingToken) {
+      const savedToken = saved?.navToken;
+      const isFresh = !savedToken || incomingToken > savedToken;
+      if (isFresh) {
+        // Clear the stale session so the new selection takes precedence
+        clearSession();
+        return incomingDocs.map<ReviewFile>(d => ({
+          id: d.id,
+          display_name: d.display_name,
+          original_filename: d.display_name,
+          status: d.status === 'invalid' ? 'invalid' : 'valid',
+          document_role: 'unknown',
+          file_size_bytes: d.file_size_bytes,
+          page_count: d.page_count ?? 0,
+          inExtraction: d.status !== 'invalid',
+        }));
+      }
+    }
+
+    // Case 2 & 3 — back-navigation or hard refresh: prefer saved session
     if (saved) return saved.files;
-    const state = (window.history.state as { selectedFileNames?: string[] })?.selectedFileNames;
-    if (state && state.length > 0) {
+
+    // Case 2 fallback — back-nav with selectedFileNames but no saved session
+    const backNames = histState?.selectedFileNames;
+    if (backNames && backNames.length > 0) {
       const filtered = MOCK_FILES.filter(f =>
-        state.includes(f.original_filename) || state.includes(f.display_name)
+        backNames.includes(f.original_filename) || backNames.includes(f.display_name)
       );
       if (filtered.length > 0) {
         return filtered.map(f => ({ ...f, inExtraction: f.status === 'valid' }));
       }
     }
+
+    // Case 3 fallback — direct URL access, no state at all
     return MOCK_FILES;
   });
 
-  const [packageName, setPackageName] = useState<string>(() => loadSession()?.packageName ?? 'Contract Package');
-  const [filterRole, setFilterRole] = useState<string>(() => loadSession()?.filterRole ?? 'all');
+  const [packageName, setPackageName] = useState<string>(() => {
+    const histState = window.history.state as { navToken?: number } | null;
+    // Fresh navigation → reset package name
+    if (histState?.navToken) {
+      const saved = loadSession();
+      if (!saved || (histState.navToken > (saved.navToken ?? 0))) return 'Contract Package';
+    }
+    return loadSession()?.packageName ?? 'Contract Package';
+  });
+  const [filterRole, setFilterRole] = useState<string>(() => {
+    const histState = window.history.state as { navToken?: number } | null;
+    if (histState?.navToken) {
+      const saved = loadSession();
+      if (!saved || (histState.navToken > (saved.navToken ?? 0))) return 'all';
+    }
+    return loadSession()?.filterRole ?? 'all';
+  });
   const [activeFileId, setActiveFileId] = useState<string>(() => {
     const saved = loadSession();
     return saved?.activeFileId ?? (saved?.files[0]?.id ?? MOCK_FILES[0]?.id ?? '');
@@ -353,6 +427,7 @@ export default function PipelineReviewGrouping() {
 
   // ── Persist state to sessionStorage on every meaningful change ────────────
   useEffect(() => {
+    const histState = window.history.state as { navToken?: number } | null;
     const session: ReviewSession = {
       files,
       packageName,
@@ -360,6 +435,8 @@ export default function PipelineReviewGrouping() {
       activeFileId,
       zoom,
       selectedFileNames: files.map(f => f.display_name),
+      // Carry the navToken forward so hard-refresh can detect a stale session
+      navToken: histState?.navToken,
     };
     saveSession(session);
   }, [files, packageName, filterRole, activeFileId, zoom]);

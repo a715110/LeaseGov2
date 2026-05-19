@@ -1760,9 +1760,20 @@ export default function PipelineDashboard() {
               disabled={selectedIds.size === 0}
               onClick={() => {
                 const selected = stagedDocs.filter(d => selectedIds.has(d.id));
-                navigate('/pipeline/review', {
-                  state: { selectedFileNames: selected.map(d => d.display_name) }
-                } as any);
+                // Pass full document objects so Review & Group can build ReviewFile
+                // records from real data instead of filtering its own MOCK_FILES.
+                // Also stamp a navigation token so Review & Group knows this is a
+                // fresh selection (not a back-navigation from Confirm) and must
+                // discard any stale sessionStorage session.
+                window.history.pushState(
+                  {
+                    selectedDocs: selected,
+                    navToken: Date.now(),   // unique per navigation
+                  },
+                  '',
+                  '/pipeline/review'
+                );
+                navigate('/pipeline/review');
               }}
               className="gap-1.5 text-[13px]"
               title={selectedIds.size === 0 ? 'Select files first to review & group' : undefined}
