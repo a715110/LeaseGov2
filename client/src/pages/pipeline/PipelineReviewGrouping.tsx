@@ -780,8 +780,9 @@ export default function PipelineReviewGrouping() {
             };
             // Clear the review session when the user confirms — they are done with this batch
             clearSession();
-            window.history.pushState(confirmState, '', '/pipeline/confirm');
-            navigate('/pipeline/confirm');
+            // Use wouter's state option so a single pushState call carries the payload.
+            // A separate window.history.pushState before navigate() would be overwritten.
+            navigate('/pipeline/confirm', { state: confirmState } as any);
           }}
         />
       )}

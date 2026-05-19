@@ -91,10 +91,10 @@ export default function PipelineSubmitConfirm() {
   const warningCount = files.filter(f => f.status === 'warning').length;
 
   function handleBack() {
-    // Restore the Review & Group page with the original file list
-    const reviewState = { selectedFileNames };
-    window.history.pushState(reviewState, '', '/pipeline/review');
-    navigate('/pipeline/review');
+    // Restore the Review & Group page with the original file list.
+    // Use wouter's state option — a separate pushState before navigate() would be
+    // overwritten by wouter's own pushState call.
+    navigate('/pipeline/review', { state: { selectedFileNames } } as any);
   }
 
   function handleConfirm() {
