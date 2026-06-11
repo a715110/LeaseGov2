@@ -10,7 +10,8 @@
  * PRODUCTION UPGRADE: Replace state with a WebSocket subscription
  * or polling endpoint: GET /api/v1/notifications?unread=true
  */
-import React, { createContext, useContext, useState, useCallback } from 'react'
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'
+import { subscribeToEvents } from '@/lib/eventBus'
 
 export type NotificationSeverity = 'info' | 'success' | 'warning' | 'error'
 
@@ -67,6 +68,25 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const clearAll = useCallback(() => setNotifications([]), [])
 
   const unreadCount = notifications.filter(n => !n.readAt).length
+
+  // Wire BATCH_SUBMITTED → in-app notification so the bell badge increments
+  // when a new batch enters the extraction queue.
+  useEffect(() => {
+    const unsub = subscribeToEvents(
+      (event) => {
+        const batchId = (event.payload.batchId as string) ?? 'Unknown'
+        const packageNum = (event.payload.packageNum as string) ?? ''
+        addNotification({
+          title: 'New batch ready for extraction',
+          body: `${packageNum ? packageNum + ' — ' : ''}${batchId} has entered the extraction queue.`,
+          severity: 'info',
+          href: '/extraction/queue',
+        })
+      },
+      ['BATCH_SUBMITTED']
+    )
+    return unsub
+  }, [addNotification])
 
   return (
     <NotificationContext.Provider
