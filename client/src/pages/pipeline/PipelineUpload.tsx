@@ -22,18 +22,17 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '@/components/ui/select';
 import { SCREEN_KEYS } from '@/constants/screenKeys';
-
 import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
+import { WORKSPACE_TAGS, formatBytes } from '@/lib/uploadSimulation';
+// Prompt 12: WORKSPACE_TAGS, formatBytes imported from shared @/lib/uploadSimulation.
+// MOCK_FILES removed — the drag-drop zone now accepts real files via the file input.
 // ─── Types ────────────────────────────────────────────────────────────────────
-
 type ValidationStatus = 'valid' | 'warning' | 'invalid' | 'validating';
-
 interface ValidationCategory {
   name: string;
   passed: boolean;
   detail?: string;
 }
-
 interface StagedFile {
   id: string;
   name: string;
@@ -44,75 +43,6 @@ interface StagedFile {
   categories: ValidationCategory[];
   error?: string;
   warning?: string;
-}
-
-// ─── Mock staged files — TODO: Backend integration required ──────────────────
-
-const MOCK_FILES: StagedFile[] = [
-  {
-    id: 'f1',
-    name: 'Retail-HQ-Lease-2026.pdf',
-    size: 4_200_000,
-    mime_type: 'application/pdf',
-    status: 'valid',
-    ocr_confidence: 0.94,
-    categories: [
-      { name: 'File Format', passed: true },
-      { name: 'File Integrity', passed: true },
-      { name: 'Security Scan', passed: true },
-      { name: 'OCR Quality', passed: true, detail: '94% confidence' },
-      { name: 'Duplicate Check', passed: true },
-      { name: 'Contract Likeness', passed: true, detail: 'Lease document detected' },
-    ],
-  },
-  {
-    id: 'f2',
-    name: 'Office-Tower-Amendment-3.pdf',
-    size: 1_800_000,
-    mime_type: 'application/pdf',
-    status: 'warning',
-    ocr_confidence: 0.68,
-    warning: 'OCR confidence 68% — below recommended threshold.',
-    categories: [
-      { name: 'File Format', passed: true },
-      { name: 'File Integrity', passed: true },
-      { name: 'Security Scan', passed: true },
-      { name: 'OCR Quality', passed: false, detail: 'Confidence 68% — below 80% threshold' },
-      { name: 'Duplicate Check', passed: true },
-      { name: 'Contract Likeness', passed: true },
-    ],
-  },
-  {
-    id: 'f3',
-    name: 'Corrupted-Scan-Draft.pdf',
-    size: 320_000,
-    mime_type: 'application/pdf',
-    status: 'invalid',
-    error: 'Corrupted PDF header — file cannot be parsed.',
-    categories: [
-      { name: 'File Format', passed: true },
-      { name: 'File Integrity', passed: false, detail: 'Corrupted PDF header' },
-      { name: 'Security Scan', passed: true },
-      { name: 'OCR Quality', passed: false, detail: 'Cannot process — file corrupted' },
-      { name: 'Duplicate Check', passed: true },
-      { name: 'Contract Likeness', passed: false, detail: 'Unable to classify' },
-    ],
-  },
-];
-
-const WORKSPACE_TAGS = [
-  'Q1-2026-Retail',
-  'Q1-2026-Office',
-  'Q1-2026-Industrial',
-  'Q2-2026-Land',
-  'Q2-2026-Retail',
-];
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1_000_000) return `${(bytes / 1024).toFixed(0)} KB`;
-  return `${(bytes / 1_000_000).toFixed(1)} MB`;
 }
 
 // ─── File validation card ─────────────────────────────────────────────────────
@@ -231,7 +161,7 @@ export default function PipelineUpload() {
   const _screenKey = SCREEN_KEYS.PIPELINE_UPLOAD;
 
   const [, navigate] = useLocation();
-  const [files, setFiles] = useState<StagedFile[]>(MOCK_FILES);
+  const [files, setFiles] = useState<StagedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   // S2b: auto-select last used workspace from localStorage
   const [workspaceTag, setWorkspaceTag] = useState(
