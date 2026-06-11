@@ -17,6 +17,7 @@ export { ROLE_LABELS, ROLE_COLORS } from '@/types/shared/UserRole';
 
 export type DemoEventType =
   | 'BATCH_SUBMITTED'
+  | 'PIPELINE_BATCH_CLEARED'
   | 'EXTRACTION_COMPLETE'
   | 'SUBMIT_FOR_REVIEW'
   | 'APPROVE_FOR_FINAL'

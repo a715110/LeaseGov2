@@ -31,11 +31,12 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { subscribeToEvents } from '@/lib/eventBus';
 
 import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type JobStatus = 'processing' | 'ocr_complete' | 'warning' | 'failed';
+type JobStatus = 'processing' | 'ocr_complete' | 'warning' | 'failed' | 'ocr_queued' | 'declined';
 type AgentStatus = 'queued' | 'active' | 'complete' | 'awaiting_checkpoint';
 
 interface ProcessingJob {
@@ -233,11 +234,14 @@ const STATUS_TABS = [
 const STATUS_BADGE: Record<JobStatus, string> = {
   processing:   'badge-processing',
   ocr_complete: 'badge-valid',
+  ocr_queued:   'badge-processing',
   warning:      'badge-warning',
   failed:       'badge-invalid',
+  declined:     'badge-invalid',
 };
 const STATUS_LABEL: Record<JobStatus, string> = {
-  processing: 'Processing', ocr_complete: 'OCR Complete', warning: 'Warning', failed: 'Failed',
+  processing: 'Processing', ocr_complete: 'OCR Complete', ocr_queued: 'OCR Queued',
+  warning: 'Warning', failed: 'Failed', declined: 'Declined',
 };
 
 function getConfidenceClass(c: number) {
@@ -766,7 +770,11 @@ export default function ExtractionQueue() {
   const _screenKey = SCREEN_KEYS.EXTRACTION_QUEUE;
   const [, navigate] = useLocation();
   const [activeTab, setActiveTab] = useState('all');
+  const [jobs, setJobs] = useState<ProcessingJob[]>(MOCK_JOBS);
   const [selectedJob, setSelectedJob] = useState<ProcessingJob | null>(MOCK_JOBS[0]);
+  // Decline dialog state
+  const [declineTarget, setDeclineTarget] = useState<ProcessingJob | null>(null);
+  const [declineReason, setDeclineReason] = useState('');
 
   // S4: inline dialog states
   const [classificationItem, setClassificationItem] = useState<ProcessingJob | null>(null);
@@ -792,10 +800,35 @@ export default function ExtractionQueue() {
     }
   }, [search]);
 
+  // Wire BATCH_SUBMITTED → prepend new job to queue
+  useEffect(() => {
+    const unsub = subscribeToEvents((event) => {
+      if (event.type !== 'BATCH_SUBMITTED') return;
+      const payload = event.payload as { batchId?: string; packageNum?: string };
+      const newJob: ProcessingJob = {
+        id: `job-${Date.now()}`,
+        display_id: `DJ-${Math.floor(1000 + Math.random() * 9000)}`,
+        file_name: payload.packageNum ?? 'Submitted Package',
+        batch_ref: payload.batchId ?? '',
+        status: 'ocr_queued',
+        ocr_confidence: 0,
+        started: new Date().toLocaleTimeString(),
+        duration: '—',
+        assigned: '—',
+        agent_status: 'queued',
+        extraction_mode: 'ai_assisted',
+        pages: [],
+        log: [{ time: new Date().toLocaleTimeString(), message: `Received from pipeline at ${new Date().toLocaleTimeString()}`, level: 'info' }],
+      };
+      setJobs(prev => [newJob, ...prev]);
+    });
+    return () => unsub();
+  }, []);
+
   // TODO: Backend integration required — GET /api/document-jobs
   const filtered = activeTab === 'all'
-    ? MOCK_JOBS
-    : MOCK_JOBS.filter(j => j.status === activeTab);
+    ? jobs
+    : jobs.filter(j => j.status === activeTab);
 
   return (
     <div className="flex flex-col min-h-full bg-[var(--color-lg-page-bg)]">
@@ -902,13 +935,25 @@ export default function ExtractionQueue() {
                       >
                         Map Fields
                       </Button>
-                      <Button
-                        size="sm"
-                        className="h-7 text-[11px] gap-1"
-                        onClick={e => { e.stopPropagation(); navigate('/extraction/understanding'); }}
-                      >
-                        Open <ChevronRight className="w-3 h-3" />
-                      </Button>
+                      {job.status !== 'declined' && (
+                        <Button
+                          size="sm"
+                          className="h-7 text-[11px] gap-1"
+                          onClick={e => { e.stopPropagation(); navigate('/extraction/understanding'); }}
+                        >
+                          Open <ChevronRight className="w-3 h-3" />
+                        </Button>
+                      )}
+                      {job.status !== 'declined' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-[11px] gap-1 text-destructive border-destructive/40 hover:bg-destructive/10"
+                          onClick={e => { e.stopPropagation(); setDeclineTarget(job); setDeclineReason(''); }}
+                        >
+                          <XCircle className="w-3 h-3" /> Decline
+                        </Button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -1021,6 +1066,57 @@ export default function ExtractionQueue() {
           fileName={workflowJob?.file_name}
           initialStep={workflowInitialStep}
         />
+        {/* Decline dialog */}
+        <InlineDialog
+          open={!!declineTarget}
+          onClose={() => { setDeclineTarget(null); setDeclineReason(''); }}
+          title="Decline Document"
+          subtitle={declineTarget?.file_name}
+        >
+          <div className="flex flex-col gap-4 p-6">
+            <div>
+              <label className="block text-[13px] font-medium text-foreground mb-1.5">
+                Rejection reason <span className="text-destructive">*</span>
+              </label>
+              <textarea
+                value={declineReason}
+                onChange={e => setDeclineReason(e.target.value)}
+                placeholder="Describe why this document is being declined (min 10 characters)…"
+                rows={4}
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-[13px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+              />
+              {declineReason.length > 0 && declineReason.length < 10 && (
+                <p className="text-[11px] text-destructive mt-1">Reason must be at least 10 characters.</p>
+              )}
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                variant="outline"
+                onClick={() => { setDeclineTarget(null); setDeclineReason(''); }}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                disabled={declineReason.trim().length < 10}
+                onClick={() => {
+                  if (!declineTarget) return;
+                  setJobs(prev => prev.map(j =>
+                    j.id === declineTarget.id ? { ...j, status: 'declined' as JobStatus } : j
+                  ));
+                  if (selectedJob?.id === declineTarget.id) {
+                    setSelectedJob(prev => prev ? { ...prev, status: 'declined' as JobStatus } : prev);
+                  }
+                  toast.success(`${declineTarget.display_id} declined.`);
+                  setDeclineTarget(null);
+                  setDeclineReason('');
+                }}
+              >
+                Confirm Decline
+              </Button>
+            </div>
+          </div>
+        </InlineDialog>
       </>
     </div>
   );

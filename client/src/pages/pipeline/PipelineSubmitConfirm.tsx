@@ -21,7 +21,7 @@
  *   selectedFileNames: string[]  — used to restore Review & Group on Back
  */
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useLocation } from 'wouter';
 import {
   CheckCircle2, AlertTriangle, ArrowLeft, Send,
@@ -30,6 +30,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { SCREEN_KEYS } from '@/constants/screenKeys';
 import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
+import { publishEvent } from '../../lib/eventBus';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -87,7 +88,10 @@ export default function PipelineSubmitConfirm() {
   const submissionMode = navState.submissionMode ?? (files.length >= 2 ? 'Contract Package' : 'Single Contract');
   const selectedFileNames = navState.selectedFileNames ?? [];
 
-  const batchReference = 'BATCH-2026-' + String(Math.floor(Math.random() * 9000) + 1000);
+  const batchReferenceRef = useRef<string>(
+    `BATCH-2026-${Math.floor(1000 + Math.random() * 9000)}`
+  );
+  const batchReference = batchReferenceRef.current;
   const warningCount = files.filter(f => f.status === 'warning').length;
 
   function handleBack() {
@@ -99,10 +103,26 @@ export default function PipelineSubmitConfirm() {
 
   function handleConfirm() {
     setIsSubmitting(true);
+    publishEvent({
+      type: 'BATCH_SUBMITTED',
+      payload: {
+        batchId: batchReference,
+        packageNum: packageName ?? batchReference,
+      },
+      sourceRole: 'document_submitter',
+    });
     // TODO: Backend integration required — POST /api/intake-batches/:id/submit
     setTimeout(() => {
       setIsSubmitting(false);
       setSubmitted(true);
+      publishEvent({
+        type: 'PIPELINE_BATCH_CLEARED',
+        payload: {
+          fileNames: selectedFileNames,
+          batchId: batchReference,
+        },
+        sourceRole: 'document_submitter',
+      });
     }, 1200);
   }
 

@@ -38,7 +38,7 @@ import { UploadDialog } from '@/components/pipeline/UploadDialog';
 import type { StagedFile as UploadedFile } from '@/components/pipeline/UploadDialog';
 import { toast } from 'sonner';
 import { SCREEN_KEYS } from '@/constants/screenKeys';
-import { publishEvent } from '@/lib/eventBus';
+import { publishEvent, subscribeToEvents } from '@/lib/eventBus';
 import { useRole } from '@/contexts/RoleContext';
 import { usePipelineCounts } from '@/contexts/PipelineCountsContext';
 
@@ -1182,6 +1182,21 @@ export default function PipelineDashboard() {
     const readyPkgs = contractPackages.filter(p => p.status === 'Ready').length;
     setApprovalsCount(readyPkgs);
   }, [contractPackages, setApprovalsCount]);
+
+  // Clear pipeline state when a batch is confirmed from PipelineSubmitConfirm
+  useEffect(() => {
+    const unsub = subscribeToEvents((event) => {
+      if (event.type !== 'PIPELINE_BATCH_CLEARED') return;
+      const payload = event.payload as { fileNames?: string[]; batchId?: string };
+      const clearedNames = new Set(payload.fileNames ?? []);
+      if (clearedNames.size === 0) return;
+      setStagedDocs(prev => prev.filter(d => !clearedNames.has(d.display_name)));
+      setContractPackages(prev =>
+        prev.filter(pkg => !pkg.files.every(f => clearedNames.has(f.name)))
+      );
+    });
+    return () => unsub();
+  }, []);
 
   // ── Derived counts ──
   const counts = {
