@@ -21,24 +21,15 @@ import {
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import {
+  MOCK_EXTRACTION_TEMPLATES,
+  useExtractionStore,
+  type ExtractionTemplate,
+} from '../../contexts/ExtractionStoreContext';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-interface ExtractionTemplateField {
-  id: string;
-  canonical_name: string;
-  data_type: 'string' | 'number' | 'date' | 'boolean' | 'currency';
-  category: string;
-  is_critical: boolean;
-  is_required: boolean;
-}
-
-interface ExtractionTemplate {
-  id: string;
-  name: string;
-  version: string;
-  fields: ExtractionTemplateField[];
-}
+// ExtractionTemplate and ExtractionTemplateField are imported from ExtractionStoreContext
+// (camelCase field names: canonicalName, dataType, isCritical, isRequired)
 
 interface VerificationField {
   canonical_name: string;
@@ -69,22 +60,6 @@ const STEPS = [
   { id: 5, label: 'Final Verify',    icon: ShieldCheck },
 ];
 
-// ─── Mock template for demo ───────────────────────────────────────────────────
-
-const DEMO_TEMPLATE: ExtractionTemplate = {
-  id: 't1', name: 'Standard Commercial Lease', version: 'v3.2',
-  fields: [
-    { id: 'f1', canonical_name: 'lease_commencement_date', data_type: 'date',     category: 'Date',      is_critical: true,  is_required: true  },
-    { id: 'f2', canonical_name: 'lease_expiration_date',   data_type: 'date',     category: 'Date',      is_critical: true,  is_required: true  },
-    { id: 'f3', canonical_name: 'base_rent_monthly',       data_type: 'currency', category: 'Financial', is_critical: true,  is_required: true  },
-    { id: 'f4', canonical_name: 'tenant_legal_name',       data_type: 'string',   category: 'Party',     is_critical: true,  is_required: true  },
-    { id: 'f5', canonical_name: 'landlord_legal_name',     data_type: 'string',   category: 'Party',     is_critical: true,  is_required: true  },
-    { id: 'f6', canonical_name: 'premises_address',        data_type: 'string',   category: 'Property',  is_critical: false, is_required: true  },
-    { id: 'f7', canonical_name: 'rentable_area_sqft',      data_type: 'number',   category: 'Property',  is_critical: false, is_required: true  },
-    { id: 'f8', canonical_name: 'security_deposit',        data_type: 'currency', category: 'Financial', is_critical: false, is_required: false },
-  ],
-};
-
 // ─── Confidence helpers ───────────────────────────────────────────────────────
 
 function confidenceLabel(c: number) {
@@ -110,6 +85,7 @@ export function ProcessingWorkflowDialog({
 }: ProcessingWorkflowDialogProps) {
   const [currentStep, setCurrentStep] = useState(initialStep);
   // S6b: confirmed template flows from Step 2 → Step 5
+  const extractionStore = useExtractionStore();
   const [confirmedTemplate, setConfirmedTemplate] = useState<ExtractionTemplate | null>(
     preConfirmedTemplate
   );
@@ -129,13 +105,13 @@ export function ProcessingWorkflowDialog({
     if (currentStep === 5 && confirmedTemplate) {
       setVerificationFields(
         confirmedTemplate.fields.map(f => ({
-          canonical_name: f.canonical_name,
-          extracted_value: f.data_type === 'date'     ? '2026-01-01'
-                         : f.data_type === 'currency' ? '$12,500.00'
-                         : f.data_type === 'number'   ? '4,200'
+          canonical_name: f.canonicalName,
+          extracted_value: f.dataType === 'date'     ? '2026-01-01'
+                         : f.dataType === 'currency' ? '$12,500.00'
+                         : f.dataType === 'number'   ? '4,200'
                          : 'Extracted value placeholder',
           confidence: 0.85 + Math.random() * 0.14,
-          is_critical: f.is_critical,
+          is_critical: f.isCritical,
           status: 'Pending' as const,
         }))
       );
@@ -249,28 +225,36 @@ export function ProcessingWorkflowDialog({
               <p className="text-[13px] text-muted-foreground">
                 Select the extraction template to use for this document.
               </p>
-              <div
-                className={cn(
-                  'rounded-lg border-2 p-4 cursor-pointer transition-colors',
-                  confirmedTemplate?.id === DEMO_TEMPLATE.id
-                    ? 'border-primary bg-primary/5'
-                    : 'border-border hover:border-primary/50'
-                )}
-                onClick={() => setConfirmedTemplate(DEMO_TEMPLATE)}
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-[13px] font-semibold text-foreground">{DEMO_TEMPLATE.name}</p>
-                    <p className="text-[12px] text-muted-foreground">{DEMO_TEMPLATE.version} · {DEMO_TEMPLATE.fields.length} fields</p>
+              <div className="flex flex-col gap-2">
+                {MOCK_EXTRACTION_TEMPLATES.map(template => (
+                  <div
+                    key={template.id}
+                    className={cn(
+                      'rounded-lg border-2 p-4 cursor-pointer transition-colors',
+                      confirmedTemplate?.id === template.id
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border hover:border-primary/50'
+                    )}
+                    onClick={() => {
+                      setConfirmedTemplate(template);
+                      extractionStore.setConfirmedTemplate(template);
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-[13px] font-semibold text-foreground">{template.name}</p>
+                        <p className="text-[12px] text-muted-foreground">{template.version} · {template.fields.length} fields</p>
+                      </div>
+                      {confirmedTemplate?.id === template.id && (
+                        <CheckCircle2 className="w-5 h-5 text-primary" />
+                      )}
+                    </div>
                   </div>
-                  {confirmedTemplate?.id === DEMO_TEMPLATE.id && (
-                    <CheckCircle2 className="w-5 h-5 text-primary" />
-                  )}
-                </div>
+                ))}
               </div>
               {confirmedTemplate && (
                 <p className="text-[12px] text-primary font-medium">
-                  ✓ Template confirmed — {confirmedTemplate.fields.length} fields will be used in Step 5
+                  ✓ {confirmedTemplate.name} confirmed — {confirmedTemplate.fields.length} fields will be used in Step 5.
                 </p>
               )}
             </div>
