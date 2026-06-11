@@ -108,6 +108,12 @@ export const SCREEN_KEYS = {
   REASSESSMENT_PROJECT_VIEW:         'reassessment-contextual-project',
   REASSESSMENT_CONTEXTUAL_PROJECT:   'reassessment-contextual-project',
 
+  // ─── FC-6: REASSESSMENT WORKFLOW SCREENS (workflows/ subfolder) ────────────────
+  REASSESSMENT_UPDATE:               'reassessment-update',
+  REASSESSMENT_REVIEW:               'reassessment-review',
+  REASSESSMENT_APPROVAL:             'reassessment-approval',
+  REASSESSMENT_ANALYSIS_WORKFLOW:    'reassessment-analysis-workflow',
+
   // ─── FC-8: ADMINISTRATION (Phase 2 — 1 screen) ──────────────────────────────
   ADMIN_AUTOMATION:             'admin-automation-config',
 

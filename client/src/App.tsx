@@ -115,6 +115,11 @@ import ReassessmentWatchlist       from './pages/reassessment/ReassessmentWatchl
 import ReassessmentSurveyIntake    from './pages/reassessment/ReassessmentSurveyIntake'
 import ReassessmentContextualProject from './pages/reassessment/ReassessmentContextualProject'
 
+// ─── FC-6: Reassessment Workflow Screens (workflows/ subfolder) ─────────────
+import ReassessmentUpdateWorkflow    from './pages/workflows/ReassessmentUpdate'
+import ReassessmentReviewWorkflow    from './pages/workflows/ReassessmentReview'
+import ReassessmentApprovalWorkflow  from './pages/workflows/ReassessmentApproval'
+import ReassessmentAnalysisWorkflow  from './pages/workflows/ReassessmentAnalysis'
 // ─── FC-8: Administration (Phase 2) ──────────────────────────────────────────
 import AdminAutomation from './pages/admin/AdminAutomation'
 
@@ -466,6 +471,27 @@ function Router() {
         </ScreenGate>
       </Route>
 
+      {/* ── FC-6: Reassessment Workflow Screens (workflows/ subfolder) ────── */}
+      <Route path="/workflows/reassessment/update">
+        <ScreenGate screenKey={SCREEN_KEYS.REASSESSMENT_UPDATE} fallback={<NotFound />}>
+          <ReassessmentUpdateWorkflow />
+        </ScreenGate>
+      </Route>
+      <Route path="/workflows/reassessment/review">
+        <ScreenGate screenKey={SCREEN_KEYS.REASSESSMENT_REVIEW} fallback={<NotFound />}>
+          <ReassessmentReviewWorkflow />
+        </ScreenGate>
+      </Route>
+      <Route path="/workflows/reassessment/approval">
+        <ScreenGate screenKey={SCREEN_KEYS.REASSESSMENT_APPROVAL} fallback={<NotFound />}>
+          <ReassessmentApprovalWorkflow />
+        </ScreenGate>
+      </Route>
+      <Route path="/workflows/reassessment/analysis">
+        <ScreenGate screenKey={SCREEN_KEYS.REASSESSMENT_ANALYSIS_WORKFLOW} fallback={<NotFound />}>
+          <ReassessmentAnalysisWorkflow />
+        </ScreenGate>
+      </Route>
       {/* ── FC-8: Administration (Phase 2) ──────────────────────────────── */}
       <Route path="/admin/automation">
         <ScreenGate screenKey={SCREEN_KEYS.ADMIN_AUTOMATION} fallback={<NotFound />}>
