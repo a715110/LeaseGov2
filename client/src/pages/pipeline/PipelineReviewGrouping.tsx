@@ -18,7 +18,7 @@
  */
 
 import { useState, useCallback, useEffect } from 'react';
-import { useLocation } from 'wouter';
+import { useLocation, useSearch } from 'wouter';
 import {
   FileText, CheckSquare, Square, ChevronDown, Edit2, Check,
   X, ZoomIn, ZoomOut, Layers, Package, Info, Save, Send,
@@ -332,6 +332,10 @@ function clearSession() {
 export default function PipelineReviewGrouping() {
   const _screenKey = SCREEN_KEYS.PIPELINE_REVIEW_GROUPING;
   const [, navigate] = useLocation();
+  const searchString = useSearch();
+  // ── URL param mode ────────────────────────────────────────────────────────────────────────
+  const urlParams = new URLSearchParams(searchString);
+  const urlMode = urlParams.get('mode');
 
   // ── Initialise state ─────────────────────────────────────────────────────
   //
@@ -424,6 +428,38 @@ export default function PipelineReviewGrouping() {
   const [packageNameEdit, setPackageNameEdit] = useState(packageName);
   const [showSubmissionPanel, setShowSubmissionPanel] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  // ── Session restore banner ─────────────────────────────────────────────────────────────────────────
+  // Show banner when files came from sessionStorage (no fresh navToken in history)
+  const [sessionRestored, setSessionRestored] = useState<boolean>(() => {
+    const histState = window.history.state as { navToken?: number; selectedDocs?: unknown[] } | null;
+    const hasFreshNav = !!(histState?.navToken && histState?.selectedDocs && (histState.selectedDocs as unknown[]).length > 0);
+    const hasSavedSession = !!loadSession();
+    return !hasFreshNav && hasSavedSession;
+  });
+  // ── Target Record assignment ────────────────────────────────────────────────
+  type TargetMode = 'unknown' | 'new' | 'existing';
+  const [targetMode, setTargetMode] = useState<TargetMode>('unknown');
+  const [targetRecordId, setTargetRecordId] = useState<string | null>(null);
+  const [targetRecordSearch, setTargetRecordSearch] = useState('');
+  const [showRecordDropdown, setShowRecordDropdown] = useState(false);
+  const [workingTitle, setWorkingTitle] = useState('');
+  // Inline mock records (duplicated to avoid circular import from RecordsSearch)
+  const INLINE_MOCK_RECORDS = [
+    { id: 'r1', contract_number: 'CR-2026-0088', title: 'Office Tower — 350 Fifth Ave',       counterparty_name: 'Fifth Ave Properties LLC' },
+    { id: 'r2', contract_number: 'CR-2026-0087', title: 'Retail HQ — 1200 Market St',         counterparty_name: 'Market Street Partners' },
+    { id: 'r3', contract_number: 'CR-2026-0086', title: 'Warehouse Lease — Industrial Park',  counterparty_name: 'Industrial Realty Group' },
+    { id: 'r4', contract_number: 'CR-2026-0085', title: 'Ground Lease — Civic Center',        counterparty_name: 'City of Boston' },
+    { id: 'r5', contract_number: 'CR-2026-0084', title: 'Tech Campus — Building A',           counterparty_name: 'Silicon Valley Realty' },
+    { id: 'r6', contract_number: 'CR-2026-0083', title: 'Suburban Office — Suite 400',        counterparty_name: 'Westfield Properties' },
+    { id: 'r7', contract_number: 'CR-2026-0082', title: 'Downtown Retail — Corner Unit',      counterparty_name: 'Urban Retail LLC' },
+    { id: 'r8', contract_number: 'CR-2026-0081', title: 'Distribution Center — Zone 3',       counterparty_name: 'Logistics Park Holdings' },
+  ];
+  const filteredRecords = INLINE_MOCK_RECORDS.filter(r =>
+    !targetRecordSearch.trim() ||
+    r.contract_number.toLowerCase().includes(targetRecordSearch.toLowerCase()) ||
+    r.title.toLowerCase().includes(targetRecordSearch.toLowerCase()) ||
+    r.counterparty_name.toLowerCase().includes(targetRecordSearch.toLowerCase())
+  );
 
   // ── Persist state to sessionStorage on every meaningful change ────────────
   useEffect(() => {
@@ -453,7 +489,11 @@ export default function PipelineReviewGrouping() {
     filterRole === 'all' || f.document_role === filterRole
   );
 
-  const submissionMode = extractionFiles.length >= 2 ? 'Contract Package' : 'Single Contract';
+  const derivedMode = extractionFiles.length >= 2 ? 'Contract Package' : 'Single Contract';
+  const submissionMode =
+    urlMode === 'attach' ? 'Attach to Existing' :
+    urlMode === 'create' ? 'Create New' :
+    derivedMode;
 
   function toggleSelect(id: string) {
     setSelectedIds(prev => {
@@ -507,6 +547,22 @@ export default function PipelineReviewGrouping() {
 
   return (
     <div className="page-container flex flex-col h-full">
+      {/* Session restore banner */}
+      {sessionRestored && (
+        <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300">
+          <div className="flex items-center gap-2 text-[13px]">
+            <Info className="w-4 h-4 shrink-0" />
+            <span>Session restored — your previous grouping has been reloaded.</span>
+          </div>
+          <button
+            onClick={() => setSessionRestored(false)}
+            className="p-0.5 rounded hover:bg-amber-200/60 dark:hover:bg-amber-800/40 transition-colors"
+            aria-label="Dismiss"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
       {/* Header */}
       <div className="page-header">
         <div>
@@ -578,6 +634,72 @@ export default function PipelineReviewGrouping() {
           )}
 
           <div className="flex-1 overflow-y-auto">
+
+            {/* ── TARGET RECORD SECTION ── */}
+            <div className="border-b border-border px-4 py-3 bg-muted/20">
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Target Record</p>
+              <div className="flex gap-1 mb-3">
+                {(['unknown', 'new', 'existing'] as const).map(mode => (
+                  <button
+                    key={mode}
+                    onClick={() => {
+                      setTargetMode(mode);
+                      setTargetRecordId(mode === 'new' ? 'new' : null);
+                      setTargetRecordSearch('');
+                      setShowRecordDropdown(false);
+                    }}
+                    className={`flex-1 px-2 py-1 rounded text-[11px] font-medium border transition-all ${
+                      targetMode === mode
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-background text-muted-foreground border-border hover:border-primary/40 hover:text-foreground'
+                    }`}
+                  >
+                    {mode === 'unknown' ? 'Unknown / Later' : mode === 'new' ? 'New Record' : 'Existing Record'}
+                  </button>
+                ))}
+              </div>
+              {targetMode === 'existing' && (
+                <div className="relative">
+                  <input
+                    value={targetRecordSearch}
+                    onChange={e => { setTargetRecordSearch(e.target.value); setShowRecordDropdown(true); setTargetRecordId(null); }}
+                    onFocus={() => setShowRecordDropdown(true)}
+                    placeholder="Contract number or counterparty name…"
+                    className="w-full h-8 px-3 text-[12px] rounded border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                  {showRecordDropdown && filteredRecords.length > 0 && (
+                    <div className="absolute z-50 top-full left-0 right-0 mt-1 rounded-md border border-border bg-popover shadow-lg max-h-48 overflow-y-auto">
+                      {filteredRecords.map(r => (
+                        <button
+                          key={r.id}
+                          className="w-full text-left px-3 py-2 text-[12px] hover:bg-accent transition-colors"
+                          onMouseDown={e => e.preventDefault()}
+                          onClick={() => {
+                            setTargetRecordId(r.id);
+                            setTargetRecordSearch(`${r.contract_number} — ${r.title}`);
+                            setShowRecordDropdown(false);
+                          }}
+                        >
+                          <span className="font-mono text-primary">{r.contract_number}</span>
+                          <span className="text-muted-foreground"> — {r.title}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {targetRecordId && targetMode === 'existing' && (
+                    <p className="text-[11px] text-[var(--color-lg-success)] mt-1">✓ Record selected: {targetRecordSearch}</p>
+                  )}
+                </div>
+              )}
+              {targetMode === 'new' && (
+                <input
+                  value={workingTitle}
+                  onChange={e => setWorkingTitle(e.target.value)}
+                  placeholder="Working title (optional)…"
+                  className="w-full h-8 px-3 text-[12px] rounded border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+              )}
+            </div>
 
             {/* ── SECTION A: Extraction ── */}
             <div className="border-b border-border">
@@ -738,7 +860,20 @@ export default function PipelineReviewGrouping() {
           <Button
             variant="outline"
             className="gap-2"
-            onClick={() => { /* TODO: Backend integration required — save draft */ }}
+            onClick={() => {
+              const histState = window.history.state as { navToken?: number } | null;
+              const session = {
+                files,
+                packageName,
+                filterRole,
+                activeFileId,
+                zoom,
+                selectedFileNames: files.map(f => f.display_name),
+                navToken: histState?.navToken,
+              };
+              saveSession(session);
+              toast.success('Draft saved — you can return to this grouping from the Pipeline Dashboard.');
+            }}
           >
             <Save className="w-4 h-4" />
             Save Draft
@@ -775,6 +910,7 @@ export default function PipelineReviewGrouping() {
               })),
               packageName,
               submissionMode,
+              targetRecordId,
               // Pass back the original selectedFileNames so Back button restores the list
               selectedFileNames: files.map(f => f.display_name),
             };
