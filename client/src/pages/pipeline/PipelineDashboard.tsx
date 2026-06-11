@@ -59,6 +59,7 @@ interface StagedDocument {
   page_count: number | null;
   workspace_tag: string;
   validation_errors?: string[];
+  target_record_id?: string | null;
 }
 
 interface IntakeBatch {
@@ -109,14 +110,14 @@ interface Submission {
 // ─── Mock data — TODO: Backend integration required ──────────────────────────
 
 const MOCK_DOCUMENTS: StagedDocument[] = [
-  { id: '1', display_name: 'Retail-HQ-Lease-2026.pdf',        status: 'valid',   originalStatus: 'valid',   upload_date: '2026-05-16 09:14', uploader: 'J. Martinez', mime_type: 'application/pdf', file_size_bytes: 4_200_000, page_count: 24,   workspace_tag: 'Q1-2026-Retail' },
-  { id: '2', display_name: 'Office-Tower-Amendment-3.pdf',     status: 'valid',   originalStatus: 'valid',   upload_date: '2026-05-16 09:10', uploader: 'J. Martinez', mime_type: 'application/pdf', file_size_bytes: 1_800_000, page_count: 8,    workspace_tag: 'Q1-2026-Office' },
-  { id: '3', display_name: 'Warehouse-Lease-Exhibit-A.tiff',   status: 'valid',   originalStatus: 'valid',   upload_date: '2026-05-16 08:55', uploader: 'A. Chen',     mime_type: 'image/tiff',       file_size_bytes: 6_100_000, page_count: 12,   workspace_tag: 'Q1-2026-Industrial' },
-  { id: '4', display_name: 'Corrupted-Scan-Draft.pdf',         status: 'invalid', originalStatus: 'invalid', upload_date: '2026-05-16 08:42', uploader: 'A. Chen',     mime_type: 'application/pdf', file_size_bytes: 320_000,   page_count: null, workspace_tag: 'Q1-2026-Retail',     validation_errors: ['OCR confidence below minimum threshold (62%)'] },
-  { id: '5', display_name: 'Ground-Lease-Base-Contract.pdf',   status: 'valid',   originalStatus: 'valid',   upload_date: '2026-05-16 08:30', uploader: 'S. Patel',    mime_type: 'application/pdf', file_size_bytes: 9_400_000, page_count: 41,   workspace_tag: 'Q2-2026-Land' },
-  { id: '6', display_name: 'Industrial-Park-Schedule.pdf',     status: 'valid',   originalStatus: 'valid',   upload_date: '2026-05-16 08:28', uploader: 'S. Patel',    mime_type: 'application/pdf', file_size_bytes: 2_200_000, page_count: 6,    workspace_tag: 'Q2-2026-Land' },
-  { id: '7', display_name: 'Retail-Sublease-Notice.pdf',       status: 'valid',   originalStatus: 'valid',   upload_date: '2026-05-16 09:18', uploader: 'J. Martinez', mime_type: 'application/pdf', file_size_bytes: 890_000,   page_count: null, workspace_tag: 'Q1-2026-Retail' },
-  { id: '8', display_name: 'Document-Does-Not-Resemble-Contract.pdf', status: 'invalid', originalStatus: 'invalid', upload_date: '2026-05-15 16:44', uploader: 'D. Kim', mime_type: 'application/pdf', file_size_bytes: 5_700_000, page_count: 28, workspace_tag: 'Q1-2026-Office', validation_errors: ['Document does not resemble a contract (likeness score: 0.11)'] },
+  { id: '1', display_name: 'Retail-HQ-Lease-2026.pdf',        status: 'valid',   originalStatus: 'valid',   upload_date: '2026-05-16 09:14', uploader: 'J. Martinez', mime_type: 'application/pdf', file_size_bytes: 4_200_000, page_count: 24,   workspace_tag: 'Q1-2026-Retail',     target_record_id: 'CR-2026-0012' },
+  { id: '2', display_name: 'Office-Tower-Amendment-3.pdf',     status: 'valid',   originalStatus: 'valid',   upload_date: '2026-05-16 09:10', uploader: 'J. Martinez', mime_type: 'application/pdf', file_size_bytes: 1_800_000, page_count: 8,    workspace_tag: 'Q1-2026-Office',     target_record_id: 'CR-2026-0012' },
+  { id: '3', display_name: 'Warehouse-Lease-Exhibit-A.tiff',   status: 'valid',   originalStatus: 'valid',   upload_date: '2026-05-16 08:55', uploader: 'A. Chen',     mime_type: 'image/tiff',       file_size_bytes: 6_100_000, page_count: 12,   workspace_tag: 'Q1-2026-Industrial', target_record_id: 'CR-2026-0012' },
+  { id: '4', display_name: 'Corrupted-Scan-Draft.pdf',         status: 'invalid', originalStatus: 'invalid', upload_date: '2026-05-16 08:42', uploader: 'A. Chen',     mime_type: 'application/pdf', file_size_bytes: 320_000,   page_count: null, workspace_tag: 'Q1-2026-Retail',     target_record_id: null, validation_errors: ['OCR confidence below minimum threshold (62%)'] },
+  { id: '5', display_name: 'Ground-Lease-Base-Contract.pdf',   status: 'valid',   originalStatus: 'valid',   upload_date: '2026-05-16 08:30', uploader: 'S. Patel',    mime_type: 'application/pdf', file_size_bytes: 9_400_000, page_count: 41,   workspace_tag: 'Q2-2026-Land',       target_record_id: null },
+  { id: '6', display_name: 'Industrial-Park-Schedule.pdf',     status: 'valid',   originalStatus: 'valid',   upload_date: '2026-05-16 08:28', uploader: 'S. Patel',    mime_type: 'application/pdf', file_size_bytes: 2_200_000, page_count: 6,    workspace_tag: 'Q2-2026-Land',       target_record_id: null },
+  { id: '7', display_name: 'Retail-Sublease-Notice.pdf',       status: 'valid',   originalStatus: 'valid',   upload_date: '2026-05-16 09:18', uploader: 'J. Martinez', mime_type: 'application/pdf', file_size_bytes: 890_000,   page_count: null, workspace_tag: 'Q1-2026-Retail',     target_record_id: null },
+  { id: '8', display_name: 'Document-Does-Not-Resemble-Contract.pdf', status: 'invalid', originalStatus: 'invalid', upload_date: '2026-05-15 16:44', uploader: 'D. Kim', mime_type: 'application/pdf', file_size_bytes: 5_700_000, page_count: 28, workspace_tag: 'Q1-2026-Office', target_record_id: null, validation_errors: ['Document does not resemble a contract (likeness score: 0.11)'] },
 ];
 
 const MOCK_BATCHES: IntakeBatch[] = [
@@ -361,6 +362,7 @@ function DocumentDetailPanel({ doc, onClose }: { doc: StagedDocument; onClose: (
               { label: 'Uploaded By',      value: doc.uploader },
               { label: 'Upload Date',      value: doc.upload_date },
               { label: 'Target Workspace', value: doc.workspace_tag },
+              { label: 'Target Record',    value: doc.target_record_id ?? 'Not assigned' },
             ].map(({ label, value }) => (
               <div key={label} className="flex items-start justify-between gap-4">
                 <dt className="text-[12px] text-muted-foreground shrink-0">{label}</dt>
