@@ -1913,19 +1913,7 @@ export default function PipelineDashboard() {
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </button>
-                          {/* Context-sensitive actions — only for unpackaged staged docs */}
-                          {doc.document_job_status === 'staged' && doc.status === 'valid' && !isReadOnly && (
-                            <button
-                              onClick={() => {
-                                setSelectedIds(new Set([doc.id]));
-                                setGroupingDocs([doc]);
-                              }}
-                              className="px-2 py-0.5 rounded text-[11px] font-semibold bg-[#1F3864] text-white hover:bg-[#162d54] transition-colors"
-                              title="Create package from this document"
-                            >
-                              Package
-                            </button>
-                          )}
+                          {/* Trash — shown for all non-committed docs */}
                           {doc.document_job_status !== 'committed' && !isReadOnly && (
                             <button
                               onClick={() => setStagedDocs(prev => prev.filter(d => d.id !== doc.id))}
