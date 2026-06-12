@@ -18,15 +18,17 @@
  * Design: Structured Authority — Structured Clarity (Modern Gov-Tech)
  */
 
-import { useEffect } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import {
   X, FileText, CheckCircle2, XCircle, Clock, AlertTriangle,
   Tag, User, Layers, Hash, Eye, Package, RotateCcw, Trash2, Plus, Search,
 } from 'lucide-react';
 import {
   findContractRecord,
+  searchContractRecords,
   CONTRACT_RECORD_STATUS_BADGE,
   CONTRACT_RECORD_STATUS_LABEL,
+  type ContractRecord,
 } from '@/lib/mockData';
 
 // ─── Types (mirrors StagedDocument from PipelineDashboard) ───────────────────
@@ -57,6 +59,8 @@ export interface DocumentIntelligencePanelProps {
   onPackage?: (doc: DocForPanel) => void;
   onRemove?: (doc: DocForPanel) => void;
   onRetry?: (doc: DocForPanel) => void;
+  /** Called when user assigns a contract record to an Awaiting Assignment doc */
+  onAssignRecord?: (doc: DocForPanel, recordId: string) => void;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -153,6 +157,7 @@ export function DocumentIntelligencePanel({
   onPackage,
   onRemove,
   onRetry,
+  onAssignRecord,
 }: DocumentIntelligencePanelProps) {
   // Close on Escape
   useEffect(() => {
@@ -170,7 +175,24 @@ export function DocumentIntelligencePanel({
 
   const isCommitted = doc.document_job_status === 'committed' || doc.document_job_status === 'processing' || doc.document_job_status === 'complete';
   const isInvalid = doc.status === 'invalid';
-  const isUnassigned = !doc.target_record_id && doc.submission_path !== 'unknown';
+  const isAwaitingAssignment = doc.submission_path === 'unknown' && !doc.target_record_id;
+  const isUnassigned = !doc.target_record_id && !isAwaitingAssignment;
+
+  // Assign Record inline search state
+  const [assignQuery, setAssignQuery] = useState('');
+  const [assignResults, setAssignResults] = useState<ContractRecord[]>([]);
+  const [showAssignDropdown, setShowAssignDropdown] = useState(false);
+  const assignInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (assignQuery.length >= 2) {
+      setAssignResults(searchContractRecords(assignQuery));
+      setShowAssignDropdown(true);
+    } else {
+      setAssignResults([]);
+      setShowAssignDropdown(false);
+    }
+  }, [assignQuery]);
 
   return (
     <>
@@ -392,21 +414,68 @@ export function DocumentIntelligencePanel({
                 </button>
               )}
             </div>
-          ) : isUnassigned ? (
-            // Unassigned — assign + create new
-            <div className="flex gap-2">
+          ) : isAwaitingAssignment ? (
+            // Awaiting Assignment — inline record search
+            <div className="flex flex-col gap-2">
+              <p className="text-[11px] font-semibold text-amber-700 uppercase tracking-wide">Assign to Contract Record</p>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                <input
+                  ref={assignInputRef}
+                  type="text"
+                  value={assignQuery}
+                  onChange={e => setAssignQuery(e.target.value)}
+                  onFocus={() => assignQuery.length >= 2 && setShowAssignDropdown(true)}
+                  onBlur={() => setTimeout(() => setShowAssignDropdown(false), 150)}
+                  placeholder="Counterparty, address, or contract #…"
+                  className="w-full pl-8 pr-3 py-2 text-[12px] rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+                {showAssignDropdown && (
+                  <div className="absolute z-50 bottom-full mb-1 w-full rounded-lg border border-border bg-card shadow-lg overflow-hidden">
+                    {assignResults.length === 0 ? (
+                      <div className="px-3 py-3 text-[12px] text-muted-foreground text-center">No records found</div>
+                    ) : (
+                      assignResults.map(rec => (
+                        <button
+                          key={rec.id}
+                          onMouseDown={() => {
+                            if (onAssignRecord) {
+                              onAssignRecord(doc, rec.id);
+                              onClose();
+                            }
+                          }}
+                          className="w-full flex items-center gap-2 px-3 py-2.5 text-left hover:bg-accent transition-colors"
+                        >
+                          <span className="font-mono text-[11px] font-semibold text-primary shrink-0">{rec.contractNumber}</span>
+                          <span className="text-[12px] font-medium text-foreground">{rec.counterparty}</span>
+                          <span className="text-[11px] text-muted-foreground truncate flex-1">{rec.address}</span>
+                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold ${CONTRACT_RECORD_STATUS_BADGE[rec.status]}`}>
+                            {CONTRACT_RECORD_STATUS_LABEL[rec.status]}
+                          </span>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
               <button
                 onClick={onClose}
-                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[12px] font-medium border border-border bg-background text-foreground hover:bg-muted transition-colors"
-              >
-                <Search className="w-3.5 h-3.5" /> Assign to Record
-              </button>
-              <button
-                onClick={onClose}
-                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[12px] font-semibold bg-[#1F3864] text-white hover:bg-[#162d54] transition-colors"
+                className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[12px] font-semibold bg-[#1F3864] text-white hover:bg-[#162d54] transition-colors"
               >
                 <Plus className="w-3.5 h-3.5" /> Create New Record
               </button>
+            </div>
+          ) : isUnassigned ? (
+            // Unassigned (no submission_path) — package directly
+            <div className="flex gap-2">
+              {onPackage && (
+                <button
+                  onClick={() => { onPackage(doc); onClose(); }}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[12px] font-semibold bg-[#1F3864] text-white hover:bg-[#162d54] transition-colors"
+                >
+                  <Package className="w-3.5 h-3.5" /> Package Now
+                </button>
+              )}
             </div>
           ) : (
             // Assigned, not packaged — view record + package now

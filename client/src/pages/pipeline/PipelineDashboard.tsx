@@ -23,7 +23,8 @@ import {
   UploadCloud, FileText, AlertTriangle, CheckCircle2, XCircle,
   Clock, Send, RefreshCw, Search, MoreHorizontal, Edit2, Layers,
   Eye, Trash2, ArrowRight, FileUp, CheckSquare, Square,
-  Package, X, ChevronDown, ChevronUp, ChevronsUpDown, Unlink
+  Package, X, ChevronDown, ChevronUp, ChevronsUpDown, Unlink,
+  Archive, ExternalLink
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -1245,6 +1246,8 @@ export default function PipelineDashboard() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [colFilters, setColFilters] = useState({ name: '', uploader: '', workspace: '' });
+  // Tab: 'active' = staging pipeline, 'committed' = audit view
+  const [stageView, setStageView] = useState<'active' | 'committed'>('active');
 
   // S1a — Document detail panel
   const [detailDoc, setDetailDoc] = useState<DocForPanel | null>(null);
@@ -1768,32 +1771,139 @@ export default function PipelineDashboard() {
           TABLE 1 — Stage Documents
       ══════════════════════════════════════════════════════════════════════ */}
       <div className="rounded-lg bg-card border border-border shadow-sm overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <h2 className="text-base font-semibold text-foreground">Stage Documents</h2>
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-              <Input
-                placeholder="Search files..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className="pl-8 h-8 w-48 text-[13px]"
-              />
-            </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="h-8 w-36 text-[13px]">
-                <SelectValue placeholder="All statuses" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All statuses</SelectItem>
-                <SelectItem value="uploading">Uploading</SelectItem>
-                <SelectItem value="validating">Validating</SelectItem>
-                <SelectItem value="valid">Valid</SelectItem>
-                <SelectItem value="invalid">Invalid</SelectItem>
-              </SelectContent>
-            </Select>
+        {/* Tab bar */}
+        <div className="flex items-center justify-between px-5 py-3 border-b border-border">
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setStageView('active')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-[13px] font-medium transition-colors ${
+                stageView === 'active'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+              }`}
+            >
+              <FileText className="w-3.5 h-3.5" /> Active
+              <span className={`ml-1 px-1.5 py-0 rounded-full text-[10px] font-bold ${
+                stageView === 'active' ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-muted text-muted-foreground'
+              }`}>{activeStagedDocs.length}</span>
+            </button>
+            <button
+              onClick={() => setStageView('committed')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-[13px] font-medium transition-colors ${
+                stageView === 'committed'
+                  ? 'bg-slate-700 text-white'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+              }`}
+            >
+              <Archive className="w-3.5 h-3.5" /> Committed
+              <span className={`ml-1 px-1.5 py-0 rounded-full text-[10px] font-bold ${
+                stageView === 'committed' ? 'bg-white/20 text-white' : 'bg-muted text-muted-foreground'
+              }`}>{stagedDocs.filter(d => d.document_job_status === 'committed').length}</span>
+            </button>
           </div>
+          {stageView === 'active' && (
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                <Input
+                  placeholder="Search files..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="pl-8 h-8 w-48 text-[13px]"
+                />
+              </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="h-8 w-36 text-[13px]">
+                  <SelectValue placeholder="All statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All statuses</SelectItem>
+                  <SelectItem value="uploading">Uploading</SelectItem>
+                  <SelectItem value="validating">Validating</SelectItem>
+                  <SelectItem value="valid">Valid</SelectItem>
+                  <SelectItem value="invalid">Invalid</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
+
+        {/* Committed audit view */}
+        {stageView === 'committed' && (() => {
+          const committedDocs = stagedDocs.filter(d => d.document_job_status === 'committed');
+          return committedDocs.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 gap-2">
+              <Archive className="w-8 h-8 text-muted-foreground/40" />
+              <p className="text-[13px] text-muted-foreground">No committed documents yet.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="data-table w-full text-[13px]">
+                <thead>
+                  <tr>
+                    <th className="text-left">File Name</th>
+                    <th className="text-left">Type</th>
+                    <th className="text-left">Workspace</th>
+                    <th className="text-left">Contract Record</th>
+                    <th className="text-left">Uploader</th>
+                    <th className="text-left">Committed</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {committedDocs.map(doc => {
+                    const rec = findContractRecord(doc.target_record_id);
+                    return (
+                      <tr key={doc.id}>
+                        <td>
+                          <div className="flex items-center gap-2">
+                            <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                            <span className="font-medium text-foreground truncate max-w-[200px]" title={doc.display_name}>{doc.display_name}</span>
+                          </div>
+                        </td>
+                        <td>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-muted text-muted-foreground border border-border">
+                            {getMimeLabel(doc.mime_type)}
+                          </span>
+                        </td>
+                        <td>
+                          <span className="text-[12px] text-primary bg-accent px-2 py-0.5 rounded font-medium">{doc.workspace_tag}</span>
+                        </td>
+                        <td>
+                          {rec ? (
+                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              <CheckCircle2 className="w-3 h-3" />
+                              {rec.contractNumber} · {rec.counterparty}
+                            </span>
+                          ) : (
+                            <span className="text-[12px] text-muted-foreground italic">{doc.target_record_id ?? '—'}</span>
+                          )}
+                        </td>
+                        <td className="text-[12px] text-muted-foreground">{doc.uploader}</td>
+                        <td className="font-mono text-[12px] text-muted-foreground">{doc.upload_date}</td>
+                        <td>
+                          <button
+                            onClick={() => setDetailDoc(doc as DocForPanel)}
+                            className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                            title="View document details"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <div className="px-5 py-3 border-t border-border bg-muted/30">
+                <p className="text-[12px] text-muted-foreground">{committedDocs.length} committed document{committedDocs.length !== 1 ? 's' : ''} — read-only audit view</p>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Active staging view — only shown when stageView === 'active' */}
+        {stageView === 'active' && (<div className="contents">
 
         {activeStagedDocs.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 gap-3">
@@ -1860,49 +1970,27 @@ export default function PipelineDashboard() {
                       <td>
                         <span className="text-[12px] text-primary bg-accent px-2 py-0.5 rounded font-medium">{doc.workspace_tag}</span>
                       </td>
-                      {/* Record — V3 4-state rendering */}
+                      {/* Record — 3-state rendering (committed docs excluded from this table) */}
                       <td>
-                        {(() => {
-                          if (doc.document_job_status === 'committed') {
-                            const rec = findContractRecord(doc.target_record_id);
-                            return (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                {rec ? `${rec.contractNumber} · ${rec.counterparty}` : doc.target_record_id}
-                              </span>
-                            );
-                          }
-                          if (doc.target_record_id) {
-                            const rec = findContractRecord(doc.target_record_id);
-                            return (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
-                                {rec ? `${rec.contractNumber} · ${rec.counterparty}` : doc.target_record_id}
-                              </span>
-                            );
-                          }
-                          if (doc.submission_path === 'unknown') {
-                            return (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-                                Awaiting Assignment
-                              </span>
-                            );
-                          }
-                          return (
-                            <span className="inline-flex items-center gap-1 text-[12px] text-muted-foreground/60 italic">
-                              <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 shrink-0" />
-                              Unassigned
-                            </span>
-                          );
-                        })()}
+                        {doc.target_record_id
+                          ? (() => {
+                              const rec = findContractRecord(doc.target_record_id);
+                              return (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                                  {rec ? `${rec.contractNumber} · ${rec.counterparty}` : doc.target_record_id}
+                                </span>
+                              );
+                            })()
+                          : doc.submission_path === 'unknown'
+                            ? <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">Awaiting Assignment</span>
+                            : <span className="inline-flex items-center gap-1 text-[12px] text-muted-foreground/60 italic"><span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 shrink-0" />Unassigned</span>
+                        }
                       </td>
                       {/* Status */}
                       <td>
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold ${
-                          doc.document_job_status === 'committed'
-                            ? 'bg-slate-100 text-slate-600 border border-slate-200'
-                            : STATUS_BADGE[doc.status]
-                        }`}>
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold ${STATUS_BADGE[doc.status]}`}>
                           {doc.status === 'validating' && <RefreshCw className="w-3 h-3 animate-spin" />}
-                          {doc.document_job_status === 'committed' ? 'Committed' : STATUS_LABEL[doc.status]}
+                          {STATUS_LABEL[doc.status]}
                         </span>
                       </td>
                       {/* Uploaded */}
@@ -1975,6 +2063,7 @@ export default function PipelineDashboard() {
             </Button>
           </div>
         )}
+        </div>)}
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════════
@@ -2335,6 +2424,15 @@ export default function PipelineDashboard() {
               d.id === doc.id ? { ...d, status: 'validating' as const } : d
             ));
             toast.info('Revalidation queued');
+          }}
+          onAssignRecord={(doc, recordId) => {
+            setStagedDocs(prev => prev.map(d =>
+              d.id === doc.id
+                ? { ...d, target_record_id: recordId, submission_path: 'existing_record' as const }
+                : d
+            ));
+            const rec = findContractRecord(recordId);
+            toast.success(`Assigned to ${rec ? `${rec.contractNumber} · ${rec.counterparty}` : recordId}`);
           }}
         />
       )}
