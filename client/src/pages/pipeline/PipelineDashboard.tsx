@@ -1288,7 +1288,8 @@ export default function PipelineDashboard() {
 
   // ── Sync live badge counts to sidebar nav context ──
   useEffect(() => {
-    const validCount = stagedDocs.filter(d => d.status === 'valid').length;
+    // Sidebar badge: only count active (non-committed) valid docs
+    const validCount = stagedDocs.filter(d => d.document_job_status !== 'committed' && d.status === 'valid').length;
     setPipelineReadyCount(validCount);
   }, [stagedDocs, setPipelineReadyCount]);
 
@@ -1313,16 +1314,19 @@ export default function PipelineDashboard() {
     return () => unsub();
   }, []);
 
-  // ── Derived counts ──
+  // ── Derived counts — committed docs are excluded from all pipeline stat cards ──
   const counts = {
-    uploading:  stagedDocs.filter(d => d.status === 'uploading').length,
-    validating: stagedDocs.filter(d => d.status === 'validating').length,
-    valid:      stagedDocs.filter(d => d.status === 'valid').length,
-    invalid:    stagedDocs.filter(d => d.status === 'invalid').length,
+    uploading:  stagedDocs.filter(d => d.document_job_status !== 'committed' && d.status === 'uploading').length,
+    validating: stagedDocs.filter(d => d.document_job_status !== 'committed' && d.status === 'validating').length,
+    valid:      stagedDocs.filter(d => d.document_job_status !== 'committed' && d.status === 'valid').length,
+    invalid:    stagedDocs.filter(d => d.document_job_status !== 'committed' && d.status === 'invalid').length,
     submitted:  submissions.length,
   };
 
-  const filteredDocs = stagedDocs.filter(doc => {
+  // Committed docs have left the pipeline — exclude them from the staging table entirely
+  const activeStagedDocs = stagedDocs.filter(d => d.document_job_status !== 'committed');
+
+  const filteredDocs = activeStagedDocs.filter(doc => {
     const matchesStatus = statusFilter === 'all' || doc.status === statusFilter;
     const q = searchQuery.toLowerCase();
     const matchesSearch = !q ||
@@ -1463,7 +1467,8 @@ export default function PipelineDashboard() {
 
   // ── Grouping workflow ──
   function openGroupingDialog() {
-    const docs = stagedDocs.filter(d => selectedIds.has(d.id));
+    // Only allow grouping of active (non-committed) staged docs
+    const docs = activeStagedDocs.filter(d => selectedIds.has(d.id));
     if (docs.length === 0) return;
     setGroupingDocs(docs);
   }
@@ -1790,7 +1795,7 @@ export default function PipelineDashboard() {
           </div>
         </div>
 
-        {stagedDocs.length === 0 ? (
+        {activeStagedDocs.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 gap-3">
             <div className="w-14 h-14 rounded-full bg-accent flex items-center justify-center">
               <FileText className="w-7 h-7 text-accent-foreground" />
@@ -1936,10 +1941,10 @@ export default function PipelineDashboard() {
           </div>
         )}
 
-        {stagedDocs.length > 0 && (
+        {activeStagedDocs.length > 0 && (
           <div className="flex items-center justify-between px-5 py-3 border-t border-border bg-muted/30">
             <p className="text-[12px] text-muted-foreground">
-              Showing {filteredDocs.length} of {stagedDocs.length} documents
+              Showing {filteredDocs.length} of {activeStagedDocs.length} documents
               {selectedIds.size > 0 && ` · ${selectedIds.size} selected`}
             </p>
             <Button
