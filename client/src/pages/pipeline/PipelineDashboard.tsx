@@ -34,6 +34,8 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import { FlagSlidingPanel } from '@/components/shared/FlagSlidingPanel';
+import { DocumentIntelligencePanel } from '@/components/pipeline/DocumentIntelligencePanel';
+import type { DocForPanel } from '@/components/pipeline/DocumentIntelligencePanel';
 import { UploadDialog } from '@/components/pipeline/UploadDialog';
 import type { StagedFile as UploadedFile } from '@/components/pipeline/UploadDialog';
 import { toast } from 'sonner';
@@ -41,17 +43,28 @@ import { SCREEN_KEYS } from '@/constants/screenKeys';
 import { publishEvent, subscribeToEvents } from '@/lib/eventBus';
 import { useRole } from '@/contexts/RoleContext';
 import { usePipelineCounts } from '@/contexts/PipelineCountsContext';
+import {
+  MOCK_CONTRACT_RECORDS,
+  findContractRecord,
+} from '@/lib/mockData';
 
 import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type StagedStatus = 'uploaded' | 'uploading' | 'validating' | 'valid' | 'invalid';
 
+/**
+ * V3 StagedDocument — Change 1 §1a
+ * New fields: original_status, submission_path, submitter_context_notes, document_job_status
+ */
 interface StagedDocument {
   id: string;
   display_name: string;
   status: StagedStatus;
-  originalStatus: 'valid' | 'invalid';  // restored when returned from a package
+  /** V3: restored when document returns to staging from any return path */
+  original_status: 'valid' | 'invalid';
+  /** @deprecated use original_status — kept for backward compat with sub-components */
+  originalStatus: 'valid' | 'invalid';
   upload_date: string;
   uploader: string;
   mime_type: string;
@@ -59,7 +72,14 @@ interface StagedDocument {
   page_count: number | null;
   workspace_tag: string;
   validation_errors?: string[];
-  target_record_id?: string | null;
+  /** V3: FK to ContractRecord — null until assigned */
+  target_record_id: string | null;
+  /** V3: 'new_record' | 'existing_record' | 'unknown' — set at upload */
+  submission_path: 'new_record' | 'existing_record' | 'unknown' | null;
+  /** V3: free-text context from DocSubmitter — shown in Document Intelligence Panel */
+  submitter_context_notes: string | null;
+  /** V3: document-level job status for Table 1 committed state */
+  document_job_status: 'staged' | 'committed' | 'processing' | 'complete';
 }
 
 interface IntakeBatch {
@@ -107,100 +127,193 @@ interface Submission {
   status: 'Pending' | 'In Progress' | 'Completed' | 'Failed';
 }
 
-// ─── Mock data — TODO: Backend integration required ──────────────────────────
+// ─── Mock data — V3 Change 1 §1a — 8-document seed distribution ─────────────
+// Docs 1–2: valid, unassigned (no target record)
+// Docs 3–4: valid, assigned to Acme Corp (CR-2026-0038)
+// Docs 5–6: valid, committed to Globex LLC (CR-2026-0039), in-progress
+// Doc  7:   invalid (file integrity check failed)
+// Doc  8:   valid, target record unknown (submission_path = 'unknown')
 
 const MOCK_DOCUMENTS: StagedDocument[] = [
-  { id: '1', display_name: 'Retail-HQ-Lease-2026.pdf',        status: 'valid',   originalStatus: 'valid',   upload_date: '2026-05-16 09:14', uploader: 'J. Martinez', mime_type: 'application/pdf', file_size_bytes: 4_200_000, page_count: 24,   workspace_tag: 'Q1-2026-Retail',     target_record_id: 'CR-2026-0012' },
-  { id: '2', display_name: 'Office-Tower-Amendment-3.pdf',     status: 'valid',   originalStatus: 'valid',   upload_date: '2026-05-16 09:10', uploader: 'J. Martinez', mime_type: 'application/pdf', file_size_bytes: 1_800_000, page_count: 8,    workspace_tag: 'Q1-2026-Office',     target_record_id: 'CR-2026-0012' },
-  { id: '3', display_name: 'Warehouse-Lease-Exhibit-A.tiff',   status: 'valid',   originalStatus: 'valid',   upload_date: '2026-05-16 08:55', uploader: 'A. Chen',     mime_type: 'image/tiff',       file_size_bytes: 6_100_000, page_count: 12,   workspace_tag: 'Q1-2026-Industrial', target_record_id: 'CR-2026-0012' },
-  { id: '4', display_name: 'Corrupted-Scan-Draft.pdf',         status: 'invalid', originalStatus: 'invalid', upload_date: '2026-05-16 08:42', uploader: 'A. Chen',     mime_type: 'application/pdf', file_size_bytes: 320_000,   page_count: null, workspace_tag: 'Q1-2026-Retail',     target_record_id: null, validation_errors: ['OCR confidence below minimum threshold (62%)'] },
-  { id: '5', display_name: 'Ground-Lease-Base-Contract.pdf',   status: 'valid',   originalStatus: 'valid',   upload_date: '2026-05-16 08:30', uploader: 'S. Patel',    mime_type: 'application/pdf', file_size_bytes: 9_400_000, page_count: 41,   workspace_tag: 'Q2-2026-Land',       target_record_id: null },
-  { id: '6', display_name: 'Industrial-Park-Schedule.pdf',     status: 'valid',   originalStatus: 'valid',   upload_date: '2026-05-16 08:28', uploader: 'S. Patel',    mime_type: 'application/pdf', file_size_bytes: 2_200_000, page_count: 6,    workspace_tag: 'Q2-2026-Land',       target_record_id: null },
-  { id: '7', display_name: 'Retail-Sublease-Notice.pdf',       status: 'valid',   originalStatus: 'valid',   upload_date: '2026-05-16 09:18', uploader: 'J. Martinez', mime_type: 'application/pdf', file_size_bytes: 890_000,   page_count: null, workspace_tag: 'Q1-2026-Retail',     target_record_id: null },
-  { id: '8', display_name: 'Document-Does-Not-Resemble-Contract.pdf', status: 'invalid', originalStatus: 'invalid', upload_date: '2026-05-15 16:44', uploader: 'D. Kim', mime_type: 'application/pdf', file_size_bytes: 5_700_000, page_count: 28, workspace_tag: 'Q1-2026-Office', target_record_id: null, validation_errors: ['Document does not resemble a contract (likeness score: 0.11)'] },
+  {
+    id: 'doc-1',
+    display_name: 'Retail-HQ-Lease-2026.pdf',
+    status: 'valid',
+    original_status: 'valid',
+    originalStatus: 'valid',
+    upload_date: '2026-06-12 09:14',
+    uploader: 'J. Martinez',
+    mime_type: 'application/pdf',
+    file_size_bytes: 4_200_000,
+    page_count: 24,
+    workspace_tag: 'Q1-2026-Retail',
+    target_record_id: null,
+    submission_path: null,
+    submitter_context_notes: null,
+    document_job_status: 'staged',
+  },
+  {
+    id: 'doc-2',
+    display_name: 'Office-Tower-Amendment-3.pdf',
+    status: 'valid',
+    original_status: 'valid',
+    originalStatus: 'valid',
+    upload_date: '2026-06-12 09:10',
+    uploader: 'J. Martinez',
+    mime_type: 'application/pdf',
+    file_size_bytes: 1_800_000,
+    page_count: 8,
+    workspace_tag: 'Q1-2026-Office',
+    target_record_id: null,
+    submission_path: null,
+    submitter_context_notes: null,
+    document_job_status: 'staged',
+  },
+  {
+    id: 'doc-3',
+    display_name: 'Retail-HQ-Lease-2026.pdf',
+    status: 'valid',
+    original_status: 'valid',
+    originalStatus: 'valid',
+    upload_date: '2026-06-11 14:22',
+    uploader: 'A. Chen',
+    mime_type: 'application/pdf',
+    file_size_bytes: 4_200_000,
+    page_count: 24,
+    workspace_tag: 'Q1-2026-Retail',
+    target_record_id: 'mock-record-001',  // Acme Corp — CR-2026-0038
+    submission_path: 'existing_record',
+    submitter_context_notes: 'Renewal for Acme Corp main location. Please prioritise.',
+    document_job_status: 'committed',
+  },
+  {
+    id: 'doc-4',
+    display_name: 'Office-Tower-Amendment-3.pdf',
+    status: 'valid',
+    original_status: 'valid',
+    originalStatus: 'valid',
+    upload_date: '2026-06-11 14:20',
+    uploader: 'A. Chen',
+    mime_type: 'application/pdf',
+    file_size_bytes: 1_800_000,
+    page_count: 8,
+    workspace_tag: 'Q1-2026-Office',
+    target_record_id: 'mock-record-001',  // Acme Corp — CR-2026-0038
+    submission_path: 'existing_record',
+    submitter_context_notes: null,
+    document_job_status: 'committed',
+  },
+  {
+    id: 'doc-5',
+    display_name: 'Ground-Lease-Base-Contract.pdf',
+    status: 'valid',
+    original_status: 'valid',
+    originalStatus: 'valid',
+    upload_date: '2026-06-10 11:05',
+    uploader: 'S. Patel',
+    mime_type: 'application/pdf',
+    file_size_bytes: 9_400_000,
+    page_count: 41,
+    workspace_tag: 'Q2-2026-Land',
+    target_record_id: 'mock-record-002',  // Globex LLC — CR-2026-0039
+    submission_path: 'existing_record',
+    submitter_context_notes: 'Ground lease renewal — compare against approved record.',
+    document_job_status: 'committed',
+  },
+  {
+    id: 'doc-6',
+    display_name: 'Industrial-Park-Schedule.pdf',
+    status: 'valid',
+    original_status: 'valid',
+    originalStatus: 'valid',
+    upload_date: '2026-06-10 11:03',
+    uploader: 'S. Patel',
+    mime_type: 'application/pdf',
+    file_size_bytes: 2_200_000,
+    page_count: 6,
+    workspace_tag: 'Q2-2026-Land',
+    target_record_id: 'mock-record-002',  // Globex LLC — CR-2026-0039
+    submission_path: 'existing_record',
+    submitter_context_notes: null,
+    document_job_status: 'committed',
+  },
+  {
+    id: 'doc-7',
+    display_name: 'corrupt_scan_draft.pdf',
+    status: 'invalid',
+    original_status: 'invalid',
+    originalStatus: 'invalid',
+    upload_date: '2026-06-12 08:42',
+    uploader: 'A. Chen',
+    mime_type: 'application/pdf',
+    file_size_bytes: 320_000,
+    page_count: null,
+    workspace_tag: 'Q1-2026-Retail',
+    target_record_id: null,
+    submission_path: null,
+    submitter_context_notes: null,
+    document_job_status: 'staged',
+    validation_errors: ['File integrity check failed — file cannot be opened or is malformed'],
+  },
+  {
+    id: 'doc-8',
+    display_name: 'Retail-Sublease-Notice.pdf',
+    status: 'valid',
+    original_status: 'valid',
+    originalStatus: 'valid',
+    upload_date: '2026-06-12 09:18',
+    uploader: 'D. Kim',
+    mime_type: 'application/pdf',
+    file_size_bytes: 890_000,
+    page_count: null,
+    workspace_tag: 'Q1-2026-Retail',
+    target_record_id: null,
+    submission_path: 'unknown',  // DocSubmitter was not sure of target record
+    submitter_context_notes: 'Not sure which record this belongs to — please advise.',
+    document_job_status: 'staged',
+  },
 ];
 
+// MOCK_BATCHES retained for BatchDetailPanel compatibility (not shown in V3 tables)
 const MOCK_BATCHES: IntakeBatch[] = [
-  { id: 'b1', batch_reference: 'BATCH-2026-0041', submission_mode: 'contract_package', document_count: 4,  status: 'processing', submitted_at: '2026-05-16 09:05' },
-  { id: 'b2', batch_reference: 'BATCH-2026-0040', submission_mode: 'single_contract',  document_count: 1,  status: 'completed',  submitted_at: '2026-05-15 16:44' },
-  { id: 'b3', batch_reference: 'BATCH-2026-0039', submission_mode: 'bulk_batch',       document_count: 12, status: 'completed',  submitted_at: '2026-05-15 11:20' },
-  { id: 'b4', batch_reference: 'BATCH-2026-0038', submission_mode: 'contract_package', document_count: 3,  status: 'completed',  submitted_at: '2026-05-14 14:33' },
-  { id: 'b5', batch_reference: 'BATCH-2026-0037', submission_mode: 'single_contract',  document_count: 1,  status: 'failed',     submitted_at: '2026-05-14 09:11' },
+  { id: 'b1', batch_reference: 'BATCH-2026-0041', submission_mode: 'contract_package', document_count: 2, status: 'submitted',  submitted_at: '2026-06-10 11:05' },
+  { id: 'b2', batch_reference: 'BATCH-2026-0040', submission_mode: 'contract_package', document_count: 1, status: 'assembling', submitted_at: '2026-06-11 14:22' },
 ];
 
-// Seed Contract Packages from first 3 batches
+// V3 §1c — Table 2 seed: PKG-2026-002 in Assembly (not yet submitted)
 const INITIAL_PACKAGES: ContractPackage[] = [
   {
-    id: 'pkg-seed-1',
-    packageNum: 'PKG-2026-001',
-    packageName: 'Q1 Retail Portfolio',
-    mode: 'Package',
-    files: [
-      { docId: 'f1', name: 'Retail-HQ-Lease-2026.pdf',    role: 'Base Contract' },
-      { docId: 'f2', name: 'Office-Tower-Amendment-3.pdf', role: 'Amendment' },
-      { docId: 'f3', name: 'Warehouse-Lease-Exhibit-A.tiff', role: 'Exhibit' },
-      { docId: 'f4', name: 'Retail-Sublease-Notice.pdf',   role: 'Notice' },
-    ],
-    workspace: 'Q1-2026-Retail',
-    createdBy: 'J. Martinez',
-    createdAt: '2026-05-16T09:05:00Z',
-    status: 'Ready',
-  },
-  {
-    id: 'pkg-seed-2',
+    id: 'mock-pkg-002-local',
     packageNum: 'PKG-2026-002',
-    mode: 'Single',
-    files: [
-      { docId: 'f5', name: 'Corporate-HQ-Renewal-2026.pdf', role: 'Undefined' },
-    ],
-    workspace: 'Q1-2026-Office',
-    createdBy: 'D. Kim',
-    createdAt: '2026-05-15T16:44:00Z',
-    status: 'Pending',
-  },
-  {
-    id: 'pkg-seed-3',
-    packageNum: 'PKG-2026-003',
-    packageName: 'Q2 Land Leases',
+    packageName: 'Globex Ground Lease Package',
     mode: 'Package',
     files: [
-      { docId: 'f6', name: 'Ground-Lease-Base-Contract.pdf', role: 'Base Contract' },
-      { docId: 'f7', name: 'Industrial-Park-Schedule.pdf',   role: 'Schedule' },
-      { docId: 'f8', name: 'Warehouse-Lease-Exhibit-A.tiff', role: 'Exhibit' },
+      { docId: 'doc-5', name: 'Ground-Lease-Base-Contract.pdf', role: 'Base Contract' },
     ],
     workspace: 'Q2-2026-Land',
     createdBy: 'S. Patel',
-    createdAt: '2026-05-14T14:33:00Z',
-    status: 'Ready',
+    createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+    status: 'Pending',
   },
 ];
 
-// Seed Submissions from remaining batches
+// V3 §1c — Table 3 seed: PKG-2026-001 as Pending submission
 const INITIAL_SUBMISSIONS: Submission[] = [
   {
-    id: 'sub-seed-1',
-    packageNum: 'PKG-2026-0040',
-    packageName: 'Single Office Contract',
-    mode: 'Single',
-    fileCount: 1,
-    fileNames: ['Corporate-HQ-Renewal-2026.pdf'],
-    files: [{ docId: 'f9', name: 'Corporate-HQ-Renewal-2026.pdf', role: 'Base Contract' }],
-    workspace: 'Q1-2026-Office',
-    submittedBy: 'D. Kim',
-    submitDate: '2026-05-15T16:44:00Z',
-    status: 'Completed',
-  },
-  {
-    id: 'sub-seed-2',
-    packageNum: 'PKG-2026-0037',
-    mode: 'Single',
-    fileCount: 1,
-    fileNames: ['Corrupted-Scan-Draft.pdf'],
-    files: [{ docId: 'f10', name: 'Corrupted-Scan-Draft.pdf', role: 'Supporting' }],
+    id: 'sub-v3-001-local',
+    packageNum: 'PKG-2026-001',
+    packageName: 'Acme Corp Retail Package',
+    mode: 'Package',
+    fileCount: 2,
+    fileNames: ['Retail-HQ-Lease-2026.pdf', 'Office-Tower-Amendment-3.pdf'],
+    files: [
+      { docId: 'doc-3', name: 'Retail-HQ-Lease-2026.pdf',    role: 'Base Contract' },
+      { docId: 'doc-4', name: 'Office-Tower-Amendment-3.pdf', role: 'Amendment' },
+    ],
     workspace: 'Q1-2026-Retail',
     submittedBy: 'A. Chen',
-    submitDate: '2026-05-14T09:11:00Z',
-    status: 'Failed',
+    submitDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    status: 'Pending',
   },
 ];
 
@@ -1134,7 +1247,7 @@ export default function PipelineDashboard() {
   const [colFilters, setColFilters] = useState({ name: '', uploader: '', workspace: '' });
 
   // S1a — Document detail panel
-  const [detailDoc, setDetailDoc] = useState<StagedDocument | null>(null);
+  const [detailDoc, setDetailDoc] = useState<DocForPanel | null>(null);
   // S1b — Batch detail panel
   const [detailBatch, setDetailBatch] = useState<IntakeBatch | null>(null);
   // S1c — Bulk selection
@@ -1293,8 +1406,14 @@ export default function PipelineDashboard() {
     setSelectedIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   };
 
-  // ── Upload confirm handler ──
-  function handleUploadConfirm(uploadedFiles: UploadedFile[], workspaceTag: string) {
+  // ── Upload confirm handler (V3 — 5-argument callback) ──
+  function handleUploadConfirm(
+    uploadedFiles: UploadedFile[],
+    workspaceTag: string,
+    targetRecordId: string | null,
+    submissionPath: 'new_record' | 'existing_record' | 'unknown' | null,
+    contextNotes: string | null,
+  ) {
     const now = new Date();
     const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     const newDocs: StagedDocument[] = uploadedFiles.map(f => {
@@ -1303,6 +1422,7 @@ export default function PipelineDashboard() {
         id: f.id,
         display_name: f.name,
         status: resolvedStatus,
+        original_status: resolvedStatus,
         originalStatus: resolvedStatus,
         upload_date: dateStr,
         uploader: activeRole === 'document_submitter' ? 'You' : 'Current User',
@@ -1310,7 +1430,11 @@ export default function PipelineDashboard() {
         file_size_bytes: f.size,
         page_count: null,
         workspace_tag: workspaceTag,
-        validation_errors: f.status === 'invalid' ? ['File failed security scan'] : undefined,
+        target_record_id: targetRecordId,
+        submission_path: submissionPath,
+        submitter_context_notes: contextNotes,
+        document_job_status: 'staged' as const,
+        validation_errors: f.status === 'invalid' ? ['File integrity check failed'] : undefined,
       };
     });
     setStagedDocs(prev => [...newDocs, ...prev]);
@@ -1394,12 +1518,14 @@ export default function PipelineDashboard() {
   const ungroupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function ungroupPackage(pkg: ContractPackage) {
-    const restoredDocs: StagedDocument[] = pkg.files.map(f => {
+      const restoredDocs: StagedDocument[] = pkg.files.map(f => {
       const orig: 'valid' | 'invalid' = (f as { originalStatus?: 'valid' | 'invalid' }).originalStatus ?? 'valid';
       return {
         id: `restored-${f.docId}-${Date.now()}`,
+        // V3 status restoration
         display_name: f.name,
         status: orig,
+        original_status: orig,
         originalStatus: orig,
         upload_date: new Date().toLocaleString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', ''),
         uploader: pkg.createdBy,
@@ -1407,6 +1533,11 @@ export default function PipelineDashboard() {
         file_size_bytes: 0,
         page_count: null,
         workspace_tag: pkg.workspace,
+        // V3 Change 6: status restoration fields
+        target_record_id: null,
+        submission_path: null,
+        submitter_context_notes: null,
+        document_job_status: 'staged' as const,
       };
     });
     setContractPackages(prev => prev.filter(p => p.id !== pkg.id));
@@ -1487,6 +1618,7 @@ export default function PipelineDashboard() {
       id: `restored-${docId}-${Date.now()}`,
       display_name: removedFile.name,
       status: origStatus,
+      original_status: origStatus,
       originalStatus: origStatus,
       upload_date: new Date().toLocaleString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', ''),
       uploader: pkg.createdBy,
@@ -1494,6 +1626,11 @@ export default function PipelineDashboard() {
       file_size_bytes: 0,
       page_count: null,
       workspace_tag: pkg.workspace,
+      // V3 Change 6: status restoration fields
+      target_record_id: null,
+      submission_path: null,
+      submitter_context_notes: null,
+      document_job_status: 'staged' as const,
     };
     setContractPackages(prev => prev.map(p => p.id === pkgId ? updatedPkg : p));
     setStagedDocs(prev => [restoredDoc, ...prev]);
@@ -1644,13 +1781,10 @@ export default function PipelineDashboard() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All statuses</SelectItem>
-                <SelectItem value="uploaded">Uploaded</SelectItem>
+                <SelectItem value="uploading">Uploading</SelectItem>
                 <SelectItem value="validating">Validating</SelectItem>
                 <SelectItem value="valid">Valid</SelectItem>
-                <SelectItem value="warning">Warning</SelectItem>
                 <SelectItem value="invalid">Invalid</SelectItem>
-                <SelectItem value="ready">Ready</SelectItem>
-                <SelectItem value="submitted">Submitted</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -1678,13 +1812,11 @@ export default function PipelineDashboard() {
                     </button>
                   </th>
                   <th className="text-left">File Name</th>
-                  <th className="text-left">Status</th>
-                  <th className="text-left">Upload Date</th>
-                  <th className="text-left">Uploader</th>
                   <th className="text-left">Type</th>
-                  <th className="text-left">Size</th>
-                  <th className="text-left">Pages</th>
-                  <th className="text-left">Target</th>
+                  <th className="text-left">Workspace</th>
+                  <th className="text-left">Record</th>
+                  <th className="text-left">Status</th>
+                  <th className="text-left">Uploaded</th>
                   <th></th>
                 </tr>
                 {/* Column filters */}
@@ -1692,11 +1824,8 @@ export default function PipelineDashboard() {
                   <th />
                   <th className="px-3 py-1"><ColFilter value={colFilters.name} onChange={v => setColFilters(f => ({ ...f, name: v }))} placeholder="Filter name…" /></th>
                   <th />
-                  <th />
-                  <th className="px-3 py-1"><ColFilter value={colFilters.uploader} onChange={v => setColFilters(f => ({ ...f, uploader: v }))} placeholder="Filter uploader…" /></th>
-                  <th /><th /><th />
                   <th className="px-3 py-1"><ColFilter value={colFilters.workspace} onChange={v => setColFilters(f => ({ ...f, workspace: v }))} placeholder="Filter workspace…" /></th>
-                  <th />
+                  <th /><th /><th />
                 </tr>
               </thead>
               <tbody>
@@ -1709,50 +1838,113 @@ export default function PipelineDashboard() {
                           {isSelected ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4" />}
                         </button>
                       </td>
+                      {/* Filename */}
                       <td>
                         <div className="flex items-center gap-2">
                           <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                          <span className="font-medium text-foreground truncate max-w-[200px]" title={doc.display_name}>{doc.display_name}</span>
+                          <span className="font-medium text-foreground truncate max-w-[180px]" title={doc.display_name}>{doc.display_name}</span>
                         </div>
                       </td>
-                      <td>
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold ${STATUS_BADGE[doc.status]}`}>
-                          {doc.status === 'validating' && <RefreshCw className="w-3 h-3 animate-spin" />}
-                          {STATUS_LABEL[doc.status]}
-                        </span>
-                      </td>
-                      <td className="font-mono text-[12px] text-muted-foreground">{doc.upload_date}</td>
-                      <td className="text-muted-foreground">{doc.uploader}</td>
+                      {/* Type */}
                       <td>
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-muted text-muted-foreground border border-border">
                           {getMimeLabel(doc.mime_type)}
                         </span>
                       </td>
-                      <td className="text-muted-foreground">{formatBytes(doc.file_size_bytes)}</td>
-                      <td className="text-muted-foreground">
-                        {doc.page_count != null ? doc.page_count : <span className="text-muted-foreground/50">—</span>}
-                      </td>
+                      {/* Workspace */}
                       <td>
                         <span className="text-[12px] text-primary bg-accent px-2 py-0.5 rounded font-medium">{doc.workspace_tag}</span>
                       </td>
+                      {/* Record — V3 4-state rendering */}
                       <td>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
-                              <MoreHorizontal className="w-4 h-4" />
+                        {(() => {
+                          if (doc.document_job_status === 'committed') {
+                            const rec = findContractRecord(doc.target_record_id);
+                            return (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                {rec ? `${rec.contractNumber} · ${rec.counterparty}` : doc.target_record_id}
+                              </span>
+                            );
+                          }
+                          if (doc.target_record_id) {
+                            const rec = findContractRecord(doc.target_record_id);
+                            return (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                                {rec ? `${rec.contractNumber} · ${rec.counterparty}` : doc.target_record_id}
+                              </span>
+                            );
+                          }
+                          if (doc.submission_path === 'unknown') {
+                            return (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                                Awaiting Assignment
+                              </span>
+                            );
+                          }
+                          return (
+                            <span className="inline-flex items-center gap-1 text-[12px] text-muted-foreground/60 italic">
+                              <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 shrink-0" />
+                              Unassigned
+                            </span>
+                          );
+                        })()}
+                      </td>
+                      {/* Status */}
+                      <td>
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold ${
+                          doc.document_job_status === 'committed'
+                            ? 'bg-slate-100 text-slate-600 border border-slate-200'
+                            : STATUS_BADGE[doc.status]
+                        }`}>
+                          {doc.status === 'validating' && <RefreshCw className="w-3 h-3 animate-spin" />}
+                          {doc.document_job_status === 'committed' ? 'Committed' : STATUS_LABEL[doc.status]}
+                        </span>
+                      </td>
+                      {/* Uploaded */}
+                      <td className="font-mono text-[12px] text-muted-foreground">{doc.upload_date}</td>
+                      {/* Actions — V3 context-sensitive */}
+                      <td>
+                        <div className="flex items-center gap-1">
+                          {/* Eye icon — always shown */}
+                          <button
+                            onClick={() => setDetailDoc(doc)}
+                            className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                            title="View document details"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+                          {/* Context-sensitive actions */}
+                          {doc.document_job_status !== 'committed' && doc.status === 'valid' && !isReadOnly && (
+                            <button
+                              onClick={() => {
+                                setSelectedIds(new Set([doc.id]));
+                                setGroupingDocs([doc]);
+                              }}
+                              className="px-2 py-0.5 rounded text-[11px] font-semibold bg-[#1F3864] text-white hover:bg-[#162d54] transition-colors"
+                              title="Create package from this document"
+                            >
+                              Package
                             </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-40">
-                            <DropdownMenuItem className="gap-2 text-[13px]" onSelect={() => setDetailDoc(doc)}>
-                              <Eye className="w-3.5 h-3.5" /> View Details
-                            </DropdownMenuItem>
-                            {!isReadOnly && (
-                              <DropdownMenuItem className="gap-2 text-[13px] text-destructive" onSelect={() => setStagedDocs(prev => prev.filter(d => d.id !== doc.id))}>
-                                <Trash2 className="w-3.5 h-3.5" /> Remove
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                          )}
+                          {doc.document_job_status !== 'committed' && doc.status === 'invalid' && !isReadOnly && (
+                            <button
+                              onClick={() => setStagedDocs(prev => prev.filter(d => d.id !== doc.id))}
+                              className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                              title="Remove"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          {doc.document_job_status !== 'committed' && doc.status === 'valid' && !isReadOnly && (
+                            <button
+                              onClick={() => setStagedDocs(prev => prev.filter(d => d.id !== doc.id))}
+                              className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                              title="Remove"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -1859,15 +2051,11 @@ export default function PipelineDashboard() {
               <thead>
                 <tr>
                   {([
-                    { col: 'packageNum', label: 'Package #' },
-                    { col: 'name',       label: 'Name' },
-                    { col: 'mode',       label: 'Mode' },
-                    { col: 'files',      label: 'Files' },
+                    { col: 'packageNum', label: 'Package ID' },
+                    { col: 'files',      label: 'Docs' },
+                    { col: null,         label: 'Target Record' },
                     { col: null,         label: 'Roles' },
-                    { col: 'workspace',  label: 'Workspace' },
-                    { col: 'createdBy',  label: 'Created By' },
-                    { col: 'createdAt',  label: 'Created' },
-                    { col: 'status',     label: 'Role Status' },
+                    { col: 'status',     label: 'Status' },
                     { col: null,         label: 'Actions' },
                   ] as { col: string | null; label: string }[]).map(({ col, label }) => (
                     <th key={label} className="text-left">
@@ -1891,86 +2079,70 @@ export default function PipelineDashboard() {
                 </tr>
                 <tr className="bg-muted/20">
                   <th className="px-3 py-1"><ColFilter value={pkgColFilters.packageNum} onChange={v => setPkgColFilters(f => ({ ...f, packageNum: v }))} placeholder="Filter #…" /></th>
-                  <th className="px-3 py-1"><ColFilter value={pkgColFilters.name} onChange={v => setPkgColFilters(f => ({ ...f, name: v }))} placeholder="Filter name…" /></th>
-                  <th /><th /><th />
-                  <th className="px-3 py-1"><ColFilter value={pkgColFilters.workspace} onChange={v => setPkgColFilters(f => ({ ...f, workspace: v }))} placeholder="Filter workspace…" /></th>
-                  <th className="px-3 py-1"><ColFilter value={pkgColFilters.createdBy} onChange={v => setPkgColFilters(f => ({ ...f, createdBy: v }))} placeholder="Filter creator…" /></th>
-                  <th /><th /><th />
+                  <th /><th /><th /><th /><th />
                 </tr>
               </thead>
               <tbody>
                 {filteredPkgs.map(pkg => {
                   const ready = isPackageReady(pkg);
-                  const uniqueRoles = Array.from(new Set(pkg.files.map(f => f.role))).filter(r => r !== 'Undefined');
+                  const assignedRoles = pkg.files.filter(f => f.role !== 'Undefined');
+                  const rolesComplete = assignedRoles.length === pkg.files.length;
+                  const targetRec = findContractRecord(
+                    pkg.files[0]?.docId
+                      ? (stagedDocs.find(d => d.id === pkg.files[0].docId)?.target_record_id ?? null)
+                      : null
+                  );
                   return (
-                    <tr
-                      key={pkg.id}
-                      tabIndex={0}
-                      onKeyDown={e => {
-                        if (e.key === 'F2' && !isReadOnly) {
-                          e.preventDefault();
-                          startRename(pkg);
-                        }
-                      }}
-                      className="focus:outline-none focus:ring-1 focus:ring-primary/40 focus:ring-inset"
-                    >
-                      <td className="font-mono text-[12px] text-primary">{pkg.packageNum}</td>
+                    <tr key={pkg.id} className="focus:outline-none focus:ring-1 focus:ring-primary/40 focus:ring-inset">
+                      {/* Package ID */}
                       <td>
-                        {renamingPkgId === pkg.id ? (
-                          <input
-                            ref={renameInputRef}
-                            value={renameValue}
-                            onChange={e => setRenameValue(e.target.value)}
-                            onBlur={() => commitRename(pkg.id)}
-                            onKeyDown={e => { if (e.key === 'Enter') commitRename(pkg.id); if (e.key === 'Escape') setRenamingPkgId(null); }}
-                            className="h-6 px-1.5 text-[12px] rounded border border-primary bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring w-36"
-                          />
+                        <div className="flex flex-col">
+                          <span className="font-mono text-[12px] text-primary">{pkg.packageNum}</span>
+                          {pkg.packageName && <span className="text-[11px] text-muted-foreground">{pkg.packageName}</span>}
+                        </div>
+                      </td>
+                      {/* Docs count */}
+                      <td className="text-muted-foreground">{pkg.files.length}</td>
+                      {/* Target Record */}
+                      <td>
+                        {targetRec ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                            {targetRec.contractNumber} · {targetRec.counterparty}
+                          </span>
                         ) : (
-                          <button
-                            onClick={() => !isReadOnly && startRename(pkg)}
-                            className={`flex items-center gap-1 text-[13px] group ${!isReadOnly ? 'hover:text-primary cursor-pointer' : 'cursor-default'}`}
-                            title={!isReadOnly ? 'Click to rename' : undefined}
-                          >
-                            {pkg.packageName
-                              ? <span className="font-medium text-foreground">{pkg.packageName}</span>
-                              : <span className="italic text-muted-foreground">—</span>
-                            }
-                            {!isReadOnly && <Edit2 className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />}
-                          </button>
+                          <span className="inline-flex items-center gap-1.5 text-[12px] text-amber-600">
+                            <AlertTriangle className="w-3 h-3" /> No record assigned
+                          </span>
                         )}
                       </td>
+                      {/* Role completeness badge */}
                       <td>
                         <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold border ${
-                          pkg.mode === 'Package'
-                            ? 'bg-violet-50 text-violet-700 border-violet-200'
-                            : 'bg-slate-100 text-slate-600 border-slate-200'
-                        }`}>{pkg.mode}</span>
-                      </td>
-                      <td className="text-muted-foreground">{pkg.files.length}</td>
-                      <td>
-                        <span className="text-[12px] text-muted-foreground">
-                          {uniqueRoles.length > 0 ? uniqueRoles.join(', ') : <span className="italic">None assigned</span>}
+                          rolesComplete
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            : 'bg-amber-50 text-amber-700 border-amber-200'
+                        }`}>
+                          {assignedRoles.length}/{pkg.files.length} roles
                         </span>
                       </td>
+                      {/* Status */}
                       <td>
-                        <span className="text-[12px] text-primary bg-accent px-2 py-0.5 rounded font-medium">{pkg.workspace}</span>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold border ${
+                          pkg.status === 'Ready'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            : 'bg-slate-100 text-slate-600 border-slate-200'
+                        }`}>
+                          {pkg.status === 'Ready' ? 'Validated' : 'Assembly'}
+                        </span>
                       </td>
-                      <td className="text-muted-foreground">{pkg.createdBy}</td>
-                      <td className="text-muted-foreground text-[12px]">{formatDate(pkg.createdAt)}</td>
-                      <td>
-                        {ready
-                          ? <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">Ready</span>
-                          : <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">Incomplete</span>
-                        }
-                      </td>
+                      {/* Actions */}
                       <td>
                         <div className="flex items-center gap-1.5">
                           <button
                             onClick={() => setDetailPkg(pkg)}
-                            className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                            aria-label="View package details"
+                            className="px-2.5 py-1 rounded text-[11px] font-medium border border-border bg-background text-foreground hover:bg-muted transition-colors"
                           >
-                            <Eye className="w-3.5 h-3.5" />
+                            Open
                           </button>
                           {!isReadOnly && (
                             <button
@@ -1983,7 +2155,7 @@ export default function PipelineDashboard() {
                                   : 'bg-[#9CA3AF] text-white cursor-not-allowed'
                               }`}
                             >
-                              Submit
+                              Submit for Extraction
                             </button>
                           )}
                         </div>
@@ -2051,13 +2223,11 @@ export default function PipelineDashboard() {
               <thead>
                 <tr>
                   {([
-                    { col: 'packageNum',  label: 'Package #' },
-                    { col: 'name',        label: 'Name' },
-                    { col: 'mode',        label: 'Mode' },
+                    { col: null,          label: 'Batch ID' },
+                    { col: 'packageNum',  label: 'Package' },
+                    { col: null,          label: 'Target Record' },
                     { col: 'files',       label: 'Files' },
-                    { col: 'workspace',   label: 'Workspace' },
-                    { col: 'submittedBy', label: 'Submitted By' },
-                    { col: 'submitDate',  label: 'Submit Date' },
+                    { col: 'submitDate',  label: 'Submitted At' },
                     { col: 'status',      label: 'Status' },
                     { col: null,          label: 'Actions' },
                   ] as { col: string | null; label: string }[]).map(({ col, label }) => (
@@ -2081,53 +2251,79 @@ export default function PipelineDashboard() {
                   ))}
                 </tr>
                 <tr className="bg-muted/20">
+                  <th />
                   <th className="px-3 py-1"><ColFilter value={subColFilters.packageNum} onChange={v => setSubColFilters(f => ({ ...f, packageNum: v }))} placeholder="Filter #…" /></th>
-                  <th className="px-3 py-1"><ColFilter value={subColFilters.name} onChange={v => setSubColFilters(f => ({ ...f, name: v }))} placeholder="Filter name…" /></th>
-                  <th /><th />
-                  <th className="px-3 py-1"><ColFilter value={subColFilters.workspace} onChange={v => setSubColFilters(f => ({ ...f, workspace: v }))} placeholder="Filter workspace…" /></th>
-                  <th className="px-3 py-1"><ColFilter value={subColFilters.submittedBy} onChange={v => setSubColFilters(f => ({ ...f, submittedBy: v }))} placeholder="Filter submitter…" /></th>
-                  <th /><th /><th />
+                  <th /><th /><th /><th /><th />
                 </tr>
               </thead>
               <tbody>
-                {filteredSubs.map(sub => (
+                {filteredSubs.map(sub => {
+                  // Derive batchId from submission id for display
+                  const batchId = sub.id.startsWith('sub-v3') ? 'BATCH-2026-0041' : `BATCH-${sub.id.slice(-6).toUpperCase()}`;
+                  const subTargetRec = findContractRecord(
+                    sub.files[0]?.docId
+                      ? (stagedDocs.find(d => d.id === sub.files[0].docId)?.target_record_id ?? null)
+                      : null
+                  );
+                  return (
                   <tr key={sub.id}>
-                    <td className="font-mono text-[12px] text-primary">{sub.packageNum}</td>
+                    {/* Batch ID */}
+                    <td className="font-mono text-[12px] text-primary">{batchId}</td>
+                    {/* Package */}
                     <td>
-                      {sub.packageName
-                        ? <span className="font-medium text-foreground">{sub.packageName}</span>
-                        : <span className="italic text-muted-foreground">—</span>
-                      }
+                      <div className="flex flex-col">
+                        <span className="font-mono text-[12px] text-primary">{sub.packageNum}</span>
+                        {sub.packageName && <span className="text-[11px] text-muted-foreground">{sub.packageName}</span>}
+                      </div>
                     </td>
+                    {/* Target Record */}
                     <td>
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold border ${
-                        sub.mode === 'Package'
-                          ? 'bg-violet-50 text-violet-700 border-violet-200'
-                          : 'bg-slate-100 text-slate-600 border-slate-200'
-                      }`}>{sub.mode}</span>
+                      {subTargetRec ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                          {subTargetRec.contractNumber} · {subTargetRec.counterparty}
+                        </span>
+                      ) : (
+                        <span className="text-[12px] text-muted-foreground/60 italic">Unassigned</span>
+                      )}
                     </td>
+                    {/* Files */}
                     <td className="text-muted-foreground">{sub.fileCount}</td>
-                    <td>
-                      <span className="text-[12px] text-primary bg-accent px-2 py-0.5 rounded font-medium">{sub.workspace}</span>
-                    </td>
-                    <td className="text-muted-foreground">{sub.submittedBy}</td>
+                    {/* Submitted At */}
                     <td className="text-muted-foreground text-[12px]">{formatDate(sub.submitDate)}</td>
+                    {/* Status */}
                     <td>
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold ${SUB_STATUS_BADGE[sub.status]}`}>
+                      <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold ${SUB_STATUS_BADGE[sub.status]}`}>
+                        {sub.status === 'In Progress' && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                        )}
                         {sub.status}
                       </span>
                     </td>
+                    {/* Actions */}
                     <td>
-                      <button
-                        onClick={() => setDetailSub(sub)}
-                        className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                        aria-label="View submission details"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => setDetailSub(sub)}
+                          className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                          aria-label="View submission details"
+                          title="View submission details"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+                        {sub.status === 'Pending' && !isReadOnly && (
+                          <button
+                            onClick={() => unsubmitPackage(sub)}
+                            className="px-2 py-0.5 rounded text-[11px] font-semibold border border-red-300 text-red-600 bg-red-50 hover:bg-red-100 transition-colors"
+                            title="Unsubmit this package"
+                          >
+                            Unsubmit
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
             {filteredSubs.length === 0 && (
@@ -2138,7 +2334,26 @@ export default function PipelineDashboard() {
       </div>
 
       {/* ── Panels & dialogs ── */}
-      {detailDoc && <DocumentDetailPanel doc={detailDoc} onClose={() => setDetailDoc(null)} />}
+      {detailDoc && (
+        <DocumentIntelligencePanel
+          doc={detailDoc}
+          onClose={() => setDetailDoc(null)}
+          onPackage={(doc) => {
+            // Open grouping dialog for this single doc
+            setGroupingDocs([stagedDocs.find(d => d.id === doc.id)!].filter(Boolean));
+          }}
+          onRemove={(doc) => {
+            setStagedDocs(prev => prev.filter(d => d.id !== doc.id));
+            toast.success('Document removed');
+          }}
+          onRetry={(doc) => {
+            setStagedDocs(prev => prev.map(d =>
+              d.id === doc.id ? { ...d, status: 'validating' as const } : d
+            ));
+            toast.info('Revalidation queued');
+          }}
+        />
+      )}
       {detailBatch && <BatchDetailPanel batch={detailBatch} onClose={() => setDetailBatch(null)} />}
       {detailPkg && (
         <PackageDetailPanel

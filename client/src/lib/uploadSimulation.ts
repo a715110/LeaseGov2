@@ -1,8 +1,10 @@
 /**
  * uploadSimulation.ts — Shared upload validation simulation utility
  *
- * Extracted from UploadDialog.tsx so that both PipelineUpload (full-page route)
- * and UploadDialog (inline modal) share identical validation logic.
+ * V3 Document Intake Governance Flow — Stage 1 Format Validation only.
+ * Four checks: File Format · File Size · Duplicate Detection · File Integrity.
+ * No OCR. No contract-likeness scoring. No warning state.
+ * Outcome per file: VALID or INVALID only.
  *
  * Exports:
  *   - Types: ValidationStatus, ValidationCategory, StagedFile
@@ -27,7 +29,6 @@ export interface StagedFile {
   mime_type: string;
   status: ValidationStatus;
   uploadProgress: number; // 0–100
-  ocr_confidence?: number;
   categories: ValidationCategory[];
   error?: string;
   workspace_tag?: string;
@@ -42,6 +43,7 @@ export const WORKSPACE_TAGS = [
   'Q2-2026-Retail',
 ];
 
+/** V3: filenames containing these keywords resolve as INVALID (demo simulation) */
 export const INVALID_KEYWORDS = ['corrupt', 'invalid', 'error', 'bad', 'scan_fail'];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -55,6 +57,11 @@ export function isInvalidFilename(name: string): boolean {
   return INVALID_KEYWORDS.some(kw => lower.includes(kw));
 }
 
+/**
+ * makeStagedFile — creates a StagedFile with V3 four-check validation categories.
+ * Categories: File Format · File Size · Duplicate Check · File Integrity.
+ * No OCR Quality or Contract Likeness checks (those are Stage 2 / Preparer-triggered).
+ */
 export function makeStagedFile(name: string, size: number, mime: string): StagedFile {
   return {
     id: `upload-${Date.now()}-${Math.random().toString(36).slice(2)}`,
@@ -64,12 +71,10 @@ export function makeStagedFile(name: string, size: number, mime: string): Staged
     status: 'uploading',
     uploadProgress: 0,
     categories: [
-      { name: 'File Format',       passed: true },
-      { name: 'File Integrity',    passed: true },
-      { name: 'Security Scan',     passed: true },
-      { name: 'OCR Quality',       passed: true, detail: 'Pending…' },
-      { name: 'Duplicate Check',   passed: true },
-      { name: 'Contract Likeness', passed: true, detail: 'Pending…' },
+      { name: 'File Format',     passed: true },
+      { name: 'File Size',       passed: true },
+      { name: 'Duplicate Check', passed: true },
+      { name: 'File Integrity',  passed: true, detail: 'Pending…' },
     ],
   };
 }
@@ -144,10 +149,12 @@ export function injectAnimationStyles() {
 
 // ─── Core simulation ──────────────────────────────────────────────────────────
 /**
- * simulateFileLifecycle
+ * simulateFileLifecycle — V3 single-pass format validation simulation.
  *
  * Animates a single file through: uploading (progress 0→100) → validating → valid|invalid.
- * Requires the component's `setFiles` dispatcher and a `progressTimers` ref for cleanup.
+ * Invalid determination: filename contains any INVALID_KEYWORDS → INVALID
+ *   with reason "File integrity check failed" (V3 deterministic demo rule).
+ * All other files → VALID.
  *
  * @param fileId         - The StagedFile.id to animate
  * @param fileName       - Used to determine if the file should resolve as invalid
@@ -179,41 +186,37 @@ export function simulateFileLifecycle(
         prev.map(f => f.id === fileId ? { ...f, status: 'validating', uploadProgress: 100 } : f)
       );
 
-      // Step 3: Resolve after 2000–3200ms
-      const delay = 2000 + Math.random() * 1200;
+      // Step 3: Resolve after 1800–2800ms (V3: <2 seconds per file)
+      const delay = 1800 + Math.random() * 1000;
       const resolveTimer = setTimeout(() => {
         progressTimers.current.delete(`resolve-${fileId}`);
         setFiles(prev =>
           prev.map(f => {
             if (f.id !== fileId) return f;
             if (willBeInvalid) {
+              // V3: INVALID — File integrity check failed
               return {
                 ...f,
                 status: 'invalid' as ValidationStatus,
-                error: 'File failed security scan',
+                error: 'File integrity check failed',
                 categories: f.categories.map(c => ({
                   ...c,
-                  passed: c.name !== 'Security Scan',
+                  passed: c.name !== 'File Integrity',
                   detail:
-                    c.name === 'Security Scan'
-                      ? 'Scan failed — file may be corrupted'
+                    c.name === 'File Integrity'
+                      ? 'File cannot be opened or is malformed'
                       : c.detail,
                 })),
               };
             }
+            // V3: VALID — all four checks pass
             return {
               ...f,
               status: 'valid' as ValidationStatus,
-              ocr_confidence: 0.9,
               categories: f.categories.map(c => ({
                 ...c,
                 passed: true,
-                detail:
-                  c.name === 'OCR Quality'
-                    ? '90% confidence'
-                    : c.name === 'Contract Likeness'
-                    ? 'Score: 0.94'
-                    : c.detail,
+                detail: c.name === 'File Integrity' ? 'Well-formed' : c.detail,
               })),
             };
           })

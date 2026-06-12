@@ -32,12 +32,14 @@ import { FlagSlidingPanel } from '@/components/shared/FlagSlidingPanel';
 import { toast } from 'sonner';
 import { SCREEN_KEYS } from '@/constants/screenKeys';
 import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
+import { publishEvent } from '@/lib/eventBus';
+import { MOCK_CONTRACT_RECORDS, searchContractRecords } from '@/lib/mockData';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type DocumentRole =
-  | 'base_contract' | 'amendment' | 'addendum'
-  | 'exhibit' | 'schedule' | 'notice' | 'supporting' | 'unknown';
+  | 'Base Contract' | 'Amendment' | 'Addendum'
+  | 'Exhibit' | 'Schedule' | 'Notice' | 'Supporting' | 'Unassigned';
 
 type FileStatus = 'valid' | 'invalid';
 
@@ -56,24 +58,24 @@ interface ReviewFile {
 // ─── Mock data ────────────────────────────────────────────────────────────────
 
 const MOCK_FILES: ReviewFile[] = [
-  { id: 'f1', display_name: 'Retail-HQ-Lease-2026.pdf',        original_filename: 'Retail-HQ-Lease-2026.pdf',        status: 'valid',   document_role: 'base_contract', file_size_bytes: 4_200_000, page_count: 24, inExtraction: true },
-  { id: 'f2', display_name: 'Office-Tower-Amendment-3.pdf',     original_filename: 'Office-Tower-Amendment-3.pdf',     status: 'valid',   document_role: 'amendment',     file_size_bytes: 1_800_000, page_count: 8,  inExtraction: true },
-  { id: 'f3', display_name: 'Warehouse-Lease-Exhibit-A.tiff',   original_filename: 'Warehouse-Lease-Exhibit-A.tiff',   status: 'valid',   document_role: 'exhibit',       file_size_bytes: 6_100_000, page_count: 12, inExtraction: true },
-  { id: 'f4', display_name: 'Corrupted-Scan-Draft.pdf',         original_filename: 'Corrupted-Scan-Draft.pdf',         status: 'invalid', document_role: 'unknown',       file_size_bytes: 512_000,   page_count: 3,  inExtraction: false },
-  { id: 'f5', display_name: 'Ground-Lease-Base-Contract.pdf',   original_filename: 'Ground-Lease-Base-Contract.pdf',   status: 'valid',   document_role: 'base_contract', file_size_bytes: 9_400_000, page_count: 41, inExtraction: true },
-  { id: 'f6', display_name: 'Industrial-Park-Schedule.pdf',     original_filename: 'Industrial-Park-Schedule.pdf',     status: 'valid',   document_role: 'schedule',      file_size_bytes: 2_200_000, page_count: 6,  inExtraction: true },
-  { id: 'f7', display_name: 'Invalid-Contract-NoOCR.pdf',       original_filename: 'Invalid-Contract-NoOCR.pdf',       status: 'invalid', document_role: 'unknown',       file_size_bytes: 340_000,   page_count: 1,  inExtraction: false },
+  { id: 'f1', display_name: 'Retail-HQ-Lease-2026.pdf',        original_filename: 'Retail-HQ-Lease-2026.pdf',        status: 'valid',   document_role: 'Base Contract', file_size_bytes: 4_200_000, page_count: 24, inExtraction: true },
+  { id: 'f2', display_name: 'Office-Tower-Amendment-3.pdf',     original_filename: 'Office-Tower-Amendment-3.pdf',     status: 'valid',   document_role: 'Amendment',     file_size_bytes: 1_800_000, page_count: 8,  inExtraction: true },
+  { id: 'f3', display_name: 'Warehouse-Lease-Exhibit-A.tiff',   original_filename: 'Warehouse-Lease-Exhibit-A.tiff',   status: 'valid',   document_role: 'Exhibit',       file_size_bytes: 6_100_000, page_count: 12, inExtraction: true },
+  { id: 'f4', display_name: 'Corrupted-Scan-Draft.pdf',         original_filename: 'Corrupted-Scan-Draft.pdf',         status: 'invalid', document_role: 'Unassigned',    file_size_bytes: 512_000,   page_count: 3,  inExtraction: false },
+  { id: 'f5', display_name: 'Ground-Lease-Base-Contract.pdf',   original_filename: 'Ground-Lease-Base-Contract.pdf',   status: 'valid',   document_role: 'Base Contract', file_size_bytes: 9_400_000, page_count: 41, inExtraction: true },
+  { id: 'f6', display_name: 'Industrial-Park-Schedule.pdf',     original_filename: 'Industrial-Park-Schedule.pdf',     status: 'valid',   document_role: 'Schedule',      file_size_bytes: 2_200_000, page_count: 6,  inExtraction: true },
+  { id: 'f7', display_name: 'Invalid-Contract-NoOCR.pdf',       original_filename: 'Invalid-Contract-NoOCR.pdf',       status: 'invalid', document_role: 'Unassigned',    file_size_bytes: 340_000,   page_count: 1,  inExtraction: false },
 ];
 
 const ROLE_LABELS: Record<DocumentRole, string> = {
-  base_contract: 'Base Contract',
-  amendment:     'Amendment',
-  addendum:      'Addendum',
-  exhibit:       'Exhibit',
-  schedule:      'Schedule',
-  notice:        'Notice',
-  supporting:    'Supporting',
-  unknown:       'Unknown',
+  'Base Contract': 'Base Contract',
+  'Amendment':     'Amendment',
+  'Addendum':      'Addendum',
+  'Exhibit':       'Exhibit',
+  'Schedule':      'Schedule',
+  'Notice':        'Notice',
+  'Supporting':    'Supporting',
+  'Unassigned':    'Unassigned',
 };
 
 function formatBytes(bytes: number): string {
@@ -373,7 +375,7 @@ export default function PipelineReviewGrouping() {
           display_name: d.display_name,
           original_filename: d.display_name,
           status: d.status === 'invalid' ? 'invalid' : 'valid',
-          document_role: 'unknown',
+          document_role: 'Unassigned',
           file_size_bytes: d.file_size_bytes,
           page_count: d.page_count ?? 0,
           inExtraction: d.status !== 'invalid',
@@ -444,22 +446,10 @@ export default function PipelineReviewGrouping() {
   const [showRecordDropdown, setShowRecordDropdown] = useState(false);
   const [workingTitle, setWorkingTitle] = useState('');
   // Inline mock records (duplicated to avoid circular import from RecordsSearch)
-  const INLINE_MOCK_RECORDS = [
-    { id: 'r1', contract_number: 'CR-2026-0088', title: 'Office Tower — 350 Fifth Ave',       counterparty_name: 'Fifth Ave Properties LLC' },
-    { id: 'r2', contract_number: 'CR-2026-0087', title: 'Retail HQ — 1200 Market St',         counterparty_name: 'Market Street Partners' },
-    { id: 'r3', contract_number: 'CR-2026-0086', title: 'Warehouse Lease — Industrial Park',  counterparty_name: 'Industrial Realty Group' },
-    { id: 'r4', contract_number: 'CR-2026-0085', title: 'Ground Lease — Civic Center',        counterparty_name: 'City of Boston' },
-    { id: 'r5', contract_number: 'CR-2026-0084', title: 'Tech Campus — Building A',           counterparty_name: 'Silicon Valley Realty' },
-    { id: 'r6', contract_number: 'CR-2026-0083', title: 'Suburban Office — Suite 400',        counterparty_name: 'Westfield Properties' },
-    { id: 'r7', contract_number: 'CR-2026-0082', title: 'Downtown Retail — Corner Unit',      counterparty_name: 'Urban Retail LLC' },
-    { id: 'r8', contract_number: 'CR-2026-0081', title: 'Distribution Center — Zone 3',       counterparty_name: 'Logistics Park Holdings' },
-  ];
-  const filteredRecords = INLINE_MOCK_RECORDS.filter(r =>
-    !targetRecordSearch.trim() ||
-    r.contract_number.toLowerCase().includes(targetRecordSearch.toLowerCase()) ||
-    r.title.toLowerCase().includes(targetRecordSearch.toLowerCase()) ||
-    r.counterparty_name.toLowerCase().includes(targetRecordSearch.toLowerCase())
-  );
+  // Use shared MOCK_CONTRACT_RECORDS from mockData.ts (replaces inline mock)
+  const filteredRecords = searchContractRecords(targetRecordSearch.length >= 1 ? targetRecordSearch : ' ').concat(
+    targetRecordSearch.length < 1 ? MOCK_CONTRACT_RECORDS : []
+  ).filter((r, i, arr) => arr.findIndex(x => x.id === r.id) === i);
 
   // ── Persist state to sessionStorage on every meaningful change ────────────
   useEffect(() => {
@@ -676,12 +666,12 @@ export default function PipelineReviewGrouping() {
                           onMouseDown={e => e.preventDefault()}
                           onClick={() => {
                             setTargetRecordId(r.id);
-                            setTargetRecordSearch(`${r.contract_number} — ${r.title}`);
+                            setTargetRecordSearch(`${r.contractNumber} — ${r.counterparty}`);
                             setShowRecordDropdown(false);
                           }}
                         >
-                          <span className="font-mono text-primary">{r.contract_number}</span>
-                          <span className="text-muted-foreground"> — {r.title}</span>
+                          <span className="font-mono text-primary">{r.contractNumber}</span>
+                          <span className="text-muted-foreground"> — {r.counterparty} · {r.address}</span>
                         </button>
                       ))}
                     </div>
@@ -725,6 +715,16 @@ export default function PipelineReviewGrouping() {
                   <div className="flex items-center gap-1 flex-1 group">
                     <span className="text-[13px] font-semibold text-emerald-700 dark:text-emerald-400">Extraction</span>
                     <span className="text-[11px] text-muted-foreground ml-1">· {packageName}</span>
+                    {/* Role Completeness badge */}
+                    {extractionFiles.length > 0 && (
+                      <span className={`ml-2 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold border ${
+                        extractionFiles.every(f => f.document_role !== 'Unassigned')
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : 'bg-amber-50 text-amber-700 border-amber-200'
+                      }`}>
+                        {extractionFiles.filter(f => f.document_role !== 'Unassigned').length}/{extractionFiles.length} roles
+                      </span>
+                    )}
                     <button
                       onClick={() => { setPackageNameEdit(packageName); setEditingPackageName(true); }}
                       className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-muted-foreground hover:text-foreground transition-all"
@@ -861,22 +861,13 @@ export default function PipelineReviewGrouping() {
             variant="outline"
             className="gap-2"
             onClick={() => {
-              const histState = window.history.state as { navToken?: number } | null;
-              const session = {
-                files,
-                packageName,
-                filterRole,
-                activeFileId,
-                zoom,
-                selectedFileNames: files.map(f => f.display_name),
-                navToken: histState?.navToken,
-              };
-              saveSession(session);
-              toast.success('Draft saved — you can return to this grouping from the Pipeline Dashboard.');
+              clearSession();
+              toast('Package discarded — documents returned to staging.');
+              navigate('/pipeline/dashboard');
             }}
           >
-            <Save className="w-4 h-4" />
-            Save Draft
+            <X className="w-4 h-4" />
+            Undo Package
           </Button>
           <Button
             className="gap-2"
@@ -898,27 +889,28 @@ export default function PipelineReviewGrouping() {
           onClose={() => setShowSubmissionPanel(false)}
           onConfirm={() => {
             setShowSubmissionPanel(false);
-            // Pass extraction files + metadata to Confirm page via history state
-            const confirmState = {
-              extractionFiles: extractionFiles.map(f => ({
-                id: f.id,
-                display_name: f.display_name,
-                document_role: f.document_role,
-                status: f.status,
-                page_count: f.page_count,
-                file_size_bytes: f.file_size_bytes,
-              })),
-              packageName,
-              submissionMode,
-              targetRecordId,
-              // Pass back the original selectedFileNames so Back button restores the list
-              selectedFileNames: files.map(f => f.display_name),
-            };
-            // Clear the review session when the user confirms — they are done with this batch
+            // V3 Change 4 — fire BATCH_SUBMITTED in-place, no intermediate confirm page
+            const batchId = `BATCH-${Date.now().toString(36).toUpperCase()}`;
+            const pkgNum = `PKG-${Date.now().toString(36).toUpperCase()}`;
+            publishEvent({
+              type: 'BATCH_SUBMITTED',
+              sourceRole: 'document_submitter',
+              payload: {
+                batchId,
+                packageNum: pkgNum,
+                fileCount: extractionFiles.length,
+                workspaceTag: extractionFiles[0]?.display_name?.split('-')[0] ?? 'General',
+                packageName,
+                targetRecordId,
+                submissionMode,
+              },
+            });
             clearSession();
-            // Use wouter's state option so a single pushState call carries the payload.
-            // A separate window.history.pushState before navigate() would be overwritten.
-            navigate('/pipeline/confirm', { state: confirmState } as any);
+            toast.success(`Package submitted for extraction — ${extractionFiles.length} file${extractionFiles.length !== 1 ? 's' : ''} queued.`, {
+              action: { label: 'View Queue', onClick: () => navigate('/extraction/queue') },
+              duration: 6000,
+            });
+            navigate('/pipeline/dashboard');
           }}
         />
       )}

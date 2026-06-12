@@ -37,7 +37,7 @@ import PipelineUpload         from './pages/pipeline/PipelineUpload'
 import PipelineNewRecordModal from './pages/pipeline/PipelineNewRecordModal'
 import PipelineValidation     from './pages/pipeline/PipelineValidation'
 import PipelineReviewGrouping from './pages/pipeline/PipelineReviewGrouping'
-import PipelineSubmitConfirm  from './pages/pipeline/PipelineSubmitConfirm'
+// PipelineSubmitConfirm removed in V3 — submission fires from PipelineReviewGrouping
 
 // ─── FC-2: Extraction and Verification ───────────────────────────────────────
 import ExtractionQueue           from './pages/extraction/ExtractionQueue'
@@ -157,11 +157,7 @@ function Router() {
           <PipelineReviewGrouping />
         </ScreenGate>
       </Route>
-      <Route path="/pipeline/confirm">
-        <ScreenGate screenKey={SCREEN_KEYS.PIPELINE_SUBMIT_CONFIRM} fallback={<NotFound />}>
-          <PipelineSubmitConfirm />
-        </ScreenGate>
-      </Route>
+      {/* /pipeline/confirm removed in V3 — BATCH_SUBMITTED fires from /pipeline/review */}
 
       {/* ── FC-2: Extraction and Verification ──────────────────────────── */}
       <Route path="/extraction/queue">

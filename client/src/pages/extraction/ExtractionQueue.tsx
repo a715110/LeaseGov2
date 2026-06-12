@@ -774,6 +774,7 @@ export default function ExtractionQueue() {
   const [selectedJob, setSelectedJob] = useState<ProcessingJob | null>(MOCK_JOBS[0]);
   // Decline dialog state
   const [declineTarget, setDeclineTarget] = useState<ProcessingJob | null>(null);
+  const [declineReasonCategory, setDeclineReasonCategory] = useState('');
   const [declineReason, setDeclineReason] = useState('');
 
   // S4: inline dialog states
@@ -939,9 +940,9 @@ export default function ExtractionQueue() {
                         <Button
                           size="sm"
                           className="h-7 text-[11px] gap-1"
-                          onClick={e => { e.stopPropagation(); navigate('/extraction/understanding'); }}
+                          onClick={e => { e.stopPropagation(); setWorkflowJob(job); setWorkflowInitialStep(1); }}
                         >
-                          Open <ChevronRight className="w-3 h-3" />
+                          <Zap className="w-3 h-3" /> Process
                         </Button>
                       )}
                       {job.status !== 'declined' && (
@@ -949,7 +950,7 @@ export default function ExtractionQueue() {
                           size="sm"
                           variant="outline"
                           className="h-7 text-[11px] gap-1 text-destructive border-destructive/40 hover:bg-destructive/10"
-                          onClick={e => { e.stopPropagation(); setDeclineTarget(job); setDeclineReason(''); }}
+                          onClick={e => { e.stopPropagation(); setDeclineTarget(job); setDeclineReasonCategory(''); setDeclineReason(''); }}
                         >
                           <XCircle className="w-3 h-3" /> Decline
                         </Button>
@@ -1066,39 +1067,54 @@ export default function ExtractionQueue() {
           fileName={workflowJob?.file_name}
           initialStep={workflowInitialStep}
         />
-        {/* Decline dialog */}
-        <InlineDialog
-          open={!!declineTarget}
-          onClose={() => { setDeclineTarget(null); setDeclineReason(''); }}
-          title="Decline Document"
-          subtitle={declineTarget?.file_name}
-        >
-          <div className="flex flex-col gap-4 p-6">
-            <div>
-              <label className="block text-[13px] font-medium text-foreground mb-1.5">
-                Rejection reason <span className="text-destructive">*</span>
-              </label>
-              <textarea
-                value={declineReason}
-                onChange={e => setDeclineReason(e.target.value)}
-                placeholder="Describe why this document is being declined (min 10 characters)…"
-                rows={4}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-[13px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
-              />
-              {declineReason.length > 0 && declineReason.length < 10 && (
-                <p className="text-[11px] text-destructive mt-1">Reason must be at least 10 characters.</p>
-              )}
+        {/* Decline dialog — V3 5a: reason dropdown + notes textarea */}
+        <Dialog open={!!declineTarget} onOpenChange={v => { if (!v) { setDeclineTarget(null); setDeclineReasonCategory(''); setDeclineReason(''); } }}>
+          <DialogContent className="max-w-[520px]">
+            <DialogHeader>
+              <DialogTitle>Decline Submission</DialogTitle>
+            </DialogHeader>
+            <div className="flex flex-col gap-4 py-2">
+              <div className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-[12px] text-muted-foreground">
+                <span className="font-medium text-foreground">{declineTarget?.display_id}</span>
+                {' · '}{declineTarget?.file_name}
+              </div>
+              <div>
+                <Label className="text-[12px] mb-1.5 block font-medium">Decline Reason <span className="text-destructive">*</span></Label>
+                <Select value={declineReasonCategory} onValueChange={setDeclineReasonCategory}>
+                  <SelectTrigger className="text-[13px]">
+                    <SelectValue placeholder="Select a reason…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="wrong_destination">Wrong destination record</SelectItem>
+                    <SelectItem value="duplicate">Duplicate submission</SelectItem>
+                    <SelectItem value="incorrect_type">Incorrect document type</SelectItem>
+                    <SelectItem value="insufficient_context">Insufficient context</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-[12px] mb-1.5 block font-medium">Notes <span className="text-destructive">*</span></Label>
+                <textarea
+                  value={declineReason}
+                  onChange={e => setDeclineReason(e.target.value)}
+                  placeholder="Provide additional context for the submitter…"
+                  rows={4}
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-[13px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                />
+                {declineReason.length > 0 && declineReason.length < 10 && (
+                  <p className="text-[11px] text-destructive mt-1">Notes must be at least 10 characters.</p>
+                )}
+              </div>
+              <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 px-3 py-2 text-[12px] text-amber-800 dark:text-amber-300">
+                Declining will return all documents in this submission to Staged Documents with their original validation status.
+              </div>
             </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <Button
-                variant="outline"
-                onClick={() => { setDeclineTarget(null); setDeclineReason(''); }}
-              >
-                Cancel
-              </Button>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => { setDeclineTarget(null); setDeclineReasonCategory(''); setDeclineReason(''); }}>Cancel</Button>
               <Button
                 variant="destructive"
-                disabled={declineReason.trim().length < 10}
+                disabled={!declineReasonCategory || declineReason.trim().length < 10}
                 onClick={() => {
                   if (!declineTarget) return;
                   setJobs(prev => prev.map(j =>
@@ -1107,16 +1123,27 @@ export default function ExtractionQueue() {
                   if (selectedJob?.id === declineTarget.id) {
                     setSelectedJob(prev => prev ? { ...prev, status: 'declined' as JobStatus } : prev);
                   }
-                  toast.success(`${declineTarget.display_id} declined.`);
+                  const reasonLabel: Record<string, string> = {
+                    wrong_destination: 'Wrong destination record',
+                    duplicate: 'Duplicate submission',
+                    incorrect_type: 'Incorrect document type',
+                    insufficient_context: 'Insufficient context',
+                    other: 'Other',
+                  };
+                  toast.error(`${declineTarget.display_id} declined — ${reasonLabel[declineReasonCategory]}`, {
+                    description: 'Documents returned to Staged Documents with original status.',
+                    duration: 6000,
+                  });
                   setDeclineTarget(null);
+                  setDeclineReasonCategory('');
                   setDeclineReason('');
                 }}
               >
                 Confirm Decline
               </Button>
-            </div>
-          </div>
-        </InlineDialog>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </>
     </div>
   );

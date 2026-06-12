@@ -13,7 +13,7 @@
  * S6b: confirmedTemplate state flows from Step 2 → Step 5
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   ChevronRight, ChevronLeft, CheckCircle2, Cpu, FileText,
   BarChart2, ShieldCheck, X, GripVertical, Zap
@@ -91,6 +91,57 @@ export function ProcessingWorkflowDialog({
   );
   // Step 5 verification state
   const [verificationFields, setVerificationFields] = useState<VerificationField[]>([]);
+
+  // V3 Step 3 — single-pass extraction simulation state
+  const [extractionStarted, setExtractionStarted] = useState(false);
+  const [extractionComplete, setExtractionComplete] = useState(false);
+  const [extractionProgress, setExtractionProgress] = useState(0);
+  const [extractionLabel, setExtractionLabel] = useState('Ready to extract');
+  const [extractionJobStatus, setExtractionJobStatus] = useState('staged');
+  const extractionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Reset extraction state when dialog opens/closes or step changes
+  useEffect(() => {
+    if (!open || currentStep !== 3) {
+      setExtractionStarted(false);
+      setExtractionComplete(false);
+      setExtractionProgress(0);
+      setExtractionLabel('Ready to extract');
+      setExtractionJobStatus('staged');
+      if (extractionTimerRef.current) clearTimeout(extractionTimerRef.current);
+    }
+  }, [open, currentStep]);
+
+  const handleRunExtraction = () => {
+    setExtractionStarted(true);
+    setExtractionJobStatus('ocr_queued');
+    setExtractionLabel('Preparing document…');
+    setExtractionProgress(5);
+
+    extractionTimerRef.current = setTimeout(() => {
+      setExtractionJobStatus('ocr_processing');
+      setExtractionLabel('Running OCR and reading document structure…');
+      setExtractionProgress(20);
+    }, 1000);
+
+    extractionTimerRef.current = setTimeout(() => {
+      setExtractionJobStatus('extraction_in_progress');
+      setExtractionLabel('Extracting fields and placing evidence anchors…');
+      setExtractionProgress(55);
+    }, 3000);
+
+    extractionTimerRef.current = setTimeout(() => {
+      setExtractionLabel('Scoring confidence and checking critical fields…');
+      setExtractionProgress(80);
+    }, 6000);
+
+    extractionTimerRef.current = setTimeout(() => {
+      setExtractionJobStatus('verification_pending');
+      setExtractionLabel('Extraction complete — 68 fields extracted');
+      setExtractionProgress(100);
+      setExtractionComplete(true);
+    }, 8000);
+  };
 
   // Reset when dialog opens with a new initialStep
   useEffect(() => {
@@ -261,19 +312,115 @@ export function ProcessingWorkflowDialog({
           )}
 
           {currentStep === 3 && (
-            <div className="flex flex-col items-center gap-4 py-8">
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                <Cpu className="w-6 h-6 text-primary animate-pulse" />
+            <div className="flex flex-col gap-5">
+              <div className="flex items-center justify-between">
+                <h3 className="text-[14px] font-semibold text-foreground">AI Extract</h3>
+                <span className={cn(
+                  'px-2 py-0.5 rounded text-[11px] font-semibold',
+                  extractionJobStatus === 'staged' ? 'badge-processing' :
+                  extractionJobStatus === 'ocr_queued' ? 'badge-processing' :
+                  extractionJobStatus === 'ocr_processing' ? 'badge-processing' :
+                  extractionJobStatus === 'extraction_in_progress' ? 'badge-processing' :
+                  extractionJobStatus === 'verification_pending' ? 'badge-valid' :
+                  'badge-processing'
+                )}>
+                  {extractionJobStatus === 'staged' ? 'Pending' :
+                   extractionJobStatus === 'ocr_queued' ? 'OCR Queued' :
+                   extractionJobStatus === 'ocr_processing' ? 'OCR Processing' :
+                   extractionJobStatus === 'extraction_in_progress' ? 'Extracting' :
+                   extractionJobStatus === 'verification_pending' ? 'Complete' :
+                   extractionJobStatus}
+                </span>
               </div>
-              <h3 className="text-[14px] font-semibold text-foreground">AI Extraction Running</h3>
-              <p className="text-[13px] text-muted-foreground text-center max-w-sm">
-                The AI agent is extracting field values from the document.
-                This typically takes 30–90 seconds.
-              </p>
-              <div className="w-full max-w-xs bg-muted rounded-full h-2 overflow-hidden">
-                <div className="bg-primary h-full rounded-full w-3/4 animate-pulse" />
-              </div>
-              <p className="text-[12px] text-muted-foreground">68 / 73 fields extracted</p>
+
+              {!extractionStarted && (
+                <div className="flex flex-col items-center gap-4 py-8">
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Cpu className="w-6 h-6 text-primary" />
+                  </div>
+                  <p className="text-[13px] text-muted-foreground text-center max-w-sm">
+                    Single-pass OCR + extraction. The AI agent reads the document,
+                    extracts all fields, and places evidence anchors in one pass (~8 seconds).
+                  </p>
+                  <Button
+                    className="gap-2"
+                    onClick={handleRunExtraction}
+                    disabled={!confirmedTemplate}
+                  >
+                    <Zap className="w-4 h-4" />
+                    Run Extraction
+                  </Button>
+                  {!confirmedTemplate && (
+                    <p className="text-[12px] text-amber-600 dark:text-amber-400">
+                      Select a template in Step 2 before running extraction.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {extractionStarted && (
+                <div className="flex flex-col gap-4">
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between text-[12px]">
+                      <span className={cn(
+                        'text-foreground font-medium transition-all duration-300',
+                        extractionComplete ? 'text-[var(--color-lg-success)]' : ''
+                      )}>
+                        {extractionLabel}
+                      </span>
+                      <span className="font-mono text-muted-foreground">{extractionProgress}%</span>
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-2.5 overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-700 ease-out"
+                        style={{
+                          width: `${extractionProgress}%`,
+                          backgroundColor: extractionComplete
+                            ? 'var(--color-lg-success)'
+                            : 'var(--color-primary)',
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* V3 5b — progress label timeline */}
+                  <div className="rounded-lg border border-border bg-muted/30 p-4">
+                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] mb-3">Extraction Log</p>
+                    <div className="flex flex-col gap-1.5">
+                      {[
+                        { threshold: 5,   label: 'Preparing document…',                          status: 'ocr_queued' },
+                        { threshold: 20,  label: 'Running OCR and reading document structure…',  status: 'ocr_processing' },
+                        { threshold: 55,  label: 'Extracting fields and placing evidence anchors…', status: 'extraction_in_progress' },
+                        { threshold: 80,  label: 'Scoring confidence and checking critical fields…', status: 'extraction_in_progress' },
+                        { threshold: 100, label: `Extraction complete — 68 fields extracted`,       status: 'verification_pending' },
+                      ].map(step => (
+                        <div
+                          key={step.threshold}
+                          className={cn(
+                            'flex items-center gap-2 text-[12px] transition-opacity duration-300',
+                            extractionProgress >= step.threshold ? 'opacity-100' : 'opacity-30'
+                          )}
+                        >
+                          {extractionProgress >= step.threshold ? (
+                            <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-[var(--color-lg-success)]" />
+                          ) : (
+                            <div className="w-3.5 h-3.5 shrink-0 rounded-full border border-muted-foreground/40" />
+                          )}
+                          <span className={extractionProgress >= step.threshold ? 'text-foreground' : 'text-muted-foreground'}>
+                            {step.label}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {extractionComplete && (
+                    <div className="rounded-lg border border-[var(--color-lg-success)]/40 bg-[var(--color-lg-success)]/5 px-4 py-3 text-[13px] text-[var(--color-lg-success)] font-medium">
+                      Extraction complete — proceed to Step 4 to review confidence scores.
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
