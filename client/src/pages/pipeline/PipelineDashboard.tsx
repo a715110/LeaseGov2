@@ -1913,8 +1913,8 @@ export default function PipelineDashboard() {
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </button>
-                          {/* Context-sensitive actions */}
-                          {doc.document_job_status !== 'committed' && doc.status === 'valid' && !isReadOnly && (
+                          {/* Context-sensitive actions — only for unpackaged staged docs */}
+                          {doc.document_job_status === 'staged' && doc.status === 'valid' && !isReadOnly && (
                             <button
                               onClick={() => {
                                 setSelectedIds(new Set([doc.id]));
@@ -1926,16 +1926,7 @@ export default function PipelineDashboard() {
                               Package
                             </button>
                           )}
-                          {doc.document_job_status !== 'committed' && doc.status === 'invalid' && !isReadOnly && (
-                            <button
-                              onClick={() => setStagedDocs(prev => prev.filter(d => d.id !== doc.id))}
-                              className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-                              title="Remove"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                          {doc.document_job_status !== 'committed' && doc.status === 'valid' && !isReadOnly && (
+                          {doc.document_job_status !== 'committed' && !isReadOnly && (
                             <button
                               onClick={() => setStagedDocs(prev => prev.filter(d => d.id !== doc.id))}
                               className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"

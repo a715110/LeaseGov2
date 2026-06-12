@@ -553,8 +553,8 @@ export function UploadDialog({ open, onClose, onConfirm }: UploadDialogProps) {
 
       {/* Dialog */}
       <div
-        className="relative z-10 w-full max-w-[640px] bg-[var(--color-lg-page-bg)] rounded-xl shadow-2xl border border-border flex flex-col overflow-hidden"
-        style={{ animation: 'upload-card-in 260ms cubic-bezier(0.23,1,0.32,1) both', maxHeight: '90vh' }}
+        className="relative z-10 w-full max-w-[640px] bg-[var(--color-lg-page-bg)] rounded-xl shadow-2xl border border-border flex flex-col"
+        style={{ animation: 'upload-card-in 260ms cubic-bezier(0.23,1,0.32,1) both', maxHeight: '90vh', minHeight: 0 }}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-card shrink-0">
