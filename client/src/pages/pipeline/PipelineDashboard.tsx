@@ -651,6 +651,46 @@ function SubmissionDetailPanel({ submission, isReadOnly, onClose, onUnsubmit }: 
           </dl>
         </div>
 
+        {/* Decline History — shown only for Declined submissions */}
+        {submission.status === 'Declined' && (
+          <div className="rounded-lg border border-orange-200 bg-orange-50/60 p-4 space-y-3">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-orange-700 mb-1 flex items-center gap-1.5">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-orange-500" />
+              Decline History
+            </p>
+            {/* Reason category */}
+            {submission.declineReasonLabel && (
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-orange-600/70 mb-0.5">Reason Category</p>
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-[12px] font-semibold bg-orange-100 text-orange-800 border border-orange-200">
+                  {submission.declineReasonLabel}
+                </span>
+              </div>
+            )}
+            {/* Full reason text */}
+            {submission.declineReason && (
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-orange-600/70 mb-0.5">Reviewer Notes</p>
+                <p className="text-[12px] text-orange-900 leading-relaxed">{submission.declineReason}</p>
+              </div>
+            )}
+            {/* Submitter correction note */}
+            {submission.correctionNote && (
+              <div className="pt-1 border-t border-orange-200">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-orange-600/70 mb-0.5">Your Correction Note</p>
+                <p className="text-[12px] text-orange-900 italic leading-relaxed">"{submission.correctionNote}"</p>
+              </div>
+            )}
+            {/* Attempt number */}
+            {submission.attemptNumber && submission.attemptNumber > 1 && (
+              <div className="pt-1 border-t border-orange-200">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-orange-600/70 mb-0.5">Submission Attempt</p>
+                <p className="text-[12px] text-orange-800 font-medium">Attempt {submission.attemptNumber}</p>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* File list */}
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Files</p>
