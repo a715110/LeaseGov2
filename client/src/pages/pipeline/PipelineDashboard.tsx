@@ -239,24 +239,6 @@ const MOCK_DOCUMENTS: StagedDocument[] = [
     document_job_status: 'committed',
   },
   {
-    id: 'doc-7',
-    display_name: 'corrupt_scan_draft.pdf',
-    status: 'invalid',
-    original_status: 'invalid',
-    originalStatus: 'invalid',
-    upload_date: '2026-06-12 08:42',
-    uploader: 'A. Chen',
-    mime_type: 'application/pdf',
-    file_size_bytes: 320_000,
-    page_count: null,
-    workspace_tag: 'Q1-2026-Retail',
-    target_record_id: null,
-    submission_path: null,
-    submitter_context_notes: null,
-    document_job_status: 'staged',
-    validation_errors: ['File integrity check failed — file cannot be opened or is malformed'],
-  },
-  {
     id: 'doc-8',
     display_name: 'Retail-Sublease-Notice.pdf',
     status: 'valid',
@@ -1322,7 +1304,6 @@ export default function PipelineDashboard() {
     uploading:  stagedDocs.filter(d => d.document_job_status !== 'committed' && d.status === 'uploading').length,
     validating: stagedDocs.filter(d => d.document_job_status !== 'committed' && d.status === 'validating').length,
     valid:      stagedDocs.filter(d => d.document_job_status !== 'committed' && d.status === 'valid').length,
-    invalid:    stagedDocs.filter(d => d.document_job_status !== 'committed' && d.status === 'invalid').length,
     submitted:  submissions.length,
   };
 
@@ -1423,14 +1404,15 @@ export default function PipelineDashboard() {
   ) {
     const now = new Date();
     const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-    const newDocs: StagedDocument[] = uploadedFiles.map(f => {
-      const resolvedStatus: 'valid' | 'invalid' = f.status === 'invalid' ? 'invalid' : 'valid';
-      return {
+    // V3 spec: only valid files are admitted to staging — invalid files are blocked at upload
+    const newDocs: StagedDocument[] = uploadedFiles
+      .filter(f => f.status !== 'invalid')
+      .map(f => ({
         id: f.id,
         display_name: f.name,
-        status: resolvedStatus,
-        original_status: resolvedStatus,
-        originalStatus: resolvedStatus,
+        status: 'valid' as const,
+        original_status: 'valid' as const,
+        originalStatus: 'valid' as const,
         upload_date: dateStr,
         uploader: activeRole === 'document_submitter' ? 'You' : 'Current User',
         mime_type: f.mime_type,
@@ -1441,11 +1423,16 @@ export default function PipelineDashboard() {
         submission_path: submissionPath,
         submitter_context_notes: contextNotes,
         document_job_status: 'staged' as const,
-        validation_errors: f.status === 'invalid' ? ['File integrity check failed'] : undefined,
-      };
-    });
+      }));
+    const invalidCount = uploadedFiles.filter(f => f.status === 'invalid').length;
     setStagedDocs(prev => [...newDocs, ...prev]);
-    toast.success(`${newDocs.length} file${newDocs.length !== 1 ? 's' : ''} added to the pipeline.`);
+    if (newDocs.length > 0) {
+      toast.success(`${newDocs.length} valid file${newDocs.length !== 1 ? 's' : ''} added to the pipeline.${
+        invalidCount > 0 ? ` ${invalidCount} invalid file${invalidCount !== 1 ? 's' : ''} were not added.` : ''
+      }`);
+    } else if (invalidCount > 0) {
+      toast.error(`No files added — all ${invalidCount} file${invalidCount !== 1 ? 's' : ''} failed validation.`);
+    }
   }
 
   // ── Sort helpers ──
@@ -1745,13 +1732,12 @@ export default function PipelineDashboard() {
         </Button>
       </div>
 
-      {/* ── 5 Summary cards ── */}
-      <div className="grid grid-cols-5 gap-3">
+      {/* 4 Summary cards (Invalid removed - V3: invalid files never enter staging) */}
+      <div className="grid grid-cols-4 gap-3">
                 {([
           { key: 'uploading',  label: 'Uploading',  icon: <FileUp className="w-5 h-5" />,        accent: 'lg-primary-light' },
           { key: 'validating', label: 'Validating', icon: <RefreshCw className="w-5 h-5" />,     accent: 'lg-primary-light', spinning: counts.validating > 0 },
           { key: 'valid',      label: 'Valid',      icon: <CheckCircle2 className="w-5 h-5" />,  accent: 'lg-success' },
-          { key: 'invalid',    label: 'Invalid',    icon: <XCircle className="w-5 h-5" />,       accent: 'lg-error' },
           { key: 'submitted',  label: 'Submitted',  icon: <Send className="w-5 h-5" />,          accent: 'lg-success' },
         ] as const).map(card => (
           <SummaryCard
@@ -1821,7 +1807,6 @@ export default function PipelineDashboard() {
                   <SelectItem value="uploading">Uploading</SelectItem>
                   <SelectItem value="validating">Validating</SelectItem>
                   <SelectItem value="valid">Valid</SelectItem>
-                  <SelectItem value="invalid">Invalid</SelectItem>
                 </SelectContent>
               </Select>
             </div>
