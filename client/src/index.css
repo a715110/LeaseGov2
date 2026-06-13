@@ -109,15 +109,9 @@
   * {
     @apply border-border outline-ring/50;
   }
-  /* Block horizontal pan/swipe gestures at the document level.
-     The app uses a fixed-viewport layout — all scrolling happens inside
-     isolated containers (main content area), never at the document level. */
+  /* Prevent fixed off-screen panels (drawers, slide-ins) from creating horizontal scrollbars */
   html, body {
-    overflow: hidden;
-    overscroll-behavior: none;
-    touch-action: pan-y;
-    height: 100%;
-    width: 100%;
+    overflow-x: hidden;
   }
   body {
     @apply bg-background text-foreground;
