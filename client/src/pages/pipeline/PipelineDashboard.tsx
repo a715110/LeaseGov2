@@ -133,6 +133,8 @@ interface Submission {
   status: 'Pending' | 'In Progress' | 'Completed' | 'Failed' | 'Declined';
   declineReason?: string;
   declineReasonLabel?: string;
+  /** Per-file decline reasons provided by the Preparer at package-level decline */
+  declineFileReasons?: { jobId: string; fileName: string; reason: string }[];
   /** Set to true when this submission was created via the Resubmit flow */
   isResubmit?: boolean;
   /** Attempt number — 1 for first submission, 2+ for resubmissions */
@@ -696,17 +698,28 @@ function SubmissionDetailPanel({ submission, isReadOnly, onClose, onUnsubmit }: 
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Files</p>
           <ul className="space-y-1.5">
-            {submission.files.map(f => (
-              <li key={f.docId} className="flex items-center justify-between gap-2 text-[12px]">
-                <div className="flex items-center gap-1.5 text-foreground">
-                  <FileText className="w-3 h-3 text-muted-foreground shrink-0" />
-                  <span className="truncate max-w-[240px]">{f.name}</span>
-                </div>
-                <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-muted text-muted-foreground border border-border">
-                  {f.role}
-                </span>
-              </li>
-            ))}
+            {submission.files.map(f => {
+              const fileReason = submission.declineFileReasons?.find(r => r.fileName === f.name);
+              return (
+                <li key={f.docId} className="flex flex-col gap-0.5">
+                  <div className="flex items-center justify-between gap-2 text-[12px]">
+                    <div className="flex items-center gap-1.5 text-foreground">
+                      <FileText className="w-3 h-3 text-muted-foreground shrink-0" />
+                      <span className="truncate max-w-[240px]">{f.name}</span>
+                    </div>
+                    <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-muted text-muted-foreground border border-border">
+                      {f.role}
+                    </span>
+                  </div>
+                  {fileReason && (
+                    <div className="ml-4.5 flex items-start gap-1 text-[11px] text-orange-700 dark:text-orange-400">
+                      <AlertTriangle className="w-3 h-3 shrink-0 mt-0.5" />
+                      <span className="leading-relaxed">{fileReason.reason}</span>
+                    </div>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </div>
 
@@ -1563,6 +1576,7 @@ export default function PipelineDashboard() {
             status: 'Declined' as const,
             declineReasonLabel: payload.reasonLabel,
             declineReason: payload.reason,
+            declineFileReasons: (payload as { perFileReasons?: { jobId: string; fileName: string; reason: string }[] }).perFileReasons ?? [],
           };
         }));
       }
@@ -2759,33 +2773,60 @@ export default function PipelineDashboard() {
                       <tr key={`${sub.id}-expanded`} className="bg-muted/10">
                         <td colSpan={TOTAL_SUB_COLS} className="px-0 py-0">
                           <div className="pl-10 pr-4 py-2 border-t border-border/40">
+                            {/* Decline reason header — only shown when submission is Declined */}
+                            {sub.status === 'Declined' && sub.declineReason && (
+                              <div className="mb-2 rounded-md border border-orange-200 bg-orange-50 dark:bg-orange-950/30 dark:border-orange-800 px-3 py-2">
+                                <p className="text-[11px] font-semibold text-orange-800 dark:text-orange-300 mb-0.5">
+                                  {sub.declineReasonLabel ?? 'Declined'}
+                                </p>
+                                <p className="text-[11px] text-orange-700 dark:text-orange-400 leading-relaxed">{sub.declineReason}</p>
+                              </div>
+                            )}
                             <table className="w-full text-[12px]">
                               <thead>
                                 <tr className="text-muted-foreground">
                                   <th className="text-left font-medium pb-1.5 pr-4">File Name</th>
                                   <th className="text-left font-medium pb-1.5 pr-4">Type</th>
                                   <th className="text-left font-medium pb-1.5">Role</th>
+                                  {sub.status === 'Declined' && sub.declineFileReasons && sub.declineFileReasons.length > 0 && (
+                                    <th className="text-left font-medium pb-1.5 pl-4">Decline Reason</th>
+                                  )}
                                 </tr>
                               </thead>
                               <tbody>
-                                {sub.files.map(f => (
-                                  <tr key={f.docId} className="border-t border-border/30">
-                                    <td className="py-1.5 pr-4">
-                                      <div className="flex items-center gap-1.5">
-                                        <FileText className="w-3 h-3 text-muted-foreground shrink-0" />
-                                        <span className="font-medium text-foreground truncate max-w-[220px]" title={f.name}>{f.name}</span>
-                                      </div>
-                                    </td>
-                                    <td className="py-1.5 pr-4">
-                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-muted text-muted-foreground border border-border">
-                                        {f.name.toLowerCase().endsWith('.tiff') || f.name.toLowerCase().endsWith('.tif') ? 'TIFF' : 'PDF'}
-                                      </span>
-                                    </td>
-                                    <td className="py-1.5">
-                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-50 text-slate-600 border border-slate-200">{f.role}</span>
-                                    </td>
-                                  </tr>
-                                ))}
+                                {sub.files.map(f => {
+                                  const fileReason = sub.declineFileReasons?.find(r => r.fileName === f.name);
+                                  return (
+                                    <tr key={f.docId} className="border-t border-border/30">
+                                      <td className="py-1.5 pr-4">
+                                        <div className="flex items-center gap-1.5">
+                                          <FileText className="w-3 h-3 text-muted-foreground shrink-0" />
+                                          <span className="font-medium text-foreground truncate max-w-[220px]" title={f.name}>{f.name}</span>
+                                        </div>
+                                      </td>
+                                      <td className="py-1.5 pr-4">
+                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-muted text-muted-foreground border border-border">
+                                          {f.name.toLowerCase().endsWith('.tiff') || f.name.toLowerCase().endsWith('.tif') ? 'TIFF' : 'PDF'}
+                                        </span>
+                                      </td>
+                                      <td className="py-1.5">
+                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-50 text-slate-600 border border-slate-200">{f.role}</span>
+                                      </td>
+                                      {sub.status === 'Declined' && sub.declineFileReasons && sub.declineFileReasons.length > 0 && (
+                                        <td className="py-1.5 pl-4">
+                                          {fileReason ? (
+                                            <span className="inline-flex items-center gap-1 text-[11px] text-orange-700 dark:text-orange-400">
+                                              <AlertTriangle className="w-3 h-3 shrink-0" />
+                                              {fileReason.reason}
+                                            </span>
+                                          ) : (
+                                            <span className="text-[11px] text-muted-foreground">—</span>
+                                          )}
+                                        </td>
+                                      )}
+                                    </tr>
+                                  );
+                                })}
                               </tbody>
                             </table>
                           </div>

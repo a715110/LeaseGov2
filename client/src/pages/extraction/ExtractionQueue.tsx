@@ -17,7 +17,7 @@ import {
   RefreshCw, ChevronRight, BarChart2, X, Clock,
   CheckCircle2, AlertTriangle, XCircle, Cpu, User,
   Settings, Info, CheckCheck, Plus, Trash2, GripVertical,
-  ArrowLeft, Zap
+  ArrowLeft, Zap, FileText
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useLocation, useSearch } from 'wouter';
@@ -53,6 +53,15 @@ interface ProcessingJob {
   extraction_mode: 'ai_assisted' | 'manual' | 'hybrid';
   pages: { page: number; confidence: number }[];
   log: { time: string; message: string; level: 'info' | 'warn' | 'error' }[];
+  /** Per-file decline reason set by Preparer at package-level decline */
+  decline_reason?: string;
+}
+
+/** Per-file reason entry inside the batch decline dialog */
+interface FileDeclineReason {
+  jobId: string;
+  fileName: string;
+  reason: string;
 }
 
 interface ExtractionTemplateField {
@@ -772,10 +781,26 @@ export default function ExtractionQueue() {
   const [activeTab, setActiveTab] = useState('all');
   const [jobs, setJobs] = useState<ProcessingJob[]>(MOCK_JOBS);
   const [selectedJob, setSelectedJob] = useState<ProcessingJob | null>(MOCK_JOBS[0]);
-  // Decline dialog state
-  const [declineTarget, setDeclineTarget] = useState<ProcessingJob | null>(null);
+  // Batch-level decline dialog state
+  // declineBatch = { batchRef, jobs[] } for the batch being declined
+  const [declineBatch, setDeclineBatch] = useState<{ batchRef: string; jobs: ProcessingJob[] } | null>(null);
   const [declineReasonCategory, setDeclineReasonCategory] = useState('');
-  const [declineReason, setDeclineReason] = useState('');
+  const [declineBatchNotes, setDeclineBatchNotes] = useState('');
+  // Per-file reasons: map of jobId → reason string (optional, can be empty)
+  const [fileReasons, setFileReasons] = useState<Record<string, string>>({});
+  function openDeclineBatch(batchRef: string, jobs: ProcessingJob[]) {
+    setDeclineBatch({ batchRef, jobs });
+    setDeclineReasonCategory('');
+    setDeclineBatchNotes('');
+    // Pre-populate per-file reasons with empty strings
+    setFileReasons(Object.fromEntries(jobs.map(j => [j.id, j.decline_reason ?? ''])));
+  }
+  function closeDeclineBatch() {
+    setDeclineBatch(null);
+    setDeclineReasonCategory('');
+    setDeclineBatchNotes('');
+    setFileReasons({});
+  }
 
   // S4: inline dialog states
   const [classificationItem, setClassificationItem] = useState<ProcessingJob | null>(null);
@@ -956,7 +981,19 @@ export default function ExtractionQueue() {
                       <td className="font-mono text-[12px] text-muted-foreground">{group.jobs[0]?.started ?? '—'}</td>
                       <td className="text-muted-foreground hidden xl:table-cell">{group.jobs[0]?.duration ?? '—'}</td>
                       <td className="text-muted-foreground hidden xl:table-cell">{group.jobs[0]?.assigned ?? '—'}</td>
-                      <td></td>
+                      <td onClick={e => e.stopPropagation()}>
+                        {/* Decline is package-level only — no per-file decline */}
+                        {group.jobs.some(j => j.status !== 'declined') && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-[11px] gap-1 text-destructive border-destructive/40 hover:bg-destructive/10"
+                            onClick={e => { e.stopPropagation(); openDeclineBatch(group.batchRef, group.jobs); }}
+                          >
+                            <XCircle className="w-3 h-3" /> Decline Package
+                          </Button>
+                        )}
+                      </td>
                     </tr>
                     {/* Expanded: individual job rows */}
                     {batchExpanded && group.jobs.map(job => (
@@ -1016,16 +1053,7 @@ export default function ExtractionQueue() {
                                 <Zap className="w-3 h-3" /> Process
                               </Button>
                             )}
-                            {job.status !== 'declined' && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-7 text-[11px] gap-1 text-destructive border-destructive/40 hover:bg-destructive/10"
-                                onClick={e => { e.stopPropagation(); setDeclineTarget(job); setDeclineReasonCategory(''); setDeclineReason(''); }}
-                              >
-                                <XCircle className="w-3 h-3" /> Decline
-                              </Button>
-                            )}
+                            {/* Individual file decline removed — decline at package level only */}
                           </div>
                         </td>
                       </tr>
@@ -1141,19 +1169,22 @@ export default function ExtractionQueue() {
           fileName={workflowJob?.file_name}
           initialStep={workflowInitialStep}
         />
-        {/* Decline dialog — V3 5a: reason dropdown + notes textarea */}
-        <Dialog open={!!declineTarget} onOpenChange={v => { if (!v) { setDeclineTarget(null); setDeclineReasonCategory(''); setDeclineReason(''); } }}>
-          <DialogContent className="max-w-[520px]">
+        {/* Batch-level Decline Package dialog — package-level with per-file reason rows */}
+        <Dialog open={!!declineBatch} onOpenChange={v => { if (!v) closeDeclineBatch(); }}>
+          <DialogContent className="max-w-[600px] max-h-[85vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Decline Submission</DialogTitle>
+              <DialogTitle>Decline Package</DialogTitle>
             </DialogHeader>
             <div className="flex flex-col gap-4 py-2">
+              {/* Package identity */}
               <div className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-[12px] text-muted-foreground">
-                <span className="font-medium text-foreground">{declineTarget?.display_id}</span>
-                {' · '}{declineTarget?.file_name}
+                <span className="font-mono font-medium text-foreground">{declineBatch?.batchRef}</span>
+                <span className="ml-2">· {declineBatch?.jobs.length} file{declineBatch?.jobs.length !== 1 ? 's' : ''}</span>
               </div>
+
+              {/* Package-level reason */}
               <div>
-                <Label className="text-[12px] mb-1.5 block font-medium">Decline Reason <span className="text-destructive">*</span></Label>
+                <Label className="text-[12px] mb-1.5 block font-medium">Package Decline Reason <span className="text-destructive">*</span></Label>
                 <Select value={declineReasonCategory} onValueChange={setDeclineReasonCategory}>
                   <SelectTrigger className="text-[13px]">
                     <SelectValue placeholder="Select a reason…" />
@@ -1167,36 +1198,58 @@ export default function ExtractionQueue() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Package-level notes */}
               <div>
-                <Label className="text-[12px] mb-1.5 block font-medium">Notes <span className="text-destructive">*</span></Label>
+                <Label className="text-[12px] mb-1.5 block font-medium">Overall Notes <span className="text-destructive">*</span></Label>
                 <textarea
-                  value={declineReason}
-                  onChange={e => setDeclineReason(e.target.value)}
-                  placeholder="Provide additional context for the submitter…"
-                  rows={4}
+                  value={declineBatchNotes}
+                  onChange={e => setDeclineBatchNotes(e.target.value)}
+                  placeholder="Provide overall context for the submitter…"
+                  rows={3}
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-[13px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
                 />
-                {declineReason.length > 0 && declineReason.length < 10 && (
+                {declineBatchNotes.length > 0 && declineBatchNotes.length < 10 && (
                   <p className="text-[11px] text-destructive mt-1">Notes must be at least 10 characters.</p>
                 )}
               </div>
+
+              {/* Per-file reason rows */}
+              <div>
+                <Label className="text-[12px] mb-2 block font-medium">
+                  Per-File Reasons
+                  <span className="ml-1.5 text-[11px] font-normal text-muted-foreground">(optional — visible to submitter)</span>
+                </Label>
+                <div className="flex flex-col gap-2">
+                  {declineBatch?.jobs.map(job => (
+                    <div key={job.id} className="flex items-start gap-2 rounded-md border border-border bg-muted/20 px-3 py-2">
+                      <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-1" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[12px] font-medium text-foreground truncate" title={job.file_name}>{job.file_name}</p>
+                        <input
+                          type="text"
+                          value={fileReasons[job.id] ?? ''}
+                          onChange={e => setFileReasons(prev => ({ ...prev, [job.id]: e.target.value }))}
+                          placeholder="Specific issue with this file (optional)…"
+                          className="mt-1 w-full rounded border border-border bg-background px-2 py-1 text-[12px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 px-3 py-2 text-[12px] text-amber-800 dark:text-amber-300">
-                Declining will return all documents in this submission to Staged Documents with their original validation status.
+                Declining will return all documents in this package to Staged Documents. The submitter will see the per-file reasons when reviewing the declined submission.
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => { setDeclineTarget(null); setDeclineReasonCategory(''); setDeclineReason(''); }}>Cancel</Button>
+              <Button variant="outline" onClick={closeDeclineBatch}>Cancel</Button>
               <Button
                 variant="destructive"
-                disabled={!declineReasonCategory || declineReason.trim().length < 10}
+                disabled={!declineReasonCategory || declineBatchNotes.trim().length < 10}
                 onClick={() => {
-                  if (!declineTarget) return;
-                  setJobs(prev => prev.map(j =>
-                    j.id === declineTarget.id ? { ...j, status: 'declined' as JobStatus } : j
-                  ));
-                  if (selectedJob?.id === declineTarget.id) {
-                    setSelectedJob(prev => prev ? { ...prev, status: 'declined' as JobStatus } : prev);
-                  }
+                  if (!declineBatch) return;
                   const reasonLabel: Record<string, string> = {
                     wrong_destination: 'Wrong destination record',
                     duplicate: 'Duplicate submission',
@@ -1204,29 +1257,40 @@ export default function ExtractionQueue() {
                     insufficient_context: 'Insufficient context',
                     other: 'Other',
                   };
+                  // Mark all jobs in the batch as declined, storing per-file reason
+                  setJobs(prev => prev.map(j => {
+                    if (j.batch_ref !== declineBatch.batchRef) return j;
+                    return { ...j, status: 'declined' as JobStatus, decline_reason: fileReasons[j.id]?.trim() || undefined };
+                  }));
+                  if (selectedJob && selectedJob.batch_ref === declineBatch.batchRef) {
+                    setSelectedJob(prev => prev ? { ...prev, status: 'declined' as JobStatus } : prev);
+                  }
+                  // Build per-file reason list for the event payload
+                  const perFileReasons: FileDeclineReason[] = declineBatch.jobs
+                    .filter(j => fileReasons[j.id]?.trim())
+                    .map(j => ({ jobId: j.id, fileName: j.file_name, reason: fileReasons[j.id].trim() }));
                   // DEMO ONLY: Fire cross-role event so PipelineDashboard Table 3 updates.
-                  // PRODUCTION: replace with: await api.post(`/api/v1/submissions/${declineTarget.batch_ref}/decline`, { reason, notes })
+                  // PRODUCTION: replace with: await api.post(`/api/v1/submissions/${declineBatch.batchRef}/decline`, { reasonCategory, notes, perFileReasons })
                   publishEvent({
                     type: 'DECLINE_SUBMITTED',
                     sourceRole: 'preparer',
                     payload: {
-                      submissionId: declineTarget.display_id,
-                      batchRef: declineTarget.batch_ref,
+                      submissionId: declineBatch.batchRef,
+                      batchRef: declineBatch.batchRef,
                       reasonCategory: declineReasonCategory,
-                      reason: declineReason.trim(),
+                      reason: declineBatchNotes.trim(),
                       reasonLabel: reasonLabel[declineReasonCategory] ?? 'Other',
+                      perFileReasons,
                     },
                   });
-                  toast.error(`${declineTarget.display_id} declined — ${reasonLabel[declineReasonCategory]}`, {
-                    description: 'Documents returned to Staged Documents with original status.',
+                  toast.error(`${declineBatch.batchRef} declined — ${reasonLabel[declineReasonCategory]}`, {
+                    description: `${declineBatch.jobs.length} file${declineBatch.jobs.length !== 1 ? 's' : ''} returned to Staged Documents.`,
                     duration: 6000,
                   });
-                  setDeclineTarget(null);
-                  setDeclineReasonCategory('');
-                  setDeclineReason('');
+                  closeDeclineBatch();
                 }}
               >
-                Confirm Decline
+                Confirm Decline Package
               </Button>
             </DialogFooter>
           </DialogContent>
