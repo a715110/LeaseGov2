@@ -483,11 +483,13 @@ export default function AppShell({
   })
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-background">
-      {/* ── Sidebar — fixed so it never participates in horizontal scroll ── */}
+    /* Root is fixed to the viewport — completely detaches layout from document scroll.
+       This means NO element inside can cause the page to scroll horizontally. */
+    <div className="fixed inset-0 flex overflow-hidden bg-background">
+      {/* ── Sidebar — fixed within the root viewport container ── */}
       <aside
         className={cn(
-          'fixed top-0 left-0 z-30 flex h-screen shrink-0 flex-col overflow-y-auto overflow-x-hidden transition-all duration-200',
+          'absolute top-0 left-0 bottom-0 z-30 flex shrink-0 flex-col overflow-y-auto overflow-x-hidden transition-all duration-200',
           sidebarCollapsed ? 'w-16' : 'w-60'
         )}
         style={{ background: 'var(--sidebar)' }}
@@ -643,11 +645,11 @@ export default function AppShell({
         </div>
       </aside>
 
-      {/* ── Main content — offset by sidebar width, isolated scroll context ── */}
+      {/* ── Main content — absolutely positioned next to sidebar, fully isolated scroll context ── */}
       <div
         className={cn(
-          'flex flex-1 min-w-0 flex-col overflow-hidden transition-all duration-200',
-          sidebarCollapsed ? 'ml-16' : 'ml-60'
+          'absolute top-0 bottom-0 right-0 flex flex-col overflow-hidden transition-all duration-200',
+          sidebarCollapsed ? 'left-16' : 'left-60'
         )}
       >
         {/* Top header bar */}
