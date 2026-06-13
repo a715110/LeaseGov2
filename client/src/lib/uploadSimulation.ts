@@ -36,11 +36,10 @@ export interface StagedFile {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 export const WORKSPACE_TAGS = [
-  'Q1-2026-Retail',
-  'Q1-2026-Office',
-  'Q1-2026-Industrial',
-  'Q2-2026-Land',
-  'Q2-2026-Retail',
+  'Retail',
+  'Office',
+  'Industrial',
+  'Land',
 ];
 
 /** V3: filenames containing these keywords resolve as INVALID (demo simulation) */

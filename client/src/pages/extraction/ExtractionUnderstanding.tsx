@@ -95,7 +95,7 @@ export default function ExtractionUnderstanding() {
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-[14px] font-medium text-foreground">Q1-2026-Retail</span>
+              <span className="text-[14px] font-medium text-foreground">Retail</span>
               <button className="text-[13px] text-primary hover:underline">Change</button>
             </div>
           </div>

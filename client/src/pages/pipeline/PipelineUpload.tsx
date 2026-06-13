@@ -299,7 +299,7 @@ export default function PipelineUpload() {
         </div>
 
         {/* Right: Target Context panel */}
-        <div className="w-72 flex flex-col gap-4">
+        <div className="w-[432px] flex flex-col gap-4">
           <div className="rounded-lg bg-card border border-border shadow-sm overflow-hidden">
             <div className="px-5 py-4 border-b border-border">
               <h2 className="text-[14px] font-semibold text-foreground flex items-center gap-2">
@@ -310,7 +310,7 @@ export default function PipelineUpload() {
             <div className="px-5 py-4 flex flex-col gap-4">
               <div>
                 <label className="text-[12px] font-semibold text-muted-foreground uppercase tracking-[0.05em] block mb-1.5">
-                  Workspace Tag <span className="text-destructive">*</span>
+                  Workspace <span className="text-destructive">*</span>
                 </label>
                 {isCreatingTag ? (
                   <div className="flex gap-2">
@@ -334,7 +334,7 @@ export default function PipelineUpload() {
                 ) : (
                   <Select value={workspaceTag} onValueChange={setWorkspaceTag}>
                     <SelectTrigger className="h-9 text-[13px]">
-                      <SelectValue placeholder="Select workspace tag..." />
+                      <SelectValue placeholder="Select workspace..." />
                     </SelectTrigger>
                     <SelectContent>
                       {WORKSPACE_TAGS.map(tag => (
@@ -354,7 +354,7 @@ export default function PipelineUpload() {
                 )}
                 {workspaceTag && (
                   <p className="text-[11px] text-muted-foreground mt-1">
-                    All files tagged to <strong>{workspaceTag}</strong>.
+                    All files assigned to <strong>{workspaceTag}</strong> workspace.
                   </p>
                 )}
               </div>

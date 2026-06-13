@@ -24,10 +24,10 @@ import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 
 // ─── Mock workspace tags — TODO: Backend integration required ─────────────────
 const WORKSPACE_TAGS = [
-  'Q1-2026-Retail',
-  'Q1-2026-Office',
-  'Q1-2026-Industrial',
-  'Q2-2026-Land',
+  'Retail',
+  'Office',
+  'Industrial',
+  'Land',
 ];
 
 export default function PipelineNewRecordModal() {
@@ -38,7 +38,7 @@ export default function PipelineNewRecordModal() {
   const [contractType, setContractType] = useState('PROPERTY_LEASE');
   const [propertyAddress, setPropertyAddress] = useState('');
   const [counterpartyName, setCounterpartyName] = useState('');
-  const [workspaceTag] = useState('Q1-2026-Retail'); // read-only — set from upload context
+  const [workspaceTag] = useState('Retail'); // read-only — set from upload context
 
   const canCreate = recordLabel.trim().length > 0;
 

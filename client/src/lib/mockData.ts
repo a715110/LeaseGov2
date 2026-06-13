@@ -187,10 +187,10 @@ export interface Workspace {
 
 export const MOCK_WORKSPACES: Workspace[] = [
   { id: 'ws-001', name: 'Corporate Leasing',    team: 'Real Estate' },
-  { id: 'ws-002', name: 'Q1-2026 Retail',       team: 'Retail Portfolio' },
-  { id: 'ws-003', name: 'Q1-2026 Office',       team: 'Office Portfolio' },
-  { id: 'ws-004', name: 'Q1-2026 Industrial',   team: 'Industrial Portfolio' },
-  { id: 'ws-005', name: 'Q2-2026 Land',         team: 'Land & Ground Leases' },
+  { id: 'ws-002', name: 'Retail',       team: 'Retail Portfolio' },
+  { id: 'ws-003', name: 'Office',       team: 'Office Portfolio' },
+  { id: 'ws-004', name: 'Industrial',   team: 'Industrial Portfolio' },
+  { id: 'ws-005', name: 'Land',         team: 'Land & Ground Leases' },
 ];
 
 // ─── Assignees (Preparer / Lease Admin roles) ─────────────────────────────────

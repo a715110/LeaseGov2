@@ -407,7 +407,7 @@ export default function AppShell({
     addNotification({ title: 'PKG-003 is ready for approval', severity: 'success', href: ROUTE_PATHS.approvalsQueue })
     addNotification({ title: 'Validation warning on Office-Tower-Amendment.pdf', body: 'Page 7 has a low-confidence extraction score. Manual review recommended.', severity: 'warning', href: ROUTE_PATHS.pipelineDashboard })
     addNotification({ title: '2 documents failed ingestion', body: 'Corrupted-Scan-Draft.pdf and one other file could not be processed.', severity: 'error', href: ROUTE_PATHS.pipelineDashboard })
-    addNotification({ title: 'Scheduled export completed', body: 'Q1-2026 Retail export task finished successfully.', severity: 'info' })
+    addNotification({ title: 'Scheduled export completed', body: 'Retail workspace export task finished successfully.', severity: 'info' })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
