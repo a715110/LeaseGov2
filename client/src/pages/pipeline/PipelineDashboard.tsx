@@ -46,6 +46,7 @@ import { toast } from 'sonner';
 import { SCREEN_KEYS } from '@/constants/screenKeys';
 import { publishEvent, subscribeToEvents } from '@/lib/eventBus';
 import { useRole } from '@/contexts/RoleContext';
+import { useNotifications } from '@/contexts/NotificationContext';
 import { usePipelineCounts } from '@/contexts/PipelineCountsContext';
 import {
   MOCK_CONTRACT_RECORDS,
@@ -1378,6 +1379,7 @@ export default function PipelineDashboard() {
   const { activeRole } = useRole();
   const isReadOnly = activeRole === 'auditor';
   const { setPipelineReadyCount, setApprovalsCount } = usePipelineCounts();
+  const { addNotification } = useNotifications();
 
   // ── Upload dialog state ──
   const [showUpload, setShowUpload] = useState(false);
@@ -1408,8 +1410,62 @@ export default function PipelineDashboard() {
     };
   }, []);
 
-  // ── Stage Documents state ──
-  const [stagedDocs, setStagedDocs] = useState<StagedDocument[]>(MOCK_DOCUMENTS);
+  // ── Stage Documents state — hydrate from event history so docs restored by
+  // DECLINE_SUBMITTED events fired while unmounted appear immediately on mount. ──
+  const [stagedDocs, setStagedDocs] = useState<StagedDocument[]>(() => {
+    try {
+      const raw = localStorage.getItem('leasegov_demo_events') || localStorage.getItem('dodesk_demo_events');
+      if (!raw) return MOCK_DOCUMENTS;
+      const events: Array<{ type: string; payload: Record<string, unknown>; timestamp?: string }> = JSON.parse(raw);
+      const declineEvents = events.filter(e => e.type === 'DECLINE_SUBMITTED');
+      if (declineEvents.length === 0) return MOCK_DOCUMENTS;
+      // For each decline event, restore the matching submission's files to staging.
+      // We cross-reference INITIAL_SUBMISSIONS to get the file list.
+      const extraDocs: StagedDocument[] = [];
+      for (const ev of declineEvents) {
+        const matchedSub = INITIAL_SUBMISSIONS.find(sub =>
+          sub.batchRef === ev.payload.batchRef ||
+          sub.packageNum === ev.payload.submissionId ||
+          sub.id === ev.payload.submissionId ||
+          sub.id === ev.payload.batchRef
+        );
+        if (!matchedSub) continue;
+        for (const f of matchedSub.files) {
+          const orig: 'valid' | 'invalid' =
+            (f as { originalStatus?: 'valid' | 'invalid' }).originalStatus ?? 'valid';
+          extraDocs.push({
+            id: `restored-decline-${f.docId}-hydrated`,
+            display_name: f.name,
+            status: orig,
+            original_status: orig,
+            originalStatus: orig,
+            upload_date: ev.timestamp
+              ? new Date(ev.timestamp).toLocaleString('en-US', {
+                  year: 'numeric', month: '2-digit', day: '2-digit',
+                  hour: '2-digit', minute: '2-digit', hour12: false,
+                }).replace(',', '')
+              : new Date().toLocaleString('en-US', {
+                  year: 'numeric', month: '2-digit', day: '2-digit',
+                  hour: '2-digit', minute: '2-digit', hour12: false,
+                }).replace(',', ''),
+            uploader: matchedSub.submittedBy,
+            mime_type: f.name.toLowerCase().endsWith('.tiff') || f.name.toLowerCase().endsWith('.tif')
+              ? 'image/tiff' : 'application/pdf',
+            file_size_bytes: 0,
+            page_count: null,
+            workspace_tag: matchedSub.workspace,
+            target_record_id: null,
+            submission_path: null,
+            submitter_context_notes: null,
+            document_job_status: 'staged' as const,
+          });
+        }
+      }
+      return [...extraDocs, ...MOCK_DOCUMENTS];
+    } catch {
+      return MOCK_DOCUMENTS;
+    }
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [colFilters, setColFilters] = useState({ name: '', uploader: '', workspace: '' });
   // Tab: 'active' = staging pipeline, 'committed' = audit view
@@ -1554,6 +1610,19 @@ export default function PipelineDashboard() {
           });
           // Prepend restored docs to Table 1
           setStagedDocs(prev => [...restoredDocs, ...prev]);
+          // Notify the Document Submitter
+          addNotification({
+            title: `${sub.packageNum} submission declined`,
+            body: payload.reasonLabel
+              ? `Reason: ${payload.reasonLabel}. ${restoredDocs.length} file${restoredDocs.length !== 1 ? 's' : ''} returned to Stage Documents for correction.`
+              : `${restoredDocs.length} file${restoredDocs.length !== 1 ? 's' : ''} returned to Stage Documents for correction.`,
+            severity: 'error',
+            href: '/pipeline/dashboard',
+          });
+          toast.error(`${sub.packageNum} declined — ${payload.reasonLabel || 'Submission declined'}`, {
+            description: `${restoredDocs.length} file${restoredDocs.length !== 1 ? 's' : ''} returned to Stage Documents. Review and resubmit.`,
+            duration: 8000,
+          });
           return {
             ...sub,
             status: 'Declined' as const,
@@ -1564,7 +1633,38 @@ export default function PipelineDashboard() {
       }
     });
     return () => unsub();
-  }, []);
+  }, [addNotification]);
+
+  // ── On mount: fire notifications for any DECLINE_SUBMITTED events that fired
+  // while this component was unmounted (e.g. user was on Extraction Queue page). ──
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('leasegov_demo_events') || localStorage.getItem('dodesk_demo_events');
+      if (!raw) return;
+      const events: Array<{ type: string; payload: Record<string, unknown>; timestamp?: string }> = JSON.parse(raw);
+      const declineEvents = events.filter(e => e.type === 'DECLINE_SUBMITTED');
+      for (const ev of declineEvents) {
+        const matchedSub = INITIAL_SUBMISSIONS.find(sub =>
+          sub.batchRef === ev.payload.batchRef ||
+          sub.packageNum === ev.payload.submissionId ||
+          sub.id === ev.payload.submissionId ||
+          sub.id === ev.payload.batchRef
+        );
+        if (!matchedSub) continue;
+        const reasonLabel = (ev.payload.reasonLabel as string) || (ev.payload.reason as string) || 'Submission declined';
+        const fileCount = matchedSub.files.length;
+        addNotification({
+          title: `${matchedSub.packageNum} submission declined`,
+          body: `Reason: ${reasonLabel}. ${fileCount} file${fileCount !== 1 ? 's' : ''} returned to Stage Documents for correction.`,
+          severity: 'error',
+          href: '/pipeline/dashboard',
+        });
+      }
+    } catch {
+      // ignore
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // run once on mount only
 
   // ── Derived counts — committed docs are excluded from all pipeline stat cards ──
   const counts = {
