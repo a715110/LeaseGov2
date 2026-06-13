@@ -636,3 +636,4 @@ const { data } = trpc.items.getByIds.useQuery({ ids });
 **Rule:** Use sonner for toasts; do not add react-toastify or @radix-ui/react-toast
 
 **Rule:** If you put placeholder components for App.tsx routes, you MUST replace them with actual components after your implementation.
+\n## Checkpoint: Before DEMO Layer removal\n\nVersion 9bda1a39 — saved 2026-06-13 17:27 UTC\nThis is the baseline before the demo event-bus persistence and hydration logic is removed to simplify the codebase for backend developer handover.
