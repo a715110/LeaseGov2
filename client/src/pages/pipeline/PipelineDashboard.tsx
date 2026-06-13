@@ -1228,7 +1228,6 @@ export default function PipelineDashboard() {
 
   // ── Stage Documents state ──
   const [stagedDocs, setStagedDocs] = useState<StagedDocument[]>(MOCK_DOCUMENTS);
-  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [colFilters, setColFilters] = useState({ name: '', uploader: '', workspace: '' });
   // Tab: 'active' = staging pipeline, 'committed' = audit view
@@ -1314,7 +1313,6 @@ export default function PipelineDashboard() {
   const activeStagedDocs = stagedDocs.filter(d => d.document_job_status !== 'committed');
 
   const filteredDocs = activeStagedDocs.filter(doc => {
-    const matchesStatus = statusFilter === 'all' || doc.status === statusFilter;
     const q = searchQuery.toLowerCase();
     const matchesSearch = !q ||
       doc.display_name.toLowerCase().includes(q) ||
@@ -1324,7 +1322,7 @@ export default function PipelineDashboard() {
       doc.display_name.toLowerCase().includes(colFilters.name.toLowerCase()) &&
       doc.uploader.toLowerCase().includes(colFilters.uploader.toLowerCase()) &&
       doc.workspace_tag.toLowerCase().includes(colFilters.workspace.toLowerCase());
-    return matchesStatus && matchesSearch && matchesCol;
+    return matchesSearch && matchesCol;
   });
 
   const filteredPkgs = (() => {
@@ -1749,8 +1747,8 @@ export default function PipelineDashboard() {
             count={counts[card.key]}
             icon={card.icon}
             accentClass={card.accent}
-            active={statusFilter === card.key}
-            onClick={() => setStatusFilter(prev => prev === card.key ? 'all' : card.key)}
+            active={false}
+            onClick={() => {}}
             spinning={'spinning' in card ? card.spinning : false}
           />
         ))}
@@ -1776,17 +1774,7 @@ export default function PipelineDashboard() {
                 className="pl-8 h-8 w-48 text-[13px]"
               />
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="h-8 w-36 text-[13px]">
-                <SelectValue placeholder="All statuses" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All statuses</SelectItem>
-                <SelectItem value="uploading">Uploading</SelectItem>
-                <SelectItem value="validating">Validating</SelectItem>
-                <SelectItem value="valid">Valid</SelectItem>
-              </SelectContent>
-            </Select>
+
           </div>
         </div>
 
@@ -1817,7 +1805,6 @@ export default function PipelineDashboard() {
                   <th className="text-left">Type</th>
                   <th className="text-left">Workspace</th>
                   <th className="text-left">Record</th>
-                  <th className="text-left">Status</th>
                   <th className="text-left">Uploaded</th>
                   <th></th>
                 </tr>
@@ -1896,13 +1883,6 @@ export default function PipelineDashboard() {
                               </TooltipProvider>
                             )
                         }
-                      </td>
-                      {/* Status */}
-                      <td>
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold ${STATUS_BADGE[doc.status]}`}>
-                          {doc.status === 'validating' && <RefreshCw className="w-3 h-3 animate-spin" />}
-                          {STATUS_LABEL[doc.status]}
-                        </span>
                       </td>
                       {/* Uploaded */}
                       <td className="font-mono text-[12px] text-muted-foreground">{doc.upload_date}</td>
