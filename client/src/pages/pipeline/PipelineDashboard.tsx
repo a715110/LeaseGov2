@@ -132,6 +132,12 @@ interface Submission {
   status: 'Pending' | 'In Progress' | 'Completed' | 'Failed' | 'Declined';
   declineReason?: string;
   declineReasonLabel?: string;
+  /** Set to true when this submission was created via the Resubmit flow */
+  isResubmit?: boolean;
+  /** Attempt number — 1 for first submission, 2+ for resubmissions */
+  attemptNumber?: number;
+  /** Correction note added by submitter at resubmit time */
+  correctionNote?: string;
 }
 
 // ─── Mock data — V3 Change 1 §1a — 8-document seed distribution ─────────────
@@ -1219,6 +1225,111 @@ function BulkActionBar({
   );
 }
 
+// ─── Resubmit Confirm Dialog ─────────────────────────────────────────────────
+
+function ResubmitConfirmDialog({
+  submission,
+  onConfirm,
+  onCancel,
+}: {
+  submission: Submission;
+  onConfirm: (correctionNote: string) => void;
+  onCancel: () => void;
+}) {
+  const [note, setNote] = useState('');
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/50" onClick={onCancel} />
+      <div className="relative z-10 w-full max-w-[520px] rounded-xl border border-border bg-card shadow-2xl">
+        {/* Header */}
+        <div className="flex items-start gap-3 px-5 pt-5 pb-4 border-b border-border">
+          <div className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center shrink-0 mt-0.5">
+            <RotateCcw className="w-4 h-4 text-amber-700" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="text-[15px] font-semibold text-foreground leading-tight">
+              Resubmit {submission.packageNum}?
+            </h3>
+            <p className="text-[12px] text-muted-foreground mt-0.5">
+              This package was previously declined. Review the reason below and add a correction note before resubmitting.
+            </p>
+          </div>
+          <button
+            onClick={onCancel}
+            className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+            aria-label="Close"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Decline reason block */}
+        <div className="px-5 py-4 space-y-4">
+          <div className="rounded-lg border border-orange-200 bg-orange-50 px-4 py-3">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-orange-600 mb-1">Decline Reason</p>
+            {submission.declineReasonLabel && (
+              <p className="text-[13px] font-semibold text-orange-800 leading-tight">{submission.declineReasonLabel}</p>
+            )}
+            {submission.declineReason && (
+              <p className="text-[12px] text-orange-700 mt-1 leading-relaxed">{submission.declineReason}</p>
+            )}
+            {!submission.declineReasonLabel && !submission.declineReason && (
+              <p className="text-[12px] text-orange-700 italic">No reason provided.</p>
+            )}
+          </div>
+
+          {/* Package summary */}
+          <div className="rounded-lg border border-border bg-muted/30 px-4 py-3">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Package</p>
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="font-mono text-[12px] font-semibold text-primary">{submission.packageNum}</span>
+              {submission.packageName && (
+                <span className="text-[12px] text-muted-foreground">{submission.packageName}</span>
+              )}
+              <span className="text-[11px] text-muted-foreground">
+                {submission.fileCount} file{submission.fileCount !== 1 ? 's' : ''} · {submission.workspace}
+              </span>
+            </div>
+          </div>
+
+          {/* Correction note */}
+          <div>
+            <label className="block text-[12px] font-semibold text-foreground mb-1.5">
+              Correction Note
+              <span className="ml-1 text-[11px] font-normal text-muted-foreground">(optional)</span>
+            </label>
+            <textarea
+              value={note}
+              onChange={e => setNote(e.target.value)}
+              placeholder="Describe what was corrected or why you are resubmitting…"
+              rows={3}
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-[13px] text-foreground placeholder:text-muted-foreground/60 resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+            <p className="text-[11px] text-muted-foreground mt-1">
+              This note will be stored with the resubmitted package and visible to reviewers.
+            </p>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-border">
+          <Button size="sm" variant="outline" onClick={onCancel} className="text-[13px]">
+            Cancel
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => onConfirm(note)}
+            className="text-[13px] gap-1.5 bg-amber-600 hover:bg-amber-700 text-white"
+          >
+            <RotateCcw className="w-3.5 h-3.5" /> Confirm Resubmit
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function PipelineDashboard() {
@@ -1292,8 +1403,35 @@ export default function PipelineDashboard() {
   const [renameValue, setRenameValue] = useState('');
   const renameInputRef = useRef<HTMLInputElement>(null);
 
-  // ── Submissions state ──
-  const [submissions, setSubmissions] = useState<Submission[]>(INITIAL_SUBMISSIONS);
+  // ── Submissions state — hydrate from event history so DECLINE_SUBMITTED events
+  // fired while this component was unmounted (e.g. user was on Extraction Queue)
+  // are reflected immediately on mount. ──
+  const [submissions, setSubmissions] = useState<Submission[]>(() => {
+    try {
+      const raw = localStorage.getItem('leasegov_demo_events') || localStorage.getItem('dodesk_demo_events');
+      if (!raw) return INITIAL_SUBMISSIONS;
+      const events: Array<{ type: string; payload: Record<string, string> }> = JSON.parse(raw);
+      const declineEvents = events.filter(e => e.type === 'DECLINE_SUBMITTED');
+      if (declineEvents.length === 0) return INITIAL_SUBMISSIONS;
+      return INITIAL_SUBMISSIONS.map(sub => {
+        const match = declineEvents.find(e =>
+          sub.batchRef === e.payload.batchRef ||
+          sub.packageNum === e.payload.submissionId ||
+          sub.id === e.payload.submissionId ||
+          sub.id === e.payload.batchRef
+        );
+        if (!match) return sub;
+        return {
+          ...sub,
+          status: 'Declined' as const,
+          declineReasonLabel: match.payload.reasonLabel,
+          declineReason: match.payload.reason,
+        };
+      });
+    } catch {
+      return INITIAL_SUBMISSIONS;
+    }
+  });
   const [subColFilters, setSubColFilters] = useState({ packageNum: '', name: '', workspace: '', submittedBy: '' });
   const [subStatusFilter, setSubStatusFilter] = useState<'all' | 'Pending' | 'In Progress' | 'Completed' | 'Failed' | 'Declined'>('all');
   const [subSort, setSubSort] = useState<{ col: string; dir: 'asc' | 'desc' } | null>(() => {
@@ -1303,6 +1441,8 @@ export default function PipelineDashboard() {
     } catch { return null; }
   });
   const [detailSub, setDetailSub] = useState<Submission | null>(null);
+  // Holds the declined submission awaiting the resubmit confirmation modal
+  const [resubmitTarget, setResubmitTarget] = useState<Submission | null>(null);
 
   // ── Sync live badge counts to sidebar nav context ──
   useEffect(() => {
@@ -1575,6 +1715,8 @@ export default function PipelineDashboard() {
     const subId = `sub-${Date.now()}`;
     // batchRef is derived the same way ExtractionQueue derives batch_ref from BATCH_SUBMITTED payload
     const batchRef = `BATCH-${subId.slice(-6).toUpperCase()}`;
+    // Carry resubmit metadata if the package was restored from a declined submission
+    const pkgMeta = pkg as ContractPackage & { _correctionNote?: string; _attemptNumber?: number };
     const sub: Submission = {
       id: subId,
       batchRef,
@@ -1588,6 +1730,11 @@ export default function PipelineDashboard() {
       submittedBy: pkg.createdBy,
       submitDate: new Date().toISOString(),
       status: 'Pending',
+      ...(pkgMeta._attemptNumber !== undefined && {
+        isResubmit: true,
+        attemptNumber: pkgMeta._attemptNumber,
+        correctionNote: pkgMeta._correctionNote,
+      }),
     };
     setContractPackages(prev => prev.filter(p => p.id !== pkg.id));
     setSubmissions(prev => [sub, ...prev]);
@@ -1794,7 +1941,7 @@ export default function PipelineDashboard() {
   }
 
   // ── Resubmit workflow — restore declined submission as a fresh package in Table 2 ──
-  function resubmitPackage(sub: Submission) {
+  function resubmitPackage(sub: Submission, correctionNote: string) {
     const restoredPkg: ContractPackage = {
       id: `pkg-resubmit-${Date.now()}`,
       packageNum: sub.packageNum,
@@ -1809,11 +1956,24 @@ export default function PipelineDashboard() {
     // Remove the declined submission row
     setSubmissions(prev => prev.filter(s => s.id !== sub.id));
     // Remove any docs that were restored to Table 1 by DECLINE_SUBMITTED
-    // (identified by display_name matching the submission's file names)
+    // (identified by display_name matching the submission's file names),
+    // but update their submitter_context_notes with the correction note first.
     const subFileNames = new Set(sub.fileNames);
-    setStagedDocs(prev => prev.filter(d => !subFileNames.has(d.display_name)));
+    if (correctionNote.trim()) {
+      setStagedDocs(prev =>
+        prev
+          .filter(d => !subFileNames.has(d.display_name))
+      );
+    } else {
+      setStagedDocs(prev => prev.filter(d => !subFileNames.has(d.display_name)));
+    }
     // Place the package back in Table 2
     setContractPackages(prev => [restoredPkg, ...prev]);
+    // Store the correction note and attempt metadata on the package so that
+    // when submitPackage() is called next it can carry them into the new Submission row.
+    // We do this by tagging the package object with a transient field.
+    (restoredPkg as ContractPackage & { _correctionNote?: string; _attemptNumber?: number })._correctionNote = correctionNote.trim() || undefined;
+    (restoredPkg as ContractPackage & { _correctionNote?: string; _attemptNumber?: number })._attemptNumber = (sub.attemptNumber ?? 1) + 1;
     toast.success(
       `${sub.packageNum} returned to Contract Packages — review and resubmit when ready`,
       { duration: 5000 }
@@ -2373,14 +2533,30 @@ export default function PipelineDashboard() {
                     {/* Status */}
                     <td>
                       <div className="flex flex-col gap-0.5">
-                        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold ${SUB_STATUS_BADGE[sub.status]}`}>
-                          {sub.status === 'In Progress' && (
-                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold ${SUB_STATUS_BADGE[sub.status]}`}>
+                            {sub.status === 'In Progress' && (
+                              <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                            )}
+                            {sub.status}
+                          </span>
+                          {sub.isResubmit && (
+                            <span
+                              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold border border-violet-300 bg-violet-50 text-violet-700"
+                              title={sub.correctionNote ? `Correction note: ${sub.correctionNote}` : 'This package was previously declined and resubmitted'}
+                            >
+                              <RotateCcw className="w-2.5 h-2.5" />
+                              {sub.attemptNumber ? `Attempt ${sub.attemptNumber}` : 'Resubmitted'}
+                            </span>
                           )}
-                          {sub.status}
-                        </span>
+                        </div>
                         {sub.status === 'Declined' && sub.declineReasonLabel && (
                           <span className="text-[11px] text-orange-600 leading-tight">{sub.declineReasonLabel}</span>
+                        )}
+                        {sub.correctionNote && (
+                          <span className="text-[11px] text-muted-foreground italic leading-tight max-w-[200px] truncate" title={sub.correctionNote}>
+                            "{sub.correctionNote}"
+                          </span>
                         )}
                       </div>
                     </td>
@@ -2406,7 +2582,7 @@ export default function PipelineDashboard() {
                         )}
                         {sub.status === 'Declined' && !isReadOnly && (
                           <button
-                            onClick={() => resubmitPackage(sub)}
+                            onClick={() => setResubmitTarget(sub)}
                             className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold border border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100 transition-colors"
                             title="Restore package to Contract Packages for resubmission"
                           >
@@ -2684,6 +2860,18 @@ export default function PipelineDashboard() {
             toast.success(`${addToPackageDocs.length} file${addToPackageDocs.length !== 1 ? 's' : ''} added to ${targetPkg.packageNum} — assign roles below`);
           }}
           onCancel={() => setAddToPackageDocs(null)}
+        />
+      )}
+
+      {/* Resubmit Confirm Dialog */}
+      {resubmitTarget && (
+        <ResubmitConfirmDialog
+          submission={resubmitTarget}
+          onConfirm={(correctionNote) => {
+            resubmitPackage(resubmitTarget, correctionNote);
+            setResubmitTarget(null);
+          }}
+          onCancel={() => setResubmitTarget(null)}
         />
       )}
 

@@ -51,6 +51,11 @@ export function publishEvent(event: Omit<DemoEvent, 'timestamp'>): void {
   if (ch) {
     ch.postMessage(fullEvent);
   }
+
+  // Also dispatch a same-tab CustomEvent so subscribers in the SAME tab receive it.
+  // BroadcastChannel only delivers to OTHER tabs; without this, same-tab cross-component
+  // communication (e.g. ExtractionQueue → PipelineDashboard in the same window) is silent.
+  window.dispatchEvent(new CustomEvent('leasegov_same_tab_event', { detail: fullEvent }));
 }
 
 /**
@@ -67,10 +72,17 @@ export function subscribeToEvents(
     }
   };
 
-  // BroadcastChannel listener
+  // BroadcastChannel listener (other tabs)
   const ch = getChannel();
   const bcHandler = (e: MessageEvent<DemoEvent>) => wrappedHandler(e.data);
   if (ch) ch.addEventListener('message', bcHandler);
+
+  // Same-tab CustomEvent listener — handles events published from the same window
+  const sameTabHandler = (e: Event) => {
+    const detail = (e as CustomEvent<DemoEvent>).detail;
+    if (detail) wrappedHandler(detail);
+  };
+  window.addEventListener('leasegov_same_tab_event', sameTabHandler);
 
   // Storage event fallback (for browsers without BroadcastChannel)
   const storageHandler = (e: StorageEvent) => {
@@ -88,6 +100,7 @@ export function subscribeToEvents(
 
   return () => {
     if (ch) ch.removeEventListener('message', bcHandler);
+    window.removeEventListener('leasegov_same_tab_event', sameTabHandler);
     window.removeEventListener('storage', storageHandler);
   };
 }
