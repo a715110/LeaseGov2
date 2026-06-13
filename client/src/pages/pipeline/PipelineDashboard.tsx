@@ -24,7 +24,7 @@ import {
   Clock, Send, RefreshCw, Search, MoreHorizontal, Edit2, Layers,
   Eye, Trash2, ArrowRight, FileUp, CheckSquare, Square,
   Package, X, ChevronDown, ChevronUp, ChevronsUpDown, Unlink,
-  Archive, ExternalLink
+  Archive, ExternalLink, RotateCcw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -1336,16 +1336,51 @@ export default function PipelineDashboard() {
           reasonLabel: string;
           reason: string;
         };
-        setSubmissions(prev => prev.map(sub =>
-          // Primary match: batchRef on submission == batch_ref on ProcessingJob
-          // Fallback: packageNum or id match for dynamically-created submissions
-          (sub.batchRef === payload.batchRef ||
-           sub.packageNum === payload.submissionId ||
-           sub.id === payload.submissionId ||
-           sub.id === payload.batchRef)
-            ? { ...sub, status: 'Declined' as const, declineReasonLabel: payload.reasonLabel, declineReason: payload.reason }
-            : sub
-        ));
+        // Mark the matching submission as Declined
+        setSubmissions(prev => prev.map(sub => {
+          const isMatch =
+            sub.batchRef === payload.batchRef ||
+            sub.packageNum === payload.submissionId ||
+            sub.id === payload.submissionId ||
+            sub.id === payload.batchRef;
+          if (!isMatch) return sub;
+          // Restore the submission's documents back to Table 1 staging
+          // so the submitter can correct and re-package them.
+          const restoredDocs: StagedDocument[] = sub.files.map(f => {
+            const orig: 'valid' | 'invalid' =
+              (f as { originalStatus?: 'valid' | 'invalid' }).originalStatus ?? 'valid';
+            return {
+              id: `restored-decline-${f.docId}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+              display_name: f.name,
+              status: orig,
+              original_status: orig,
+              originalStatus: orig,
+              upload_date: new Date().toLocaleString('en-US', {
+                year: 'numeric', month: '2-digit', day: '2-digit',
+                hour: '2-digit', minute: '2-digit', hour12: false,
+              }).replace(',', ''),
+              uploader: sub.submittedBy,
+              mime_type: f.name.toLowerCase().endsWith('.tiff') || f.name.toLowerCase().endsWith('.tif')
+                ? 'image/tiff'
+                : 'application/pdf',
+              file_size_bytes: 0,
+              page_count: null,
+              workspace_tag: sub.workspace,
+              target_record_id: null,
+              submission_path: null,
+              submitter_context_notes: null,
+              document_job_status: 'staged' as const,
+            };
+          });
+          // Prepend restored docs to Table 1
+          setStagedDocs(prev => [...restoredDocs, ...prev]);
+          return {
+            ...sub,
+            status: 'Declined' as const,
+            declineReasonLabel: payload.reasonLabel,
+            declineReason: payload.reason,
+          };
+        }));
       }
     });
     return () => unsub();
@@ -1756,6 +1791,33 @@ export default function PipelineDashboard() {
     setSubmissions(prev => prev.filter(s => s.id !== sub.id));
     setContractPackages(prev => [restored, ...prev]);
     toast.success('Package unsubmitted — returned to Contract Packages');
+  }
+
+  // ── Resubmit workflow — restore declined submission as a fresh package in Table 2 ──
+  function resubmitPackage(sub: Submission) {
+    const restoredPkg: ContractPackage = {
+      id: `pkg-resubmit-${Date.now()}`,
+      packageNum: sub.packageNum,
+      packageName: sub.packageName,
+      mode: sub.mode,
+      files: sub.files,
+      workspace: sub.workspace,
+      createdBy: sub.submittedBy,
+      createdAt: new Date().toISOString(),
+      status: sub.files.every(f => f.role !== 'Undefined') ? 'Ready' : 'Pending',
+    };
+    // Remove the declined submission row
+    setSubmissions(prev => prev.filter(s => s.id !== sub.id));
+    // Remove any docs that were restored to Table 1 by DECLINE_SUBMITTED
+    // (identified by display_name matching the submission's file names)
+    const subFileNames = new Set(sub.fileNames);
+    setStagedDocs(prev => prev.filter(d => !subFileNames.has(d.display_name)));
+    // Place the package back in Table 2
+    setContractPackages(prev => [restoredPkg, ...prev]);
+    toast.success(
+      `${sub.packageNum} returned to Contract Packages — review and resubmit when ready`,
+      { duration: 5000 }
+    );
   }
 
   // ── Inline rename ──
@@ -2340,6 +2402,16 @@ export default function PipelineDashboard() {
                             title="Unsubmit this package"
                           >
                             Unsubmit
+                          </button>
+                        )}
+                        {sub.status === 'Declined' && !isReadOnly && (
+                          <button
+                            onClick={() => resubmitPackage(sub)}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold border border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100 transition-colors"
+                            title="Restore package to Contract Packages for resubmission"
+                          >
+                            <RotateCcw className="w-3 h-3" />
+                            Resubmit
                           </button>
                         )}
                       </div>
