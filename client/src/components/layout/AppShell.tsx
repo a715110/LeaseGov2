@@ -485,7 +485,7 @@ export default function AppShell({
   return (
     /* Root is fixed to the viewport — completely detaches layout from document scroll.
        This means NO element inside can cause the page to scroll horizontally. */
-    <div className="fixed inset-0 flex overflow-hidden bg-background">
+    <div className="fixed inset-0 flex overflow-hidden bg-background" style={{ touchAction: 'pan-y', overscrollBehavior: 'none' }}>
       {/* ── Sidebar — fixed within the root viewport container ── */}
       <aside
         className={cn(
@@ -686,7 +686,7 @@ export default function AppShell({
         </header>
 
         {/* Page content — vertical scroll here, horizontal scroll contained per-page */}
-        <main className="flex-1 overflow-y-auto overflow-x-hidden">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden" style={{ touchAction: 'pan-y', overscrollBehavior: 'none' }}>
           {children}
         </main>
       </div>
