@@ -832,7 +832,7 @@ export default function ExtractionQueue() {
     : jobs.filter(j => j.status === activeTab);
 
   return (
-    <div className="flex flex-col min-h-full bg-[var(--color-lg-page-bg)]">
+    <div className="flex flex-col min-h-full min-w-0 bg-[var(--color-lg-page-bg)]">
       {/* Header */}
       <div className="page-header">
         <div>
@@ -871,10 +871,10 @@ export default function ExtractionQueue() {
       </div>
 
       {/* Content */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden min-w-0">
         {/* Table */}
-        <div className={`flex-1 overflow-auto ${selectedJob ? '' : 'w-full'}`}>
-          <table className="data-table w-full text-[13px]">
+        <div className={`flex-1 overflow-auto min-w-0 ${selectedJob ? '' : 'w-full'}`}>
+          <table className="data-table w-full min-w-[900px] text-[13px]">
             <thead>
               <tr>
                 <th className="text-left">Job ID</th>

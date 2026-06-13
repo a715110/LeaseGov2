@@ -1745,7 +1745,7 @@ export default function PipelineDashboard() {
   }
 
   return (
-    <div className="flex flex-col gap-6 p-6 min-h-full bg-[var(--color-lg-page-bg)]">
+    <div className="flex flex-col gap-6 p-6 min-h-full min-w-0 bg-[var(--color-lg-page-bg)]">
 
       {/* ── Page header ── */}
       <div className="flex items-center justify-between">

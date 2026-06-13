@@ -112,7 +112,7 @@ export default function ExportUploadTask() {
 
   if (taskStatus === "completed") {
     return (
-      <div className="flex flex-col min-h-full bg-[var(--color-lg-page-bg)]">
+      <div className="flex flex-col min-h-full min-w-0 bg-[var(--color-lg-page-bg)]">
         {/* Success banner */}
         <div className="px-6 py-5" style={{ background:"var(--color-lg-success)", color:"white" }}>
           <div className="flex items-center gap-3">
@@ -165,7 +165,7 @@ export default function ExportUploadTask() {
 
   if (taskStatus === "failed") {
     return (
-      <div className="flex flex-col min-h-full bg-[var(--color-lg-page-bg)]">
+      <div className="flex flex-col min-h-full min-w-0 bg-[var(--color-lg-page-bg)]">
         <div className="px-6 py-5" style={{ background:"var(--color-lg-error)", color:"white" }}>
           <div className="flex items-center gap-3">
             <AlertTriangle className="w-6 h-6" />
@@ -185,7 +185,7 @@ export default function ExportUploadTask() {
   }
 
   return (
-    <div className="flex flex-col min-h-full bg-[var(--color-lg-page-bg)]">
+    <div className="flex flex-col min-h-full min-w-0 bg-[var(--color-lg-page-bg)]">
       <div className="page-header">
         <div>
           <div className="flex items-center gap-2 mb-1">

@@ -71,7 +71,7 @@ export default function ExtractionReprocessing() {
   }
 
   return (
-    <div className="flex flex-col min-h-full bg-[var(--color-lg-page-bg)] items-center justify-center p-6">
+    <div className="flex flex-col min-h-full min-w-0 bg-[var(--color-lg-page-bg)] items-center justify-center p-6">
       <div className="w-full max-w-[500px] rounded-xl bg-card border border-border shadow-lg overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">

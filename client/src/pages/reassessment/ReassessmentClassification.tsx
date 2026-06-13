@@ -126,7 +126,7 @@ export default function ReassessmentClassification() {
   if (submitted) {
     const r = resultConfig[result || "reassessment"];
     return (
-      <div className="flex flex-col min-h-full bg-[var(--color-lg-page-bg)] items-center justify-center p-12">
+      <div className="flex flex-col min-h-full min-w-0 bg-[var(--color-lg-page-bg)] items-center justify-center p-12">
         <div className="flex flex-col items-center gap-4 text-center max-w-sm">
           <CheckCircle2 className="w-12 h-12" style={{ color:"var(--color-lg-success)" }} />
           <p className="text-[18px] font-bold text-foreground">Classification Submitted</p>
@@ -143,7 +143,7 @@ export default function ReassessmentClassification() {
   }
 
   return (
-    <div className="flex flex-col min-h-full bg-[var(--color-lg-page-bg)]">
+    <div className="flex flex-col min-h-full min-w-0 bg-[var(--color-lg-page-bg)]">
       {/* Remediation banner */}
       {MOCK_CASE.concurrent_case_ids.length > 0 && (
         <div className="px-6 py-3 border-b flex items-center gap-3" style={{ background:"var(--color-lg-warning-subtle)", borderColor:"var(--color-lg-warning)" }}>

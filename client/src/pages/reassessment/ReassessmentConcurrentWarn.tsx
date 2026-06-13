@@ -54,7 +54,7 @@ export default function ReassessmentConcurrentWarn() {
 
   if (dismissed) {
     return (
-      <div className="flex flex-col min-h-full bg-[var(--color-lg-page-bg)] items-center justify-center p-12">
+      <div className="flex flex-col min-h-full min-w-0 bg-[var(--color-lg-page-bg)] items-center justify-center p-12">
         <div className="flex flex-col items-center gap-4 text-center max-w-sm">
           <p className="text-[16px] font-semibold text-foreground">Warning Acknowledged</p>
           <p className="text-[13px] text-muted-foreground">You may now proceed with the classification step.</p>
@@ -67,7 +67,7 @@ export default function ReassessmentConcurrentWarn() {
   }
 
   return (
-    <div className="flex flex-col min-h-full bg-[var(--color-lg-page-bg)]">
+    <div className="flex flex-col min-h-full min-w-0 bg-[var(--color-lg-page-bg)]">
       <div className="page-header">
         <div>
           <div className="flex items-center gap-2 mb-1">

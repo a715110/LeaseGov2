@@ -74,7 +74,7 @@ export default function ReassessmentRemediation() {
 
   if (submitted) {
     return (
-      <div className="flex flex-col min-h-full bg-[var(--color-lg-page-bg)] items-center justify-center p-12">
+      <div className="flex flex-col min-h-full min-w-0 bg-[var(--color-lg-page-bg)] items-center justify-center p-12">
         <div className="flex flex-col items-center gap-4 text-center max-w-sm">
           <CheckCircle2 className="w-12 h-12" style={{ color:"var(--color-lg-success)" }} />
           <p className="text-[18px] font-bold text-foreground">Submitted for Escalated Approval</p>
@@ -86,7 +86,7 @@ export default function ReassessmentRemediation() {
   }
 
   return (
-    <div className="flex flex-col min-h-full bg-[var(--color-lg-page-bg)]">
+    <div className="flex flex-col min-h-full min-w-0 bg-[var(--color-lg-page-bg)]">
       {/* Remediation header banner */}
       <div
         className="px-6 py-3 border-b flex items-center gap-3"

@@ -100,7 +100,7 @@ export default function PackagesReassembly() {
   const removedDocs = ev.before_docs.filter(d => !afterIds.has(d.name));
 
   return (
-    <div className="flex flex-col min-h-full bg-[var(--color-lg-page-bg)]">
+    <div className="flex flex-col min-h-full min-w-0 bg-[var(--color-lg-page-bg)]">
       <div className="page-header">
         <div>
           <div className="flex items-center gap-3 flex-wrap">

@@ -624,7 +624,7 @@ export default function AppShell({
       </aside>
 
       {/* ── Main content ── */}
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex flex-1 min-w-0 flex-col overflow-hidden">
         {/* Top header bar */}
         <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-background px-4 gap-3">
           {/* Left: collapse toggle + breadcrumb */}

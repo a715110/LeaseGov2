@@ -80,7 +80,7 @@ export default function ReassessmentAnalysis() {
 
   if (submitted) {
     return (
-      <div className="flex flex-col min-h-full bg-[var(--color-lg-page-bg)] items-center justify-center p-12">
+      <div className="flex flex-col min-h-full min-w-0 bg-[var(--color-lg-page-bg)] items-center justify-center p-12">
         <div className="flex flex-col items-center gap-4 text-center max-w-sm">
           <CheckCircle2 className="w-12 h-12" style={{ color:"var(--color-lg-success)" }} />
           <p className="text-[18px] font-bold text-foreground">Submitted for Approval</p>
@@ -95,7 +95,7 @@ export default function ReassessmentAnalysis() {
   }
 
   return (
-    <div className="flex flex-col min-h-full bg-[var(--color-lg-page-bg)]">
+    <div className="flex flex-col min-h-full min-w-0 bg-[var(--color-lg-page-bg)]">
       {MOCK_CASE.is_remediation && (
         <div className="px-6 py-3 border-b flex items-center gap-3" style={{ background:"var(--color-lg-error-subtle)", borderColor:"var(--color-lg-error)" }}>
           <AlertTriangle className="w-4 h-4" style={{ color:"var(--color-lg-error)" }} />

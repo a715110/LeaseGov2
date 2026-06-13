@@ -99,7 +99,7 @@ export default function ExtractionStrategy() {
   }, [search]);
 
   return (
-    <div className="flex flex-col min-h-full bg-[var(--color-lg-page-bg)]">
+    <div className="flex flex-col min-h-full min-w-0 bg-[var(--color-lg-page-bg)]">
       <div className="page-header">
         <div className="flex items-center gap-3">
           <button
