@@ -44,7 +44,7 @@ import { UploadDialog } from '@/components/pipeline/UploadDialog';
 import type { StagedFile as UploadedFile } from '@/components/pipeline/UploadDialog';
 import { toast } from 'sonner';
 import { SCREEN_KEYS } from '@/constants/screenKeys';
-import { publishEvent, subscribeToEvents } from '@/lib/eventBus';
+import { publishEvent, subscribeToEvents, getEventHistory } from '@/lib/eventBus';
 import { useRole } from '@/contexts/RoleContext';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { usePipelineCounts } from '@/contexts/PipelineCountsContext';
@@ -1414,15 +1414,25 @@ export default function PipelineDashboard() {
   // DECLINE_SUBMITTED events fired while unmounted appear immediately on mount. ──
   const [stagedDocs, setStagedDocs] = useState<StagedDocument[]>(() => {
     try {
-      const raw = localStorage.getItem('leasegov_demo_events') || localStorage.getItem('dodesk_demo_events');
-      if (!raw) return MOCK_DOCUMENTS;
-      const events: Array<{ type: string; payload: Record<string, unknown>; timestamp?: string }> = JSON.parse(raw);
+      const events = getEventHistory();
       const declineEvents = events.filter(e => e.type === 'DECLINE_SUBMITTED');
       if (declineEvents.length === 0) return MOCK_DOCUMENTS;
       // For each decline event, restore the matching submission's files to staging.
       // We cross-reference INITIAL_SUBMISSIONS to get the file list.
-      const extraDocs: StagedDocument[] = [];
+      // Deduplicate: keep only the LATEST decline event per batchRef.
+      const latestByBatch = new Map<string, typeof declineEvents[0]>();
       for (const ev of declineEvents) {
+        const key = String(ev.payload.batchRef ?? ev.payload.submissionId ?? ev.timestamp);
+        const existing = latestByBatch.get(key);
+        if (!existing || new Date(ev.timestamp) > new Date(existing.timestamp)) {
+          latestByBatch.set(key, ev);
+        }
+      }
+      // Track which docIds have already been added to avoid duplicates.
+      const addedDocIds = new Set<string>();
+      const mockDocIds = new Set(MOCK_DOCUMENTS.map(d => d.id));
+      const extraDocs: StagedDocument[] = [];
+      for (const ev of Array.from(latestByBatch.values())) {
         const matchedSub = INITIAL_SUBMISSIONS.find(sub =>
           sub.batchRef === ev.payload.batchRef ||
           sub.packageNum === ev.payload.submissionId ||
@@ -1431,10 +1441,14 @@ export default function PipelineDashboard() {
         );
         if (!matchedSub) continue;
         for (const f of matchedSub.files) {
+          const restoredId = `restored-decline-${f.docId}-hydrated`;
+          // Skip if already added or already in MOCK_DOCUMENTS
+          if (addedDocIds.has(restoredId) || mockDocIds.has(restoredId)) continue;
+          addedDocIds.add(restoredId);
           const orig: 'valid' | 'invalid' =
             (f as { originalStatus?: 'valid' | 'invalid' }).originalStatus ?? 'valid';
           extraDocs.push({
-            id: `restored-decline-${f.docId}-hydrated`,
+            id: restoredId,
             display_name: f.name,
             status: orig,
             original_status: orig,
@@ -1504,9 +1518,7 @@ export default function PipelineDashboard() {
   // are reflected immediately on mount. ──
   const [submissions, setSubmissions] = useState<Submission[]>(() => {
     try {
-      const raw = localStorage.getItem('leasegov_demo_events') || localStorage.getItem('dodesk_demo_events');
-      if (!raw) return INITIAL_SUBMISSIONS;
-      const events: Array<{ type: string; payload: Record<string, string> }> = JSON.parse(raw);
+      const events = getEventHistory();
       const declineEvents = events.filter(e => e.type === 'DECLINE_SUBMITTED');
       if (declineEvents.length === 0) return INITIAL_SUBMISSIONS;
       return INITIAL_SUBMISSIONS.map(sub => {
@@ -1520,8 +1532,8 @@ export default function PipelineDashboard() {
         return {
           ...sub,
           status: 'Declined' as const,
-          declineReasonLabel: match.payload.reasonLabel,
-          declineReason: match.payload.reason,
+          declineReasonLabel: match.payload.reasonLabel as string | undefined,
+          declineReason: match.payload.reason as string | undefined,
         };
       });
     } catch {
@@ -1639,9 +1651,7 @@ export default function PipelineDashboard() {
   // while this component was unmounted (e.g. user was on Extraction Queue page). ──
   useEffect(() => {
     try {
-      const raw = localStorage.getItem('leasegov_demo_events') || localStorage.getItem('dodesk_demo_events');
-      if (!raw) return;
-      const events: Array<{ type: string; payload: Record<string, unknown>; timestamp?: string }> = JSON.parse(raw);
+      const events = getEventHistory();
       const declineEvents = events.filter(e => e.type === 'DECLINE_SUBMITTED');
       for (const ev of declineEvents) {
         const matchedSub = INITIAL_SUBMISSIONS.find(sub =>
