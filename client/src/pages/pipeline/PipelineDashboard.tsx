@@ -1856,19 +1856,19 @@ export default function PipelineDashboard() {
                     </button>
                   </th>
                   <th className="text-left">File Name</th>
-                  <th className="text-left">Type</th>
+                  <th className="text-left hidden lg:table-cell">Type</th>
                   <th className="text-left">Workspace</th>
                   <th className="text-left">Record</th>
-                  <th className="text-left">Uploaded</th>
+                  <th className="text-left hidden lg:table-cell">Uploaded</th>
                   <th></th>
                 </tr>
                 {/* Column filters */}
                 <tr className="bg-muted/20">
                   <th />
                   <th className="px-3 py-1"><ColFilter value={colFilters.name} onChange={v => setColFilters(f => ({ ...f, name: v }))} placeholder="Filter name…" /></th>
-                  <th />
+                  <th className="hidden lg:table-cell" />
                   <th className="px-3 py-1"><ColFilter value={colFilters.workspace} onChange={v => setColFilters(f => ({ ...f, workspace: v }))} placeholder="Filter workspace…" /></th>
-                  <th /><th /><th />
+                  <th /><th className="hidden lg:table-cell" /><th />
                 </tr>
               </thead>
               <tbody>
@@ -1889,7 +1889,7 @@ export default function PipelineDashboard() {
                         </div>
                       </td>
                       {/* Type */}
-                      <td>
+                      <td className="hidden lg:table-cell">
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-muted text-muted-foreground border border-border">
                           {getMimeLabel(doc.mime_type)}
                         </span>
@@ -1939,7 +1939,7 @@ export default function PipelineDashboard() {
                         }
                       </td>
                       {/* Uploaded */}
-                      <td className="font-mono text-[12px] text-muted-foreground">{doc.upload_date}</td>
+                      <td className="hidden lg:table-cell font-mono text-[12px] text-muted-foreground">{doc.upload_date}</td>
                       {/* Actions — V3 context-sensitive */}
                       <td>
                         <div className="flex items-center gap-1">
@@ -2068,14 +2068,14 @@ export default function PipelineDashboard() {
               <thead>
                 <tr>
                   {([
-                    { col: 'packageNum', label: 'Package ID' },
-                    { col: 'files',      label: 'Docs' },
-                    { col: null,         label: 'Target Record' },
-                    { col: null,         label: 'Roles' },
-                    { col: 'status',     label: 'Status' },
-                    { col: null,         label: 'Actions' },
-                  ] as { col: string | null; label: string }[]).map(({ col, label }) => (
-                    <th key={label} className="text-left">
+                    { col: 'packageNum', label: 'Package ID',    hide: false },
+                    { col: 'files',      label: 'Docs',          hide: true  },
+                    { col: null,         label: 'Target Record', hide: false },
+                    { col: null,         label: 'Roles',         hide: true  },
+                    { col: 'status',     label: 'Status',        hide: false },
+                    { col: null,         label: 'Actions',       hide: false },
+                  ] as { col: string | null; label: string; hide: boolean }[]).map(({ col, label, hide }) => (
+                    <th key={label} className={`text-left${hide ? ' hidden lg:table-cell' : ''}`}>
                       {col ? (
                         <button
                           onClick={() => togglePkgSort(col)}
@@ -2096,7 +2096,7 @@ export default function PipelineDashboard() {
                 </tr>
                 <tr className="bg-muted/20">
                   <th className="px-3 py-1"><ColFilter value={pkgColFilters.packageNum} onChange={v => setPkgColFilters(f => ({ ...f, packageNum: v }))} placeholder="Filter #…" /></th>
-                  <th /><th /><th /><th /><th />
+                  <th className="hidden lg:table-cell" /><th /><th className="hidden lg:table-cell" /><th /><th />
                 </tr>
               </thead>
               <tbody>
@@ -2119,7 +2119,7 @@ export default function PipelineDashboard() {
                         </div>
                       </td>
                       {/* Docs count */}
-                      <td className="text-muted-foreground">{pkg.files.length}</td>
+                      <td className="hidden lg:table-cell text-muted-foreground">{pkg.files.length}</td>
                       {/* Target Record */}
                       <td>
                         {targetRec ? (
@@ -2133,7 +2133,7 @@ export default function PipelineDashboard() {
                         )}
                       </td>
                       {/* Role completeness badge */}
-                      <td>
+                      <td className="hidden lg:table-cell">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold border ${
                           rolesComplete
                             ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
@@ -2241,15 +2241,15 @@ export default function PipelineDashboard() {
               <thead>
                 <tr>
                   {([
-                    { col: null,          label: 'Batch ID' },
-                    { col: 'packageNum',  label: 'Package' },
-                    { col: null,          label: 'Target Record' },
-                    { col: 'files',       label: 'Files' },
-                    { col: 'submitDate',  label: 'Submitted At' },
-                    { col: 'status',      label: 'Status' },
-                    { col: null,          label: 'Actions' },
-                  ] as { col: string | null; label: string }[]).map(({ col, label }) => (
-                    <th key={label} className="text-left">
+                    { col: null,          label: 'Batch ID',      hide: false },
+                    { col: 'packageNum',  label: 'Package',       hide: false },
+                    { col: null,          label: 'Target Record', hide: false },
+                    { col: 'files',       label: 'Files',         hide: true  },
+                    { col: 'submitDate',  label: 'Submitted At',  hide: true  },
+                    { col: 'status',      label: 'Status',        hide: false },
+                    { col: null,          label: 'Actions',       hide: false },
+                  ] as { col: string | null; label: string; hide: boolean }[]).map(({ col, label, hide }) => (
+                    <th key={label} className={`text-left${hide ? ' hidden lg:table-cell' : ''}`}>
                       {col ? (
                         <button
                           onClick={() => toggleSubSort(col)}
@@ -2271,7 +2271,7 @@ export default function PipelineDashboard() {
                 <tr className="bg-muted/20">
                   <th />
                   <th className="px-3 py-1"><ColFilter value={subColFilters.packageNum} onChange={v => setSubColFilters(f => ({ ...f, packageNum: v }))} placeholder="Filter #…" /></th>
-                  <th /><th /><th /><th /><th />
+                  <th /><th className="hidden lg:table-cell" /><th className="hidden lg:table-cell" /><th /><th />
                 </tr>
               </thead>
               <tbody>
@@ -2305,9 +2305,9 @@ export default function PipelineDashboard() {
                       )}
                     </td>
                     {/* Files */}
-                    <td className="text-muted-foreground">{sub.fileCount}</td>
+                    <td className="hidden lg:table-cell text-muted-foreground">{sub.fileCount}</td>
                     {/* Submitted At */}
-                    <td className="text-muted-foreground text-[12px]">{formatDate(sub.submitDate)}</td>
+                    <td className="hidden lg:table-cell text-muted-foreground text-[12px]">{formatDate(sub.submitDate)}</td>
                     {/* Status */}
                     <td>
                       <div className="flex flex-col gap-0.5">
