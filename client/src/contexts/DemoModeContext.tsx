@@ -111,6 +111,8 @@ export function DemoModeProvider({
   }, [ACTIVE_KEY, STEP_KEY]);
 
   const resetDemo = useCallback(() => {
+    // DEMO ONLY: clear event history and broadcast reset to all open tabs.
+    // PRODUCTION: remove this entire resetDemo function; demo infrastructure not needed.
     // 1. Clear all cross-tab event history from localStorage
     clearEventHistory();
     // 2. Broadcast DEMO_RESET so every open tab resets to its role's starting screen
@@ -121,7 +123,8 @@ export function DemoModeProvider({
     setCurrentStepIndex(firstGlobal >= 0 ? firstGlobal : 0);
   }, [getActiveRole]);
 
-  // Listen for DEMO_RESET broadcast from other tabs
+  // DEMO ONLY: Listen for DEMO_RESET broadcast from other tabs.
+  // PRODUCTION: remove this entire block.
   useEffect(() => {
     const unsubscribe = subscribeToEvents((event) => {
       if (event.type === 'DEMO_RESET') {

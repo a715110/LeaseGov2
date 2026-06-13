@@ -890,6 +890,8 @@ export default function PipelineReviewGrouping() {
           onConfirm={() => {
             setShowSubmissionPanel(false);
             // V3 Change 4 — fire BATCH_SUBMITTED in-place, no intermediate confirm page
+            // DEMO ONLY: notify Preparer tab that a new batch is ready for extraction.
+            // PRODUCTION: replace with: await api.post('/api/v1/submissions', { batchId, files, ... })
             const batchId = `BATCH-${Date.now().toString(36).toUpperCase()}`;
             const pkgNum = `PKG-${Date.now().toString(36).toUpperCase()}`;
             publishEvent({

@@ -69,8 +69,9 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
   const unreadCount = notifications.filter(n => !n.readAt).length
 
-  // Wire BATCH_SUBMITTED → in-app notification so the bell badge increments
-  // when a new batch enters the extraction queue.
+  // DEMO ONLY: Wire BATCH_SUBMITTED → in-app notification.
+  // PRODUCTION: replace with a real push notification subscription (WebSocket/SSE or polling).
+  // The backend will send a notification when a new batch enters the extraction queue.
   useEffect(() => {
     const unsub = subscribeToEvents(
       (event) => {

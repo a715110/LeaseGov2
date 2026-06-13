@@ -44,7 +44,7 @@ import { UploadDialog } from '@/components/pipeline/UploadDialog';
 import type { StagedFile as UploadedFile } from '@/components/pipeline/UploadDialog';
 import { toast } from 'sonner';
 import { SCREEN_KEYS } from '@/constants/screenKeys';
-import { publishEvent, subscribeToEvents, getEventHistory } from '@/lib/eventBus';
+import { publishEvent, subscribeToEvents } from '@/lib/eventBus';
 import { useRole } from '@/contexts/RoleContext';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { usePipelineCounts } from '@/contexts/PipelineCountsContext';
@@ -1410,76 +1410,9 @@ export default function PipelineDashboard() {
     };
   }, []);
 
-  // ── Stage Documents state — hydrate from event history so docs restored by
-  // DECLINE_SUBMITTED events fired while unmounted appear immediately on mount. ──
-  const [stagedDocs, setStagedDocs] = useState<StagedDocument[]>(() => {
-    try {
-      const events = getEventHistory();
-      const declineEvents = events.filter(e => e.type === 'DECLINE_SUBMITTED');
-      if (declineEvents.length === 0) return MOCK_DOCUMENTS;
-      // For each decline event, restore the matching submission's files to staging.
-      // We cross-reference INITIAL_SUBMISSIONS to get the file list.
-      // Deduplicate: keep only the LATEST decline event per batchRef.
-      const latestByBatch = new Map<string, typeof declineEvents[0]>();
-      for (const ev of declineEvents) {
-        const key = String(ev.payload.batchRef ?? ev.payload.submissionId ?? ev.timestamp);
-        const existing = latestByBatch.get(key);
-        if (!existing || new Date(ev.timestamp) > new Date(existing.timestamp)) {
-          latestByBatch.set(key, ev);
-        }
-      }
-      // Track which docIds/filenames have already been added to avoid duplicates.
-      const addedDocIds = new Set<string>();
-      const mockDocNames = new Set(MOCK_DOCUMENTS.map(d => d.display_name?.toLowerCase()));
-      const extraDocs: StagedDocument[] = [];
-      for (const ev of Array.from(latestByBatch.values())) {
-        const matchedSub = INITIAL_SUBMISSIONS.find(sub =>
-          sub.batchRef === ev.payload.batchRef ||
-          sub.packageNum === ev.payload.submissionId ||
-          sub.id === ev.payload.submissionId ||
-          sub.id === ev.payload.batchRef
-        );
-        if (!matchedSub) continue;
-        for (const f of matchedSub.files) {
-          const restoredId = `restored-decline-${f.docId}-hydrated`;
-          // Skip if already added or if a doc with the same filename already exists in MOCK_DOCUMENTS
-          if (addedDocIds.has(restoredId) || mockDocNames.has(f.name?.toLowerCase())) continue;
-          addedDocIds.add(restoredId);
-          const orig: 'valid' | 'invalid' =
-            (f as { originalStatus?: 'valid' | 'invalid' }).originalStatus ?? 'valid';
-          extraDocs.push({
-            id: restoredId,
-            display_name: f.name,
-            status: orig,
-            original_status: orig,
-            originalStatus: orig,
-            upload_date: ev.timestamp
-              ? new Date(ev.timestamp).toLocaleString('en-US', {
-                  year: 'numeric', month: '2-digit', day: '2-digit',
-                  hour: '2-digit', minute: '2-digit', hour12: false,
-                }).replace(',', '')
-              : new Date().toLocaleString('en-US', {
-                  year: 'numeric', month: '2-digit', day: '2-digit',
-                  hour: '2-digit', minute: '2-digit', hour12: false,
-                }).replace(',', ''),
-            uploader: matchedSub.submittedBy,
-            mime_type: f.name.toLowerCase().endsWith('.tiff') || f.name.toLowerCase().endsWith('.tif')
-              ? 'image/tiff' : 'application/pdf',
-            file_size_bytes: 0,
-            page_count: null,
-            workspace_tag: matchedSub.workspace,
-            target_record_id: null,
-            submission_path: null,
-            submitter_context_notes: null,
-            document_job_status: 'staged' as const,
-          });
-        }
-      }
-      return [...extraDocs, ...MOCK_DOCUMENTS];
-    } catch {
-      return MOCK_DOCUMENTS;
-    }
-  });
+  // ── Stage Documents state ──
+  // PRODUCTION: replace MOCK_DOCUMENTS with: const { data } = useQuery(['stagedDocs'], api.get('/api/v1/pipeline/staged'))
+  const [stagedDocs, setStagedDocs] = useState<StagedDocument[]>(MOCK_DOCUMENTS);
   const [searchQuery, setSearchQuery] = useState('');
   const [colFilters, setColFilters] = useState({ name: '', uploader: '', workspace: '' });
   // Tab: 'active' = staging pipeline, 'committed' = audit view
@@ -1513,33 +1446,9 @@ export default function PipelineDashboard() {
   const [renameValue, setRenameValue] = useState('');
   const renameInputRef = useRef<HTMLInputElement>(null);
 
-  // ── Submissions state — hydrate from event history so DECLINE_SUBMITTED events
-  // fired while this component was unmounted (e.g. user was on Extraction Queue)
-  // are reflected immediately on mount. ──
-  const [submissions, setSubmissions] = useState<Submission[]>(() => {
-    try {
-      const events = getEventHistory();
-      const declineEvents = events.filter(e => e.type === 'DECLINE_SUBMITTED');
-      if (declineEvents.length === 0) return INITIAL_SUBMISSIONS;
-      return INITIAL_SUBMISSIONS.map(sub => {
-        const match = declineEvents.find(e =>
-          sub.batchRef === e.payload.batchRef ||
-          sub.packageNum === e.payload.submissionId ||
-          sub.id === e.payload.submissionId ||
-          sub.id === e.payload.batchRef
-        );
-        if (!match) return sub;
-        return {
-          ...sub,
-          status: 'Declined' as const,
-          declineReasonLabel: match.payload.reasonLabel as string | undefined,
-          declineReason: match.payload.reason as string | undefined,
-        };
-      });
-    } catch {
-      return INITIAL_SUBMISSIONS;
-    }
-  });
+  // ── Submissions state ──
+  // PRODUCTION: replace INITIAL_SUBMISSIONS with: const { data } = useQuery(['submissions'], api.get('/api/v1/submissions'))
+  const [submissions, setSubmissions] = useState<Submission[]>(INITIAL_SUBMISSIONS);
   const [subColFilters, setSubColFilters] = useState({ packageNum: '', name: '', workspace: '', submittedBy: '' });
   const [subStatusFilter, setSubStatusFilter] = useState<'all' | 'Pending' | 'In Progress' | 'Completed' | 'Failed' | 'Declined'>('all');
   const [subSort, setSubSort] = useState<{ col: string; dir: 'asc' | 'desc' } | null>(() => {
@@ -1565,7 +1474,10 @@ export default function PipelineDashboard() {
     setApprovalsCount(readyPkgs);
   }, [contractPackages, setApprovalsCount]);
 
-  // Clear pipeline state when a batch is confirmed from PipelineSubmitConfirm
+  // DEMO ONLY: React to cross-role events (PIPELINE_BATCH_CLEARED, DECLINE_SUBMITTED).
+  // PRODUCTION: replace with real-time backend subscriptions (WebSocket/SSE) or polling queries.
+  //   PIPELINE_BATCH_CLEARED → invalidate ['stagedDocs'] and ['contractPackages'] queries
+  //   DECLINE_SUBMITTED      → invalidate ['submissions'] query; backend sends push notification
   useEffect(() => {
     const unsub = subscribeToEvents((event) => {
       if (event.type === 'PIPELINE_BATCH_CLEARED') {
@@ -1647,140 +1559,15 @@ export default function PipelineDashboard() {
     return () => unsub();
   }, [addNotification]);
 
-  // ── On mount: fire notifications for any DECLINE_SUBMITTED events that fired
-  // while this component was unmounted (e.g. user was on Extraction Queue page). ──
-  useEffect(() => {
-    try {
-      const events = getEventHistory();
-      const declineEvents = events.filter(e => e.type === 'DECLINE_SUBMITTED');
-      for (const ev of declineEvents) {
-        const matchedSub = INITIAL_SUBMISSIONS.find(sub =>
-          sub.batchRef === ev.payload.batchRef ||
-          sub.packageNum === ev.payload.submissionId ||
-          sub.id === ev.payload.submissionId ||
-          sub.id === ev.payload.batchRef
-        );
-        if (!matchedSub) continue;
-        const reasonLabel = (ev.payload.reasonLabel as string) || (ev.payload.reason as string) || 'Submission declined';
-        const fileCount = matchedSub.files.length;
-        addNotification({
-          title: `${matchedSub.packageNum} submission declined`,
-          body: `Reason: ${reasonLabel}. ${fileCount} file${fileCount !== 1 ? 's' : ''} returned to Stage Documents for correction.`,
-          severity: 'error',
-          href: '/pipeline/dashboard',
-        });
-      }
-    } catch {
-      // ignore
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // run once on mount only
-
-  // ── Re-hydrate on mount from event history — belt-and-suspenders fallback.
-  // The useState initializer runs synchronously at creation, but in some browsers
-  // the navigation timing means localStorage isn't fully flushed yet. This useEffect
-  // runs after the first paint and applies any DECLINE_SUBMITTED events that the
-  // initializer may have missed. ──
-  useEffect(() => {
-    try {
-      const events = getEventHistory();
-      const declineEvents = events.filter(e => e.type === 'DECLINE_SUBMITTED');
-      if (declineEvents.length === 0) return;
-
-      // Re-apply declined status to submissions
-      setSubmissions(prev => prev.map(sub => {
-        const match = declineEvents.find(e =>
-          sub.batchRef === e.payload.batchRef ||
-          sub.packageNum === e.payload.submissionId ||
-          sub.id === e.payload.submissionId ||
-          sub.id === e.payload.batchRef
-        );
-        if (!match || sub.status === 'Declined') return sub;
-        return {
-          ...sub,
-          status: 'Declined' as const,
-          declineReasonLabel: match.payload.reasonLabel as string | undefined,
-          declineReason: match.payload.reason as string | undefined,
-        };
-      }));
-
-      // Restore docs to Table 1 if not already present
-      const latestByBatch = new Map<string, typeof declineEvents[0]>();
-      for (const ev of declineEvents) {
-        const key = String(ev.payload.batchRef ?? ev.payload.submissionId ?? ev.timestamp);
-        const existing = latestByBatch.get(key);
-        if (!existing || new Date(ev.timestamp) > new Date(existing.timestamp)) {
-          latestByBatch.set(key, ev);
-        }
-      }
-      setStagedDocs(prev => {
-        const existingIds = new Set(prev.map(d => d.id));
-        const existingNames = new Set(prev.map(d => d.display_name?.toLowerCase()));
-        const toAdd: StagedDocument[] = [];
-        for (const ev of Array.from(latestByBatch.values())) {
-          const matchedSub = INITIAL_SUBMISSIONS.find(sub =>
-            sub.batchRef === ev.payload.batchRef ||
-            sub.packageNum === ev.payload.submissionId ||
-            sub.id === ev.payload.submissionId ||
-            sub.id === ev.payload.batchRef
-          );
-          if (!matchedSub) continue;
-          for (const f of matchedSub.files) {
-            const restoredId = `restored-decline-${f.docId}-hydrated`;
-            // Skip if same ID already present OR a doc with the same filename already exists
-            if (existingIds.has(restoredId) || existingNames.has(f.name?.toLowerCase())) continue;
-            existingIds.add(restoredId);
-            existingNames.add(f.name?.toLowerCase());
-            const orig: 'valid' | 'invalid' =
-              (f as { originalStatus?: 'valid' | 'invalid' }).originalStatus ?? 'valid';
-            toAdd.push({
-              id: restoredId,
-              display_name: f.name,
-              status: orig,
-              original_status: orig,
-              originalStatus: orig,
-              upload_date: ev.timestamp
-                ? new Date(ev.timestamp).toLocaleString('en-US', {
-                    year: 'numeric', month: '2-digit', day: '2-digit',
-                    hour: '2-digit', minute: '2-digit', hour12: false,
-                  }).replace(',', '')
-                : new Date().toLocaleString('en-US', {
-                    year: 'numeric', month: '2-digit', day: '2-digit',
-                    hour: '2-digit', minute: '2-digit', hour12: false,
-                  }).replace(',', ''),
-              uploader: matchedSub.submittedBy,
-              mime_type: f.name.toLowerCase().endsWith('.tiff') || f.name.toLowerCase().endsWith('.tif')
-                ? 'image/tiff' : 'application/pdf',
-              file_size_bytes: 0,
-              page_count: null,
-              workspace_tag: matchedSub.workspace,
-              target_record_id: null,
-              submission_path: null,
-              submitter_context_notes: null,
-              document_job_status: 'staged' as const,
-            });
-          }
-        }
-        if (toAdd.length === 0) return prev;
-        return [...toAdd, ...prev];
-      });
-    } catch {
-      // ignore
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // run once on mount
-
-  // ── DEMO_RESET subscriber: restore all state to seed data when the user clicks
-  // "Reset Demo" in the sidebar. This clears stale DECLINE_SUBMITTED events from
-  // previous test sessions and returns the dashboard to its initial state. ──
+  // ── DEMO ONLY: DEMO_RESET subscriber — restores all state to seed data when the
+  // user clicks "Reset Demo" in the sidebar. Remove when backend is wired up;
+  // a real reset would be: await api.post('/api/v1/demo/reset') then refetch queries. ──
   useEffect(() => {
     const unsub = subscribeToEvents((event) => {
       if (event.type !== 'DEMO_RESET') return;
-      // Restore core data states to seed
       setStagedDocs(MOCK_DOCUMENTS);
       setContractPackages(INITIAL_PACKAGES);
       setSubmissions(INITIAL_SUBMISSIONS);
-      // Clear all transient UI state
       setSearchQuery('');
       setColFilters({ name: '', uploader: '', workspace: '' });
       setSelectedIds(new Set());
@@ -1798,11 +1585,6 @@ export default function PipelineDashboard() {
       setSubColFilters({ packageNum: '', name: '', workspace: '', submittedBy: '' });
       setSubStatusFilter('all');
       setSubSort(null);
-      // Clear persisted sorts from sessionStorage
-      try {
-        sessionStorage.removeItem('leasegov_pkg_sort');
-        sessionStorage.removeItem('leasegov_sub_sort');
-      } catch { /* ignore */ }
     });
     return () => unsub();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2021,6 +1803,9 @@ export default function PipelineDashboard() {
     setContractPackages(prev => prev.filter(p => p.id !== pkg.id));
     setSubmissions(prev => [sub, ...prev]);
     toast.success(`${pkg.packageNum} submitted successfully`);
+    // DEMO ONLY: notify Preparer tab that a new batch is ready for extraction.
+    // PRODUCTION: replace with: await api.post('/api/v1/submissions', submissionPayload)
+    // The backend will create the submission record and push a notification to the Preparer.
     publishEvent({
       type: 'BATCH_SUBMITTED',
       payload: { batchId: batchRef, packageNum: pkg.packageNum, batchRef },

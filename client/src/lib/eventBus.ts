@@ -32,6 +32,12 @@ function getChannel(): BroadcastChannel | null {
 
 /**
  * Publish a cross-role event. Notifies all other tabs immediately.
+ *
+ * // DEMO ONLY — replace with: await api.post('/api/v1/events', event)
+ * localStorage persistence has been intentionally removed. Events are delivered
+ * via BroadcastChannel (other tabs) and a same-tab CustomEvent only.
+ * State does NOT survive a page reload — this is by design for demo simplicity.
+ * A real backend would persist events in a database and deliver via WebSocket/SSE.
  */
 export function publishEvent(event: Omit<DemoEvent, 'timestamp'>): void {
   const fullEvent: DemoEvent = {
@@ -39,14 +45,8 @@ export function publishEvent(event: Omit<DemoEvent, 'timestamp'>): void {
     timestamp: new Date().toISOString(),
   };
 
-  // Write to localStorage for persistence
-  const existing = getEventHistory();
-  existing.push(fullEvent);
-  // Keep last 100 events
-  const trimmed = existing.slice(-100);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(trimmed));
-
   // Broadcast to other tabs via BroadcastChannel
+  // DEMO ONLY — replace with: WebSocket or SSE push from backend
   const ch = getChannel();
   if (ch) {
     ch.postMessage(fullEvent);
@@ -55,12 +55,16 @@ export function publishEvent(event: Omit<DemoEvent, 'timestamp'>): void {
   // Also dispatch a same-tab CustomEvent so subscribers in the SAME tab receive it.
   // BroadcastChannel only delivers to OTHER tabs; without this, same-tab cross-component
   // communication (e.g. ExtractionQueue → PipelineDashboard in the same window) is silent.
+  // DEMO ONLY — remove once real-time backend events are wired up.
   window.dispatchEvent(new CustomEvent('leasegov_same_tab_event', { detail: fullEvent }));
 }
 
 /**
  * Subscribe to cross-role events. Returns an unsubscribe function.
  * Listens to both BroadcastChannel (same-origin tabs) and storage events (fallback).
+ *
+ * // DEMO ONLY — replace with: new WebSocket('/ws/events') + STOMP/SSE subscription
+ * The event type names map directly to Spring ApplicationEvent class names.
  */
 export function subscribeToEvents(
   handler: (event: DemoEvent) => void,

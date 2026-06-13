@@ -103,6 +103,8 @@ export default function PipelineSubmitConfirm() {
 
   function handleConfirm() {
     setIsSubmitting(true);
+    // DEMO ONLY: notify Preparer tab that a new batch is ready for extraction.
+    // PRODUCTION: replace with: await api.post('/api/v1/intake-batches/${batchReference}/submit')
     publishEvent({
       type: 'BATCH_SUBMITTED',
       payload: {
@@ -111,10 +113,11 @@ export default function PipelineSubmitConfirm() {
       },
       sourceRole: 'document_submitter',
     });
-    // TODO: Backend integration required — POST /api/intake-batches/:id/submit
     setTimeout(() => {
       setIsSubmitting(false);
       setSubmitted(true);
+      // DEMO ONLY: clear staged docs from PipelineDashboard after submission.
+      // PRODUCTION: replace with query invalidation after the submit API call resolves.
       publishEvent({
         type: 'PIPELINE_BATCH_CLEARED',
         payload: {

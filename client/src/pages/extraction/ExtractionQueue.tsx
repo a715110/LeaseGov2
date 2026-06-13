@@ -801,7 +801,9 @@ export default function ExtractionQueue() {
     }
   }, [search]);
 
-  // Wire BATCH_SUBMITTED → prepend new job to queue
+  // DEMO ONLY: Wire BATCH_SUBMITTED → prepend new job to queue.
+  // PRODUCTION: remove this block; replace with a real-time backend subscription
+  // (WebSocket/SSE) or a polling query: useQuery(['extractionQueue'], api.get('/api/v1/extraction/queue'))
   useEffect(() => {
     const unsub = subscribeToEvents((event) => {
       if (event.type !== 'BATCH_SUBMITTED') return;
@@ -1130,7 +1132,8 @@ export default function ExtractionQueue() {
                     insufficient_context: 'Insufficient context',
                     other: 'Other',
                   };
-                  // Fire cross-role event so PipelineDashboard Table 3 updates
+                  // DEMO ONLY: Fire cross-role event so PipelineDashboard Table 3 updates.
+                  // PRODUCTION: replace with: await api.post(`/api/v1/submissions/${declineTarget.batch_ref}/decline`, { reason, notes })
                   publishEvent({
                     type: 'DECLINE_SUBMITTED',
                     sourceRole: 'preparer',
