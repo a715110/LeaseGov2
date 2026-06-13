@@ -1676,6 +1676,97 @@ export default function PipelineDashboard() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // run once on mount only
 
+  // ── Re-hydrate on mount from event history — belt-and-suspenders fallback.
+  // The useState initializer runs synchronously at creation, but in some browsers
+  // the navigation timing means localStorage isn't fully flushed yet. This useEffect
+  // runs after the first paint and applies any DECLINE_SUBMITTED events that the
+  // initializer may have missed. ──
+  useEffect(() => {
+    try {
+      const events = getEventHistory();
+      const declineEvents = events.filter(e => e.type === 'DECLINE_SUBMITTED');
+      if (declineEvents.length === 0) return;
+
+      // Re-apply declined status to submissions
+      setSubmissions(prev => prev.map(sub => {
+        const match = declineEvents.find(e =>
+          sub.batchRef === e.payload.batchRef ||
+          sub.packageNum === e.payload.submissionId ||
+          sub.id === e.payload.submissionId ||
+          sub.id === e.payload.batchRef
+        );
+        if (!match || sub.status === 'Declined') return sub;
+        return {
+          ...sub,
+          status: 'Declined' as const,
+          declineReasonLabel: match.payload.reasonLabel as string | undefined,
+          declineReason: match.payload.reason as string | undefined,
+        };
+      }));
+
+      // Restore docs to Table 1 if not already present
+      const latestByBatch = new Map<string, typeof declineEvents[0]>();
+      for (const ev of declineEvents) {
+        const key = String(ev.payload.batchRef ?? ev.payload.submissionId ?? ev.timestamp);
+        const existing = latestByBatch.get(key);
+        if (!existing || new Date(ev.timestamp) > new Date(existing.timestamp)) {
+          latestByBatch.set(key, ev);
+        }
+      }
+      setStagedDocs(prev => {
+        const existingIds = new Set(prev.map(d => d.id));
+        const toAdd: StagedDocument[] = [];
+        for (const ev of Array.from(latestByBatch.values())) {
+          const matchedSub = INITIAL_SUBMISSIONS.find(sub =>
+            sub.batchRef === ev.payload.batchRef ||
+            sub.packageNum === ev.payload.submissionId ||
+            sub.id === ev.payload.submissionId ||
+            sub.id === ev.payload.batchRef
+          );
+          if (!matchedSub) continue;
+          for (const f of matchedSub.files) {
+            const restoredId = `restored-decline-${f.docId}-hydrated`;
+            if (existingIds.has(restoredId)) continue;
+            existingIds.add(restoredId);
+            const orig: 'valid' | 'invalid' =
+              (f as { originalStatus?: 'valid' | 'invalid' }).originalStatus ?? 'valid';
+            toAdd.push({
+              id: restoredId,
+              display_name: f.name,
+              status: orig,
+              original_status: orig,
+              originalStatus: orig,
+              upload_date: ev.timestamp
+                ? new Date(ev.timestamp).toLocaleString('en-US', {
+                    year: 'numeric', month: '2-digit', day: '2-digit',
+                    hour: '2-digit', minute: '2-digit', hour12: false,
+                  }).replace(',', '')
+                : new Date().toLocaleString('en-US', {
+                    year: 'numeric', month: '2-digit', day: '2-digit',
+                    hour: '2-digit', minute: '2-digit', hour12: false,
+                  }).replace(',', ''),
+              uploader: matchedSub.submittedBy,
+              mime_type: f.name.toLowerCase().endsWith('.tiff') || f.name.toLowerCase().endsWith('.tif')
+                ? 'image/tiff' : 'application/pdf',
+              file_size_bytes: 0,
+              page_count: null,
+              workspace_tag: matchedSub.workspace,
+              target_record_id: null,
+              submission_path: null,
+              submitter_context_notes: null,
+              document_job_status: 'staged' as const,
+            });
+          }
+        }
+        if (toAdd.length === 0) return prev;
+        return [...toAdd, ...prev];
+      });
+    } catch {
+      // ignore
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // run once on mount
+
   // ── Derived counts — committed docs are excluded from all pipeline stat cards ──
   const counts = {
     uploading:  stagedDocs.filter(d => d.document_job_status !== 'committed' && d.status === 'uploading').length,
