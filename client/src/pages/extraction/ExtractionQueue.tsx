@@ -31,7 +31,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { subscribeToEvents } from '@/lib/eventBus';
+import { subscribeToEvents, publishEvent } from '@/lib/eventBus';
 
 import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -1130,6 +1130,18 @@ export default function ExtractionQueue() {
                     insufficient_context: 'Insufficient context',
                     other: 'Other',
                   };
+                  // Fire cross-role event so PipelineDashboard Table 3 updates
+                  publishEvent({
+                    type: 'DECLINE_SUBMITTED',
+                    sourceRole: 'preparer',
+                    payload: {
+                      submissionId: declineTarget.display_id,
+                      batchRef: declineTarget.batch_ref,
+                      reasonCategory: declineReasonCategory,
+                      reason: declineReason.trim(),
+                      reasonLabel: reasonLabel[declineReasonCategory] ?? 'Other',
+                    },
+                  });
                   toast.error(`${declineTarget.display_id} declined — ${reasonLabel[declineReasonCategory]}`, {
                     description: 'Documents returned to Staged Documents with original status.',
                     duration: 6000,

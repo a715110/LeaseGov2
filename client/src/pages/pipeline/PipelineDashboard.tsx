@@ -128,7 +128,9 @@ interface Submission {
   workspace: string;
   submittedBy: string;
   submitDate: string;
-  status: 'Pending' | 'In Progress' | 'Completed' | 'Failed';
+  status: 'Pending' | 'In Progress' | 'Completed' | 'Failed' | 'Declined';
+  declineReason?: string;
+  declineReasonLabel?: string;
 }
 
 // ─── Mock data — V3 Change 1 §1a — 8-document seed distribution ─────────────
@@ -371,6 +373,7 @@ const SUB_STATUS_BADGE: Record<Submission['status'], string> = {
   'In Progress': 'bg-blue-50 text-blue-700 border border-blue-200',
   'Completed':   'bg-emerald-50 text-emerald-700 border border-emerald-200',
   'Failed':      'bg-red-50 text-red-700 border border-red-200',
+  'Declined':    'bg-orange-50 text-orange-700 border border-orange-200',
 };
 
 const DOCUMENT_ROLES: DocumentRole[] = [
@@ -1264,7 +1267,7 @@ export default function PipelineDashboard() {
   // ── Submissions state ──
   const [submissions, setSubmissions] = useState<Submission[]>(INITIAL_SUBMISSIONS);
   const [subColFilters, setSubColFilters] = useState({ packageNum: '', name: '', workspace: '', submittedBy: '' });
-  const [subStatusFilter, setSubStatusFilter] = useState<'all' | 'Pending' | 'In Progress' | 'Completed' | 'Failed'>('all');
+  const [subStatusFilter, setSubStatusFilter] = useState<'all' | 'Pending' | 'In Progress' | 'Completed' | 'Failed' | 'Declined'>('all');
   const [subSort, setSubSort] = useState<{ col: string; dir: 'asc' | 'desc' } | null>(() => {
     try {
       const raw = sessionStorage.getItem('leasegov_sub_sort');
@@ -1289,14 +1292,29 @@ export default function PipelineDashboard() {
   // Clear pipeline state when a batch is confirmed from PipelineSubmitConfirm
   useEffect(() => {
     const unsub = subscribeToEvents((event) => {
-      if (event.type !== 'PIPELINE_BATCH_CLEARED') return;
-      const payload = event.payload as { fileNames?: string[]; batchId?: string };
-      const clearedNames = new Set(payload.fileNames ?? []);
-      if (clearedNames.size === 0) return;
-      setStagedDocs(prev => prev.filter(d => !clearedNames.has(d.display_name)));
-      setContractPackages(prev =>
-        prev.filter(pkg => !pkg.files.every(f => clearedNames.has(f.name)))
-      );
+      if (event.type === 'PIPELINE_BATCH_CLEARED') {
+        const payload = event.payload as { fileNames?: string[]; batchId?: string };
+        const clearedNames = new Set(payload.fileNames ?? []);
+        if (clearedNames.size === 0) return;
+        setStagedDocs(prev => prev.filter(d => !clearedNames.has(d.display_name)));
+        setContractPackages(prev =>
+          prev.filter(pkg => !pkg.files.every(f => clearedNames.has(f.name)))
+        );
+      }
+      if (event.type === 'DECLINE_SUBMITTED') {
+        const payload = event.payload as {
+          submissionId: string;
+          batchRef: string;
+          reasonLabel: string;
+          reason: string;
+        };
+        setSubmissions(prev => prev.map(sub =>
+          // Match by packageNum (display_id from ExtractionQueue) or id
+          (sub.packageNum === payload.submissionId || sub.id === payload.submissionId || sub.id === payload.batchRef)
+            ? { ...sub, status: 'Declined' as const, declineReasonLabel: payload.reasonLabel, declineReason: payload.reason }
+            : sub
+        ));
+      }
     });
     return () => unsub();
   }, []);
@@ -2147,11 +2165,12 @@ export default function PipelineDashboard() {
           <div className="flex items-center gap-3">
             {/* Submission status filter */}
             <div className="flex items-center rounded-md border border-border overflow-hidden text-[12px] font-medium">
-              {(['all', 'Pending', 'In Progress', 'Completed', 'Failed'] as const).map((opt, i) => {
+              {(['all', 'Pending', 'In Progress', 'Completed', 'Failed', 'Declined'] as const).map((opt, i) => {
                 const activeStyle = opt === 'Pending' ? 'bg-slate-600 text-white'
                   : opt === 'In Progress' ? 'bg-blue-600 text-white'
                   : opt === 'Completed' ? 'bg-emerald-600 text-white'
                   : opt === 'Failed' ? 'bg-red-600 text-white'
+                  : opt === 'Declined' ? 'bg-orange-600 text-white'
                   : 'bg-primary text-primary-foreground';
                 return (
                   <button
@@ -2255,12 +2274,17 @@ export default function PipelineDashboard() {
                     <td className="text-muted-foreground text-[12px]">{formatDate(sub.submitDate)}</td>
                     {/* Status */}
                     <td>
-                      <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold ${SUB_STATUS_BADGE[sub.status]}`}>
-                        {sub.status === 'In Progress' && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                      <div className="flex flex-col gap-0.5">
+                        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold ${SUB_STATUS_BADGE[sub.status]}`}>
+                          {sub.status === 'In Progress' && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                          )}
+                          {sub.status}
+                        </span>
+                        {sub.status === 'Declined' && sub.declineReasonLabel && (
+                          <span className="text-[11px] text-orange-600 leading-tight">{sub.declineReasonLabel}</span>
                         )}
-                        {sub.status}
-                      </span>
+                      </div>
                     </td>
                     {/* Actions */}
                     <td>
@@ -2366,13 +2390,25 @@ export default function PipelineDashboard() {
                           <td className="text-[12px] text-muted-foreground">{doc.uploader}</td>
                           <td className="font-mono text-[12px] text-muted-foreground">{doc.upload_date}</td>
                           <td>
-                            <button
-                              onClick={() => setDetailDoc(doc as DocForPanel)}
-                              className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                              title="View document details"
-                            >
-                              <Eye className="w-3.5 h-3.5" />
-                            </button>
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => setDetailDoc(doc as DocForPanel)}
+                                className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                                title="View document details"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </button>
+                              {rec && (
+                                <a
+                                  href={`/contracts/${doc.target_record_id}`}
+                                  className="p-1 rounded hover:bg-emerald-50 text-emerald-600 hover:text-emerald-700 transition-colors"
+                                  title={`View in Contract Record ${rec.contractNumber}`}
+                                  onClick={e => { e.preventDefault(); toast.info(`Navigating to Contract Record ${rec.contractNumber}`, { description: 'Contract Records viewer coming soon.' }); }}
+                                >
+                                  <ExternalLink className="w-3.5 h-3.5" />
+                                </a>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       );

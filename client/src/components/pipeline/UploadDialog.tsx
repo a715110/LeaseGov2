@@ -357,6 +357,7 @@ export function UploadDialog({ open, onClose, onConfirm }: UploadDialogProps) {
   // ── Confirmation view ──
   const [confirmed, setConfirmed] = useState(false);
   const [confirmedCount, setConfirmedCount] = useState(0);
+  const [confirmedRejected, setConfirmedRejected] = useState(0);
   const [confirmedBatchId, setConfirmedBatchId] = useState('');
 
   // ── Derived ──
@@ -458,6 +459,7 @@ export function UploadDialog({ open, onClose, onConfirm }: UploadDialogProps) {
     );
 
     setConfirmedCount(validFiles.length);
+    setConfirmedRejected(invalidFiles.length);
     setConfirmedBatchId(batchId);
     setConfirmed(true);
   }, [validFiles, workspaceTag, recordDest, selectedRecord, contextNotes, onConfirm]);
@@ -496,12 +498,23 @@ export function UploadDialog({ open, onClose, onConfirm }: UploadDialogProps) {
             </div>
             <div className="text-center">
               <p className="text-[18px] font-semibold text-foreground">
-                {confirmedCount} file{confirmedCount !== 1 ? 's' : ''} added to pipeline
+                {confirmedCount} file{confirmedCount !== 1 ? 's' : ''} added
+                {confirmedRejected > 0 && (
+                  <span className="text-red-500"> · {confirmedRejected} rejected</span>
+                )}
               </p>
               <p className="text-[13px] text-muted-foreground mt-1">
                 Documents are now staged and ready for packaging.
               </p>
             </div>
+            {confirmedRejected > 0 && (
+              <div className="w-full rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-2.5 text-[13px] text-amber-800">
+                <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+                <span>
+                  <span className="font-semibold">{confirmedRejected} file{confirmedRejected !== 1 ? 's' : ''} rejected</span> — unsupported format, size limit exceeded, duplicate, or file cannot be opened. These files were not added to the pipeline.
+                </span>
+              </div>
+            )}
             <div className="w-full rounded-lg border border-border bg-card p-4 flex flex-col gap-2.5 text-[13px]">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Upload ID</span>

@@ -22,6 +22,7 @@ export type DemoEventType =
   | 'SUBMIT_FOR_REVIEW'
   | 'APPROVE_FOR_FINAL'
   | 'RECORD_APPROVED'
+  | 'DECLINE_SUBMITTED'
   | 'DEMO_RESET';
 
 import type { UserRole } from '@/types/shared/UserRole';
