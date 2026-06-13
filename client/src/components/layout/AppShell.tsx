@@ -32,7 +32,7 @@ import {
   UploadCloud, Scan, Layers, CheckCircle, Folder,
   CloudUpload, Settings, Shield, Bell, ChevronRight,
   RefreshCw, UserCog, ChevronDown, Bot, Play, Palette, Check,
-  Sun, Moon, Menu, X, Search,
+  Sun, Moon, Menu, X, Search, RotateCcw,
 } from 'lucide-react'
 import { Breadcrumb } from '../shared/Breadcrumb'
 import { NotificationDrawer } from './NotificationDrawer'
@@ -338,24 +338,40 @@ function DevScreenToggle({ collapsed }: { collapsed: boolean }) {
   )
 }
 
-// ─── Start Demo sidebar button ────────────────────────────────────────────────
+// ─── Start Demo / Reset Demo sidebar buttons ─────────────────────────────────
 function StartDemoButton() {
-  const { isActive, startDemo } = useDemoMode()
-  if (isActive) return null
+  const { isActive, startDemo, resetDemo } = useDemoMode()
   return (
-    <button
-      onClick={startDemo}
-      className="mb-2 flex w-full items-center gap-2 rounded-md px-3 py-2 text-xs font-semibold transition-colors"
-      style={{
-        background: 'var(--color-lg-blue)',
-        color: '#fff',
-        boxShadow: '0 0 0 2px rgba(255,255,255,0.30)',
-      }}
-      aria-label="Start guided demo"
-    >
-      <Play className="h-3.5 w-3.5 fill-current" />
-      Start Demo
-    </button>
+    <div className="mb-2 flex flex-col gap-1">
+      {!isActive && (
+        <button
+          onClick={startDemo}
+          className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-xs font-semibold transition-colors"
+          style={{
+            background: 'var(--color-lg-blue)',
+            color: '#fff',
+            boxShadow: '0 0 0 2px rgba(255,255,255,0.30)',
+          }}
+          aria-label="Start guided demo"
+        >
+          <Play className="h-3.5 w-3.5 fill-current" />
+          Start Demo
+        </button>
+      )}
+      <button
+        onClick={resetDemo}
+        className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-xs font-semibold transition-colors"
+        style={{
+          background: 'rgba(255,255,255,0.08)',
+          color: 'var(--sidebar-foreground)',
+        }}
+        aria-label="Reset demo to initial state"
+        title="Clears all demo events and resets to seed data"
+      >
+        <RotateCcw className="h-3.5 w-3.5" />
+        Reset Demo
+      </button>
+    </div>
   )
 }
 

@@ -1770,6 +1770,44 @@ export default function PipelineDashboard() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // run once on mount
 
+  // ── DEMO_RESET subscriber: restore all state to seed data when the user clicks
+  // "Reset Demo" in the sidebar. This clears stale DECLINE_SUBMITTED events from
+  // previous test sessions and returns the dashboard to its initial state. ──
+  useEffect(() => {
+    const unsub = subscribeToEvents((event) => {
+      if (event.type !== 'DEMO_RESET') return;
+      // Restore core data states to seed
+      setStagedDocs(MOCK_DOCUMENTS);
+      setContractPackages(INITIAL_PACKAGES);
+      setSubmissions(INITIAL_SUBMISSIONS);
+      // Clear all transient UI state
+      setSearchQuery('');
+      setColFilters({ name: '', uploader: '', workspace: '' });
+      setSelectedIds(new Set());
+      setGroupingDocs(null);
+      setAddToPackageDocs(null);
+      setPkgColFilters({ packageNum: '', name: '', workspace: '', createdBy: '' });
+      setPkgStatusFilter('all');
+      setPkgSort(null);
+      setConfirmSubmitAll(false);
+      setDetailDoc(null);
+      setDetailBatch(null);
+      setDetailPkg(null);
+      setDetailSub(null);
+      setResubmitTarget(null);
+      setSubColFilters({ packageNum: '', name: '', workspace: '', submittedBy: '' });
+      setSubStatusFilter('all');
+      setSubSort(null);
+      // Clear persisted sorts from sessionStorage
+      try {
+        sessionStorage.removeItem('leasegov_pkg_sort');
+        sessionStorage.removeItem('leasegov_sub_sort');
+      } catch { /* ignore */ }
+    });
+    return () => unsub();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ── Derived counts — committed docs are excluded from all pipeline stat cards ──
   const counts = {
     uploading:  stagedDocs.filter(d => d.document_job_status !== 'committed' && d.status === 'uploading').length,
