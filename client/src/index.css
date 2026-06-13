@@ -187,6 +187,27 @@
     @apply bg-accent/40;
   }
 
+  /* ─── Table Scroll Fade ─────────────────────────────────────────────────── */
+  /* Wrap overflow-x-auto tables with this class to show a right-edge fade when scrollable */
+  .table-scroll-wrap {
+    @apply relative overflow-x-auto;
+  }
+  .table-scroll-wrap::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 48px;
+    pointer-events: none;
+    background: linear-gradient(to right, transparent, var(--color-card, hsl(var(--card))));
+    opacity: 0;
+    transition: opacity 150ms ease;
+  }
+  .table-scroll-wrap.is-scrollable::after {
+    opacity: 1;
+  }
+
   /* ─── Page Layout ────────────────────────────────────────────────────────── */
   .page-header {
     @apply flex items-center justify-between px-6 py-4 border-b border-border bg-card;

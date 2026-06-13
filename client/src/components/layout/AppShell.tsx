@@ -398,9 +398,13 @@ export default function AppShell({
   // ── Notification drawer state ──
   const [notifOpen, setNotifOpen] = useState(false)
 
-  // ── Sidebar collapse state (persisted) ──
+  // ── Sidebar collapse state (persisted + responsive) ──
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(
-    () => localStorage.getItem('leasegov_sidebar_collapsed') === 'true'
+    () => {
+      // Auto-collapse on narrow viewports regardless of persisted preference
+      if (typeof window !== 'undefined' && window.innerWidth < 1024) return true
+      return localStorage.getItem('leasegov_sidebar_collapsed') === 'true'
+    }
   )
   const toggleSidebar = useCallback(() => {
     setSidebarCollapsed(prev => {
@@ -408,6 +412,22 @@ export default function AppShell({
       localStorage.setItem('leasegov_sidebar_collapsed', String(next))
       return next
     })
+  }, [])
+
+  // Auto-collapse below 1024px, restore persisted state above 1024px
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 1023px)')
+    const handler = (e: MediaQueryListEvent) => {
+      if (e.matches) {
+        // Narrowing: force collapse without touching localStorage
+        setSidebarCollapsed(true)
+      } else {
+        // Widening: restore persisted preference
+        setSidebarCollapsed(localStorage.getItem('leasegov_sidebar_collapsed') === 'true')
+      }
+    }
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
   }, [])
 
   // ── Build visible, ordered groups ──

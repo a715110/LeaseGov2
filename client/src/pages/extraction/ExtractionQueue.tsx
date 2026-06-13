@@ -882,10 +882,10 @@ export default function ExtractionQueue() {
                 <th className="text-left">Batch</th>
                 <th className="text-left">Status</th>
                 <th className="text-left">OCR Confidence</th>
-                <th className="text-left">Agent</th>
+                <th className="text-left hidden xl:table-cell">Agent</th>
                 <th className="text-left">Started</th>
-                <th className="text-left">Duration</th>
-                <th className="text-left">Assigned</th>
+                <th className="text-left hidden xl:table-cell">Duration</th>
+                <th className="text-left hidden xl:table-cell">Assigned</th>
                 <th></th>
               </tr>
             </thead>
@@ -914,10 +914,10 @@ export default function ExtractionQueue() {
                       {Math.round(job.ocr_confidence * 100)}%
                     </span>
                   </td>
-                  <td><AgentBadge status={job.agent_status} /></td>
+                  <td className="hidden xl:table-cell"><AgentBadge status={job.agent_status} /></td>
                   <td className="font-mono text-[12px] text-muted-foreground">{job.started}</td>
-                  <td className="text-muted-foreground">{job.duration}</td>
-                  <td className="text-muted-foreground">{job.assigned}</td>
+                  <td className="text-muted-foreground hidden xl:table-cell">{job.duration}</td>
+                  <td className="text-muted-foreground hidden xl:table-cell">{job.assigned}</td>
                   <td>
                     <div className="flex items-center gap-1">
                       <Button

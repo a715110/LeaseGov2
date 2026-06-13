@@ -1231,6 +1231,32 @@ export default function PipelineDashboard() {
   // ── Upload dialog state ──
   const [showUpload, setShowUpload] = useState(false);
 
+  // ── Table scroll-fade refs (right-edge gradient indicator) ──
+  const scrollRef1 = useRef<HTMLDivElement>(null);
+  const scrollRef2 = useRef<HTMLDivElement>(null);
+  const scrollRef3 = useRef<HTMLDivElement>(null);
+  const scrollRef4 = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const refs = [scrollRef1, scrollRef2, scrollRef3, scrollRef4];
+    const observers: ResizeObserver[] = [];
+    refs.forEach(ref => {
+      const el = ref.current;
+      if (!el) return;
+      const update = () => {
+        el.classList.toggle('is-scrollable', el.scrollWidth > el.clientWidth + 2);
+      };
+      update();
+      el.addEventListener('scroll', update);
+      const ro = new ResizeObserver(update);
+      ro.observe(el);
+      observers.push(ro);
+    });
+    return () => {
+      refs.forEach(ref => ref.current?.removeEventListener('scroll', () => {}));
+      observers.forEach(ro => ro.disconnect());
+    };
+  }, []);
+
   // ── Stage Documents state ──
   const [stagedDocs, setStagedDocs] = useState<StagedDocument[]>(MOCK_DOCUMENTS);
   const [searchQuery, setSearchQuery] = useState('');
@@ -1820,7 +1846,7 @@ export default function PipelineDashboard() {
             </Button>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div ref={scrollRef1} className="table-scroll-wrap">
             <table className="data-table w-full text-[13px]">
               <thead>
                 <tr>
@@ -2037,7 +2063,7 @@ export default function PipelineDashboard() {
             <p className="text-[12px] text-muted-foreground">Group documents from the Stage Documents table to create a package.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div ref={scrollRef2} className="table-scroll-wrap">
             <table className="data-table w-full text-[13px]">
               <thead>
                 <tr>
@@ -2210,7 +2236,7 @@ export default function PipelineDashboard() {
             <p className="text-[12px] text-muted-foreground">Submit a ready package to begin processing.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div ref={scrollRef3} className="table-scroll-wrap">
             <table className="data-table w-full text-[13px]">
               <thead>
                 <tr>
@@ -2355,7 +2381,7 @@ export default function PipelineDashboard() {
                 <p className="text-[13px] text-muted-foreground">No committed documents yet.</p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <div ref={scrollRef4} className="table-scroll-wrap">
                 <table className="data-table w-full text-[13px]">
                   <thead>
                     <tr>
