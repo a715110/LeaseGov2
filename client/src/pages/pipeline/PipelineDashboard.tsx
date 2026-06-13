@@ -119,6 +119,7 @@ interface ContractPackage {
 
 interface Submission {
   id: string;
+  batchRef?: string;          // matches batch_ref on ProcessingJob in ExtractionQueue
   packageNum: string;
   packageName?: string;
   mode: 'Package' | 'Single';
@@ -289,6 +290,7 @@ const INITIAL_PACKAGES: ContractPackage[] = [
 const INITIAL_SUBMISSIONS: Submission[] = [
   {
     id: 'sub-v3-001-local',
+    batchRef: 'BATCH-2026-0041',   // matches batch_ref on MOCK_JOBS j4+j5 in ExtractionQueue
     packageNum: 'PKG-2026-001',
     packageName: 'Acme Corp Retail Package',
     mode: 'Package',
@@ -1309,8 +1311,12 @@ export default function PipelineDashboard() {
           reason: string;
         };
         setSubmissions(prev => prev.map(sub =>
-          // Match by packageNum (display_id from ExtractionQueue) or id
-          (sub.packageNum === payload.submissionId || sub.id === payload.submissionId || sub.id === payload.batchRef)
+          // Primary match: batchRef on submission == batch_ref on ProcessingJob
+          // Fallback: packageNum or id match for dynamically-created submissions
+          (sub.batchRef === payload.batchRef ||
+           sub.packageNum === payload.submissionId ||
+           sub.id === payload.submissionId ||
+           sub.id === payload.batchRef)
             ? { ...sub, status: 'Declined' as const, declineReasonLabel: payload.reasonLabel, declineReason: payload.reason }
             : sub
         ));
@@ -1505,8 +1511,12 @@ export default function PipelineDashboard() {
   // ── Submit package workflow ──
   function submitPackage(pkg: ContractPackage) {
     if (!isPackageReady(pkg)) return;
+    const subId = `sub-${Date.now()}`;
+    // batchRef is derived the same way ExtractionQueue derives batch_ref from BATCH_SUBMITTED payload
+    const batchRef = `BATCH-${subId.slice(-6).toUpperCase()}`;
     const sub: Submission = {
-      id: `sub-${Date.now()}`,
+      id: subId,
+      batchRef,
       packageNum: pkg.packageNum,
       packageName: pkg.packageName,
       mode: pkg.mode,
@@ -1523,7 +1533,7 @@ export default function PipelineDashboard() {
     toast.success(`${pkg.packageNum} submitted successfully`);
     publishEvent({
       type: 'BATCH_SUBMITTED',
-      payload: { batchId: pkg.id, packageNum: pkg.packageNum },
+      payload: { batchId: batchRef, packageNum: pkg.packageNum, batchRef },
       sourceRole: 'document_submitter',
     });
   }
