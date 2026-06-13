@@ -17,7 +17,7 @@
  *         Read-only mode for Auditor role
  */
 
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import {
   UploadCloud, FileText, AlertTriangle, CheckCircle2, XCircle,
@@ -2421,9 +2421,8 @@ export default function PipelineDashboard() {
                   const pkgBatchId = `BATCH-${pkg.id.slice(-6).toUpperCase()}`;
                   const TOTAL_PKG_COLS = 8;
                   return (
-                    <>
+                    <React.Fragment key={pkg.id}>
                       <tr
-                        key={pkg.id}
                         className={`cursor-pointer hover:bg-muted/30 transition-colors focus:outline-none focus:ring-1 focus:ring-primary/40 focus:ring-inset ${
                           pkgExpanded ? 'bg-muted/20' : ''
                         }`}
@@ -2546,7 +2545,7 @@ export default function PipelineDashboard() {
                           </td>
                         </tr>
                       )}
-                    </>
+                    </React.Fragment>
                   );
                 })}
               </tbody>
@@ -2656,9 +2655,8 @@ export default function PipelineDashboard() {
                       : null
                   );
                   return (
-                  <>
+                  <React.Fragment key={sub.id}>
                     <tr
-                      key={sub.id}
                       className={`cursor-pointer hover:bg-muted/30 transition-colors ${
                         subExpanded ? 'bg-muted/20' : ''
                       }`}
@@ -2794,7 +2792,7 @@ export default function PipelineDashboard() {
                         </td>
                       </tr>
                     )}
-                  </>
+                  </React.Fragment>
                   );
                 })}
               </tbody>
@@ -2864,9 +2862,8 @@ export default function PipelineDashboard() {
                     {committedGroups.map(group => {
                       const groupExpanded = expandedCommitted.has(group.key);
                       return (
-                        <>
+                        <React.Fragment key={group.key}>
                           <tr
-                            key={group.key}
                             className={`cursor-pointer hover:bg-muted/30 transition-colors ${
                               groupExpanded ? 'bg-muted/20' : ''
                             }`}
@@ -2965,7 +2962,7 @@ export default function PipelineDashboard() {
                               </td>
                             </tr>
                           )}
-                        </>
+                        </React.Fragment>
                       );
                     })}
                   </tbody>

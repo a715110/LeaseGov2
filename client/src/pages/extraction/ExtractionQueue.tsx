@@ -12,7 +12,7 @@
  * S5d: Confirm Mapping button
  */
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   RefreshCw, ChevronRight, BarChart2, X, Clock,
   CheckCircle2, AlertTriangle, XCircle, Cpu, User,
@@ -924,10 +924,9 @@ export default function ExtractionQueue() {
                   ? group.jobs.reduce((s, j) => s + j.ocr_confidence, 0) / group.jobs.length
                   : 0;
                 return (
-                  <>
+                  <React.Fragment key={group.batchRef}>
                     {/* Batch summary row */}
                     <tr
-                      key={group.batchRef}
                       className={`cursor-pointer hover:bg-muted/30 transition-colors ${
                         batchExpanded ? 'bg-muted/20' : ''
                       }`}
@@ -1031,7 +1030,7 @@ export default function ExtractionQueue() {
                         </td>
                       </tr>
                     ))}
-                  </>
+                  </React.Fragment>
                 );
               })}
             </tbody>
