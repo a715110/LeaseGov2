@@ -554,7 +554,7 @@ export function UploadDialog({ open, onClose, onConfirm }: UploadDialogProps) {
       {/* Dialog */}
       <div
         className="relative z-10 w-full max-w-[640px] bg-[var(--color-lg-page-bg)] rounded-xl shadow-2xl border border-border flex flex-col"
-        style={{ animation: 'upload-card-in 260ms cubic-bezier(0.23,1,0.32,1) both', maxHeight: '90vh', minHeight: 0 }}
+        style={{ animation: 'upload-card-in 260ms cubic-bezier(0.23,1,0.32,1) both' }}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-card shrink-0">
@@ -567,11 +567,11 @@ export function UploadDialog({ open, onClose, onConfirm }: UploadDialogProps) {
           </button>
         </div>
 
-        {/* Scrollable body */}
-        <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-6">
+        {/* Scrollable body — no artificial max-height; outer overlay handles scroll */}
+        <div className="px-6 py-5 flex flex-col gap-0">
 
           {/* ── SECTION 1 — FILE UPLOAD ── */}
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3 pb-6">
             <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-accent border border-border text-[12px] text-accent-foreground">
               <Info className="w-3.5 h-3.5 shrink-0 text-primary" />
               <span>Accepted: PDF, DOCX, JPG, JPEG, PNG, TIFF — max 100 MB per file</span>
@@ -619,7 +619,7 @@ export function UploadDialog({ open, onClose, onConfirm }: UploadDialogProps) {
 
           {/* ── SECTION 2 — FILE LIST ── */}
           {files.length > 0 && (
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 pb-6">
               <div className="flex items-center justify-between">
                 <p className="text-[12px] font-semibold text-foreground uppercase tracking-wide">Files ({files.length})</p>
                 {invalidFiles.length > 0 && (
@@ -640,7 +640,7 @@ export function UploadDialog({ open, onClose, onConfirm }: UploadDialogProps) {
           )}
 
           {/* ── SECTION 3 — TARGET CONTEXT ── */}
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4 pb-6">
             <div className="flex items-center gap-2 pb-1 border-b border-border">
               <Tag className="w-4 h-4 text-primary" />
               <p className="text-[13px] font-semibold text-foreground">Target Context</p>
@@ -748,7 +748,8 @@ export function UploadDialog({ open, onClose, onConfirm }: UploadDialogProps) {
                   </div>
                 )}
 
-                {/* Card 2 — Existing Record */}
+                {/* Card 2 — Existing Record (hidden when New Record is selected) */}
+                {recordDest !== 'new_record' && (<>
                 <button
                   type="button"
                   onClick={() => setRecordDest(recordDest === 'existing_record' ? null : 'existing_record')}
@@ -768,15 +769,15 @@ export function UploadDialog({ open, onClose, onConfirm }: UploadDialogProps) {
                     </div>
                   </div>
                 </button>
-
-                {/* Existing Record search panel */}
                 {recordDest === 'existing_record' && (
                   <div className="ml-4 pl-4 border-l-2 border-primary/30 py-1">
                     <RecordSearchPanel selected={selectedRecord} onSelect={setSelectedRecord} />
                   </div>
                 )}
+                </>)}
 
-                {/* Card 3 — Not sure */}
+                {/* Card 3 — Not sure (hidden when new_record or existing_record is selected) */}
+                {(!recordDest || recordDest === 'unknown') && (<>
                 <button
                   type="button"
                   onClick={() => setRecordDest(recordDest === 'unknown' ? null : 'unknown')}
@@ -796,8 +797,6 @@ export function UploadDialog({ open, onClose, onConfirm }: UploadDialogProps) {
                     </div>
                   </div>
                 </button>
-
-                {/* Not sure — info banner */}
                 {recordDest === 'unknown' && (
                   <div className="ml-4 pl-4 border-l-2 border-amber-400/50 py-1">
                     <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-amber-50 border border-amber-200 text-[12px] text-amber-800">
@@ -806,12 +805,24 @@ export function UploadDialog({ open, onClose, onConfirm }: UploadDialogProps) {
                     </div>
                   </div>
                 )}
+                </>)}
+
+                {/* Change selection link — shown when a card is selected */}
+                {recordDest && (
+                  <button
+                    type="button"
+                    onClick={() => setRecordDest(null)}
+                    className="text-[11px] text-primary hover:underline self-start pl-1"
+                  >
+                    ← Change selection
+                  </button>
+                )}
               </div>
             </div>
           </div>
 
           {/* ── SECTION 4 — ROUTING CONTEXT ── */}
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4 pt-6 border-t border-border mt-2">
             <div className="flex items-center gap-2 pb-1 border-b border-border">
               <p className="text-[13px] font-semibold text-foreground">Routing Context</p>
             </div>
