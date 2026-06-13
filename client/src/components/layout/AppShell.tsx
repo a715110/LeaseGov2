@@ -484,10 +484,10 @@ export default function AppShell({
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background">
-      {/* ── Sidebar ── */}
+      {/* ── Sidebar — fixed so it never participates in horizontal scroll ── */}
       <aside
         className={cn(
-          'flex h-full shrink-0 flex-col overflow-y-auto overflow-x-hidden transition-all duration-200',
+          'fixed top-0 left-0 z-30 flex h-screen shrink-0 flex-col overflow-y-auto overflow-x-hidden transition-all duration-200',
           sidebarCollapsed ? 'w-16' : 'w-60'
         )}
         style={{ background: 'var(--sidebar)' }}
@@ -643,8 +643,13 @@ export default function AppShell({
         </div>
       </aside>
 
-      {/* ── Main content ── */}
-      <div className="flex flex-1 min-w-0 flex-col overflow-hidden">
+      {/* ── Main content — offset by sidebar width, isolated scroll context ── */}
+      <div
+        className={cn(
+          'flex flex-1 min-w-0 flex-col overflow-hidden transition-all duration-200',
+          sidebarCollapsed ? 'ml-16' : 'ml-60'
+        )}
+      >
         {/* Top header bar */}
         <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-background px-4 gap-3">
           {/* Left: collapse toggle + breadcrumb */}
@@ -678,8 +683,8 @@ export default function AppShell({
           </div>
         </header>
 
-        {/* Page content */}
-        <main className="flex-1 overflow-y-auto">
+        {/* Page content — vertical scroll here, horizontal scroll contained per-page */}
+        <main className="flex-1 overflow-y-auto overflow-x-hidden">
           {children}
         </main>
       </div>
