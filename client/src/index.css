@@ -109,6 +109,10 @@
   * {
     @apply border-border outline-ring/50;
   }
+  /* Prevent fixed off-screen panels (drawers, slide-ins) from creating horizontal scrollbars */
+  html, body {
+    overflow-x: hidden;
+  }
   body {
     @apply bg-background text-foreground;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;

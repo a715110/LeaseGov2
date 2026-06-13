@@ -86,14 +86,14 @@ export function NotificationDrawer({ open, onClose }: NotificationDrawerProps) {
         onClick={onClose}
       />
 
-      {/* Panel */}
+      {/* Panel — visibility:hidden when closed prevents it from contributing to scroll width */}
       <aside
         role="dialog"
         aria-modal="true"
         aria-label="Notifications"
         className={cn(
           'fixed right-0 top-0 z-50 flex h-full w-[380px] flex-col bg-background shadow-2xl transition-transform duration-200 ease-out',
-          open ? 'translate-x-0' : 'translate-x-full'
+          open ? 'translate-x-0 visible' : 'translate-x-full invisible'
         )}
       >
         {/* Header */}
