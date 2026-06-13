@@ -40,7 +40,7 @@ import {
 import { FlagSlidingPanel } from '@/components/shared/FlagSlidingPanel';
 import { DocumentIntelligencePanel } from '@/components/pipeline/DocumentIntelligencePanel';
 import type { DocForPanel } from '@/components/pipeline/DocumentIntelligencePanel';
-import { UploadDialog } from '@/components/pipeline/UploadDialog';
+import { UploadDialog, WorkspaceBadge, getWorkspaceColour } from '@/components/pipeline/UploadDialog';
 import type { StagedFile as UploadedFile } from '@/components/pipeline/UploadDialog';
 import { toast } from 'sonner';
 import { SCREEN_KEYS } from '@/constants/screenKeys';
@@ -1428,6 +1428,8 @@ export default function PipelineDashboard() {
   const [stagedDocs, setStagedDocs] = useState<StagedDocument[]>(MOCK_DOCUMENTS);
   const [searchQuery, setSearchQuery] = useState('');
   const [colFilters, setColFilters] = useState({ name: '', uploader: '', workspace: '' });
+  // Workspace quick-filter pill ('' = All)
+  const [workspacePill, setWorkspacePill] = useState<string>('');
   // Tab: 'active' = staging pipeline, 'committed' = audit view
   // stageView removed — committed docs now have their own standalone table (Table 4)
 
@@ -1639,7 +1641,8 @@ export default function PipelineDashboard() {
       doc.display_name.toLowerCase().includes(colFilters.name.toLowerCase()) &&
       doc.uploader.toLowerCase().includes(colFilters.uploader.toLowerCase()) &&
       doc.workspace_tag.toLowerCase().includes(colFilters.workspace.toLowerCase());
-    return matchesSearch && matchesCol;
+    const matchesPill = !workspacePill || doc.workspace_tag === workspacePill;
+    return matchesSearch && matchesCol && matchesPill;
   });
 
   const filteredPkgs = (() => {
@@ -2148,6 +2151,51 @@ export default function PipelineDashboard() {
 
           </div>
         </div>
+
+        {/* Workspace quick-filter pills */}
+        {activeStagedDocs.length > 0 && (() => {
+          const WORKSPACE_PILLS = ['Retail', 'Office', 'Industrial', 'Land', 'Corporate Leasing'];
+          // Only show pills for workspaces that have at least one doc in staging
+          const presentWorkspaces = WORKSPACE_PILLS.filter(ws =>
+            activeStagedDocs.some(d => d.workspace_tag === ws)
+          );
+          if (presentWorkspaces.length < 2) return null;
+          return (
+            <div className="flex items-center gap-1.5 px-5 py-2.5 border-b border-border bg-muted/20 flex-wrap">
+              <button
+                onClick={() => setWorkspacePill('')}
+                className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-all duration-150 ${
+                  workspacePill === ''
+                    ? 'bg-foreground text-background shadow-sm'
+                    : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground'
+                }`}
+              >
+                All
+              </button>
+              {presentWorkspaces.map(ws => {
+                const c = getWorkspaceColour(ws);
+                const active = workspacePill === ws;
+                return (
+                  <button
+                    key={ws}
+                    onClick={() => setWorkspacePill(active ? '' : ws)}
+                    className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-semibold ring-1 transition-all duration-150 ${
+                      active
+                        ? `${c.bg} ${c.text} ${c.ring} shadow-sm scale-[1.04]`
+                        : 'bg-muted text-muted-foreground ring-border hover:ring-1 hover:' + c.ring + ' hover:' + c.text
+                    }`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${active ? c.dot : 'bg-muted-foreground'}`} />
+                    {ws}
+                    <span className="ml-0.5 opacity-60">
+                      ({activeStagedDocs.filter(d => d.workspace_tag === ws).length})
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          );
+        })()}
 
         {/* Active staging view */}
 
