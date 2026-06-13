@@ -1428,9 +1428,9 @@ export default function PipelineDashboard() {
           latestByBatch.set(key, ev);
         }
       }
-      // Track which docIds have already been added to avoid duplicates.
+      // Track which docIds/filenames have already been added to avoid duplicates.
       const addedDocIds = new Set<string>();
-      const mockDocIds = new Set(MOCK_DOCUMENTS.map(d => d.id));
+      const mockDocNames = new Set(MOCK_DOCUMENTS.map(d => d.display_name?.toLowerCase()));
       const extraDocs: StagedDocument[] = [];
       for (const ev of Array.from(latestByBatch.values())) {
         const matchedSub = INITIAL_SUBMISSIONS.find(sub =>
@@ -1442,8 +1442,8 @@ export default function PipelineDashboard() {
         if (!matchedSub) continue;
         for (const f of matchedSub.files) {
           const restoredId = `restored-decline-${f.docId}-hydrated`;
-          // Skip if already added or already in MOCK_DOCUMENTS
-          if (addedDocIds.has(restoredId) || mockDocIds.has(restoredId)) continue;
+          // Skip if already added or if a doc with the same filename already exists in MOCK_DOCUMENTS
+          if (addedDocIds.has(restoredId) || mockDocNames.has(f.name?.toLowerCase())) continue;
           addedDocIds.add(restoredId);
           const orig: 'valid' | 'invalid' =
             (f as { originalStatus?: 'valid' | 'invalid' }).originalStatus ?? 'valid';
@@ -1715,6 +1715,7 @@ export default function PipelineDashboard() {
       }
       setStagedDocs(prev => {
         const existingIds = new Set(prev.map(d => d.id));
+        const existingNames = new Set(prev.map(d => d.display_name?.toLowerCase()));
         const toAdd: StagedDocument[] = [];
         for (const ev of Array.from(latestByBatch.values())) {
           const matchedSub = INITIAL_SUBMISSIONS.find(sub =>
@@ -1726,8 +1727,10 @@ export default function PipelineDashboard() {
           if (!matchedSub) continue;
           for (const f of matchedSub.files) {
             const restoredId = `restored-decline-${f.docId}-hydrated`;
-            if (existingIds.has(restoredId)) continue;
+            // Skip if same ID already present OR a doc with the same filename already exists
+            if (existingIds.has(restoredId) || existingNames.has(f.name?.toLowerCase())) continue;
             existingIds.add(restoredId);
+            existingNames.add(f.name?.toLowerCase());
             const orig: 'valid' | 'invalid' =
               (f as { originalStatus?: 'valid' | 'invalid' }).originalStatus ?? 'valid';
             toAdd.push({
