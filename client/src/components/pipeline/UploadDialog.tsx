@@ -483,7 +483,7 @@ export function UploadDialog({ open, onClose, onConfirm }: UploadDialogProps) {
       <div className="fixed inset-0 z-50 flex items-start justify-center pt-16 pb-6 px-4 overflow-y-auto">
         <div className="fixed inset-0 bg-black/40 backdrop-blur-[2px]" onClick={onClose} />
         <div
-          className="relative z-10 w-full max-w-[640px] bg-[var(--color-lg-page-bg)] rounded-xl shadow-2xl border border-border flex flex-col overflow-hidden"
+          className="relative z-10 w-full max-w-[960px] bg-[var(--color-lg-page-bg)] rounded-xl shadow-2xl border border-border flex flex-col overflow-hidden"
           style={{ animation: 'upload-card-in 260ms cubic-bezier(0.23,1,0.32,1) both' }}
         >
           <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-card">
@@ -566,7 +566,7 @@ export function UploadDialog({ open, onClose, onConfirm }: UploadDialogProps) {
 
       {/* Dialog */}
       <div
-        className="relative z-10 w-full max-w-[640px] bg-[var(--color-lg-page-bg)] rounded-xl shadow-2xl border border-border flex flex-col"
+        className="relative z-10 w-full max-w-[960px] bg-[var(--color-lg-page-bg)] rounded-xl shadow-2xl border border-border flex flex-col"
         style={{ animation: 'upload-card-in 260ms cubic-bezier(0.23,1,0.32,1) both' }}
       >
         {/* Header */}
