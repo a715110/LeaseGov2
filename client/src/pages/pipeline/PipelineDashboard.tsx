@@ -23,7 +23,7 @@ import {
   UploadCloud, FileText, AlertTriangle, CheckCircle2, XCircle,
   Clock, Send, RefreshCw, Search, MoreHorizontal, Edit2, Layers,
   Eye, Trash2, ArrowRight, FileUp, CheckSquare, Square,
-  Package, X, ChevronDown, ChevronUp, ChevronsUpDown, Unlink,
+  Package, X, ChevronDown, ChevronUp, ChevronsUpDown, ChevronRight, Unlink,
   Archive, ExternalLink, RotateCcw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -1441,6 +1441,17 @@ export default function PipelineDashboard() {
   });
   const [confirmSubmitAll, setConfirmSubmitAll] = useState(false);
   const [detailPkg, setDetailPkg] = useState<ContractPackage | null>(null);
+  // Expandable rows — Set of pkg/sub/doc ids that are currently expanded
+  const [expandedPkgs, setExpandedPkgs] = useState<Set<string>>(new Set());
+  const [expandedSubs, setExpandedSubs] = useState<Set<string>>(new Set());
+  const [expandedCommitted, setExpandedCommitted] = useState<Set<string>>(new Set());
+  function toggleExpand(set: Set<string>, setFn: React.Dispatch<React.SetStateAction<Set<string>>>, id: string) {
+    setFn(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
   // Inline rename
   const [renamingPkgId, setRenamingPkgId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
@@ -1585,6 +1596,9 @@ export default function PipelineDashboard() {
       setSubColFilters({ packageNum: '', name: '', workspace: '', submittedBy: '' });
       setSubStatusFilter('all');
       setSubSort(null);
+      setExpandedPkgs(new Set());
+      setExpandedSubs(new Set());
+      setExpandedCommitted(new Set());
     });
     return () => unsub();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2357,14 +2371,16 @@ export default function PipelineDashboard() {
               <thead>
                 <tr>
                   {([
+                    { col: null,         label: '',              hide: false }, // expand chevron
+                    { col: null,         label: 'Batch ID',      hide: false },
                     { col: 'packageNum', label: 'Package ID',    hide: false },
                     { col: 'files',      label: 'Docs',          hide: true  },
                     { col: null,         label: 'Target Record', hide: false },
                     { col: null,         label: 'Roles',         hide: true  },
                     { col: 'status',     label: 'Status',        hide: false },
                     { col: null,         label: 'Actions',       hide: false },
-                  ] as { col: string | null; label: string; hide: boolean }[]).map(({ col, label, hide }) => (
-                    <th key={label} className={`text-left${hide ? ' hidden lg:table-cell' : ''}`}>
+                  ] as { col: string | null; label: string; hide: boolean }[]).map(({ col, label, hide }, i) => (
+                    <th key={i} className={`text-left${hide ? ' hidden lg:table-cell' : ''}`}>
                       {col ? (
                         <button
                           onClick={() => togglePkgSort(col)}
@@ -2384,6 +2400,8 @@ export default function PipelineDashboard() {
                   ))}
                 </tr>
                 <tr className="bg-muted/20">
+                  <th />
+                  <th />
                   <th className="px-3 py-1"><ColFilter value={pkgColFilters.packageNum} onChange={v => setPkgColFilters(f => ({ ...f, packageNum: v }))} placeholder="Filter #…" /></th>
                   <th className="hidden lg:table-cell" /><th /><th className="hidden lg:table-cell" /><th /><th />
                 </tr>
@@ -2398,75 +2416,137 @@ export default function PipelineDashboard() {
                       ? (stagedDocs.find(d => d.id === pkg.files[0].docId)?.target_record_id ?? null)
                       : null
                   );
+                  const pkgExpanded = expandedPkgs.has(pkg.id);
+                  // Derive a preview Batch ID (becomes real batchRef when submitted)
+                  const pkgBatchId = `BATCH-${pkg.id.slice(-6).toUpperCase()}`;
+                  const TOTAL_PKG_COLS = 8;
                   return (
-                    <tr key={pkg.id} className="focus:outline-none focus:ring-1 focus:ring-primary/40 focus:ring-inset">
-                      {/* Package ID */}
-                      <td>
-                        <div className="flex flex-col">
-                          <span className="font-mono text-[12px] text-primary">{pkg.packageNum}</span>
-                          {pkg.packageName && <span className="text-[11px] text-muted-foreground">{pkg.packageName}</span>}
-                        </div>
-                      </td>
-                      {/* Docs count */}
-                      <td className="hidden lg:table-cell text-muted-foreground">{pkg.files.length}</td>
-                      {/* Target Record */}
-                      <td>
-                        {targetRec ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
-                            {targetRec.contractNumber} · {targetRec.counterparty}
+                    <>
+                      <tr
+                        key={pkg.id}
+                        className={`cursor-pointer hover:bg-muted/30 transition-colors focus:outline-none focus:ring-1 focus:ring-primary/40 focus:ring-inset ${
+                          pkgExpanded ? 'bg-muted/20' : ''
+                        }`}
+                        onClick={() => toggleExpand(expandedPkgs, setExpandedPkgs, pkg.id)}
+                      >
+                        {/* Expand chevron */}
+                        <td className="w-8 pr-0">
+                          <span className="text-muted-foreground transition-transform duration-150 inline-block" style={{ transform: pkgExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}>
+                            <ChevronRight className="w-3.5 h-3.5" />
                           </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 text-[12px] text-amber-600">
-                            <AlertTriangle className="w-3 h-3" /> No record assigned
-                          </span>
-                        )}
-                      </td>
-                      {/* Role completeness badge */}
-                      <td className="hidden lg:table-cell">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold border ${
-                          rolesComplete
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                            : 'bg-amber-50 text-amber-700 border-amber-200'
-                        }`}>
-                          {assignedRoles.length}/{pkg.files.length} roles
-                        </span>
-                      </td>
-                      {/* Status */}
-                      <td>
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold border ${
-                          pkg.status === 'Ready'
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                            : 'bg-slate-100 text-slate-600 border-slate-200'
-                        }`}>
-                          {pkg.status === 'Ready' ? 'Validated' : 'Assembly'}
-                        </span>
-                      </td>
-                      {/* Actions */}
-                      <td>
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            onClick={() => setDetailPkg(pkg)}
-                            className="px-2.5 py-1 rounded text-[11px] font-medium border border-border bg-background text-foreground hover:bg-muted transition-colors"
-                          >
-                            Open
-                          </button>
-                          {!isReadOnly && (
-                            <button
-                              onClick={() => submitPackage(pkg)}
-                              disabled={!ready}
-                              title={!ready ? 'Assign roles to all files before submitting' : undefined}
-                              className={`px-2.5 py-1 rounded text-[11px] font-semibold transition-colors ${
-                                ready
-                                  ? 'bg-[#1F3864] text-white hover:bg-[#162d54] cursor-pointer'
-                                  : 'bg-[#9CA3AF] text-white cursor-not-allowed'
-                              }`}
-                            >
-                              Submit for Extraction
-                            </button>
+                        </td>
+                        {/* Batch ID */}
+                        <td className="font-mono text-[12px] text-muted-foreground">{pkgBatchId}</td>
+                        {/* Package ID */}
+                        <td onClick={e => e.stopPropagation()}>
+                          <div className="flex flex-col">
+                            <span className="font-mono text-[12px] text-primary">{pkg.packageNum}</span>
+                            {pkg.packageName && <span className="text-[11px] text-muted-foreground">{pkg.packageName}</span>}
+                          </div>
+                        </td>
+                        {/* Docs count */}
+                        <td className="hidden lg:table-cell text-muted-foreground">{pkg.files.length}</td>
+                        {/* Target Record */}
+                        <td onClick={e => e.stopPropagation()}>
+                          {targetRec ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                              {targetRec.contractNumber} · {targetRec.counterparty}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 text-[12px] text-amber-600">
+                              <AlertTriangle className="w-3 h-3" /> No record assigned
+                            </span>
                           )}
-                        </div>
-                      </td>
-                    </tr>
+                        </td>
+                        {/* Role completeness badge */}
+                        <td className="hidden lg:table-cell">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold border ${
+                            rolesComplete
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : 'bg-amber-50 text-amber-700 border-amber-200'
+                          }`}>
+                            {assignedRoles.length}/{pkg.files.length} roles
+                          </span>
+                        </td>
+                        {/* Status */}
+                        <td>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold border ${
+                            pkg.status === 'Ready'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : 'bg-slate-100 text-slate-600 border-slate-200'
+                          }`}>
+                            {pkg.status === 'Ready' ? 'Validated' : 'Assembly'}
+                          </span>
+                        </td>
+                        {/* Actions */}
+                        <td onClick={e => e.stopPropagation()}>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => setDetailPkg(pkg)}
+                              className="px-2.5 py-1 rounded text-[11px] font-medium border border-border bg-background text-foreground hover:bg-muted transition-colors"
+                            >
+                              Open
+                            </button>
+                            {!isReadOnly && (
+                              <button
+                                onClick={() => submitPackage(pkg)}
+                                disabled={!ready}
+                                title={!ready ? 'Assign roles to all files before submitting' : undefined}
+                                className={`px-2.5 py-1 rounded text-[11px] font-semibold transition-colors ${
+                                  ready
+                                    ? 'bg-[#1F3864] text-white hover:bg-[#162d54] cursor-pointer'
+                                    : 'bg-[#9CA3AF] text-white cursor-not-allowed'
+                                }`}
+                              >
+                                Submit for Extraction
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                      {/* Expanded file list */}
+                      {pkgExpanded && (
+                        <tr key={`${pkg.id}-expanded`} className="bg-muted/10">
+                          <td colSpan={TOTAL_PKG_COLS} className="px-0 py-0">
+                            <div className="pl-10 pr-4 py-2 border-t border-border/40">
+                              <table className="w-full text-[12px]">
+                                <thead>
+                                  <tr className="text-muted-foreground">
+                                    <th className="text-left font-medium pb-1.5 pr-4">File Name</th>
+                                    <th className="text-left font-medium pb-1.5 pr-4">Type</th>
+                                    <th className="text-left font-medium pb-1.5">Role</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {pkg.files.map(f => (
+                                    <tr key={f.docId} className="border-t border-border/30">
+                                      <td className="py-1.5 pr-4">
+                                        <div className="flex items-center gap-1.5">
+                                          <FileText className="w-3 h-3 text-muted-foreground shrink-0" />
+                                          <span className="font-medium text-foreground truncate max-w-[220px]" title={f.name}>{f.name}</span>
+                                        </div>
+                                      </td>
+                                      <td className="py-1.5 pr-4">
+                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-muted text-muted-foreground border border-border">
+                                          {f.name.toLowerCase().endsWith('.tiff') || f.name.toLowerCase().endsWith('.tif') ? 'TIFF' : 'PDF'}
+                                        </span>
+                                      </td>
+                                      <td className="py-1.5">
+                                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border ${
+                                          f.role === 'Undefined'
+                                            ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                            : 'bg-slate-50 text-slate-600 border-slate-200'
+                                        }`}>{f.role}</span>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </>
                   );
                 })}
               </tbody>
@@ -2530,6 +2610,7 @@ export default function PipelineDashboard() {
               <thead>
                 <tr>
                   {([
+                    { col: null,          label: '',              hide: false }, // expand chevron
                     { col: null,          label: 'Batch ID',      hide: false },
                     { col: 'packageNum',  label: 'Package',       hide: false },
                     { col: null,          label: 'Target Record', hide: false },
@@ -2537,8 +2618,8 @@ export default function PipelineDashboard() {
                     { col: 'submitDate',  label: 'Submitted At',  hide: true  },
                     { col: 'status',      label: 'Status',        hide: false },
                     { col: null,          label: 'Actions',       hide: false },
-                  ] as { col: string | null; label: string; hide: boolean }[]).map(({ col, label, hide }) => (
-                    <th key={label} className={`text-left${hide ? ' hidden lg:table-cell' : ''}`}>
+                  ] as { col: string | null; label: string; hide: boolean }[]).map(({ col, label, hide }, i) => (
+                    <th key={i} className={`text-left${hide ? ' hidden lg:table-cell' : ''}`}>
                       {col ? (
                         <button
                           onClick={() => toggleSubSort(col)}
@@ -2559,107 +2640,161 @@ export default function PipelineDashboard() {
                 </tr>
                 <tr className="bg-muted/20">
                   <th />
+                  <th />
                   <th className="px-3 py-1"><ColFilter value={subColFilters.packageNum} onChange={v => setSubColFilters(f => ({ ...f, packageNum: v }))} placeholder="Filter #…" /></th>
                   <th /><th className="hidden lg:table-cell" /><th className="hidden lg:table-cell" /><th /><th />
                 </tr>
               </thead>
               <tbody>
                 {filteredSubs.map(sub => {
-                  // Derive batchId from submission id for display
-                  const batchId = sub.id.startsWith('sub-v3') ? 'BATCH-2026-0041' : `BATCH-${sub.id.slice(-6).toUpperCase()}`;
+                  const batchId = sub.batchRef ?? (sub.id.startsWith('sub-v3') ? 'BATCH-2026-0041' : `BATCH-${sub.id.slice(-6).toUpperCase()}`);
+                  const subExpanded = expandedSubs.has(sub.id);
+                  const TOTAL_SUB_COLS = 8;
                   const subTargetRec = findContractRecord(
                     sub.files[0]?.docId
                       ? (stagedDocs.find(d => d.id === sub.files[0].docId)?.target_record_id ?? null)
                       : null
                   );
                   return (
-                  <tr key={sub.id}>
-                    {/* Batch ID */}
-                    <td className="font-mono text-[12px] text-primary">{batchId}</td>
-                    {/* Package */}
-                    <td>
-                      <div className="flex flex-col">
-                        <span className="font-mono text-[12px] text-primary">{sub.packageNum}</span>
-                        {sub.packageName && <span className="text-[11px] text-muted-foreground">{sub.packageName}</span>}
-                      </div>
-                    </td>
-                    {/* Target Record */}
-                    <td>
-                      {subTargetRec ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
-                          {subTargetRec.contractNumber} · {subTargetRec.counterparty}
+                  <>
+                    <tr
+                      key={sub.id}
+                      className={`cursor-pointer hover:bg-muted/30 transition-colors ${
+                        subExpanded ? 'bg-muted/20' : ''
+                      }`}
+                      onClick={() => toggleExpand(expandedSubs, setExpandedSubs, sub.id)}
+                    >
+                      {/* Expand chevron */}
+                      <td className="w-8 pr-0">
+                        <span className="text-muted-foreground transition-transform duration-150 inline-block" style={{ transform: subExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}>
+                          <ChevronRight className="w-3.5 h-3.5" />
                         </span>
-                      ) : (
-                        <span className="text-[12px] text-muted-foreground/60 italic">Unassigned</span>
-                      )}
-                    </td>
-                    {/* Files */}
-                    <td className="hidden lg:table-cell text-muted-foreground">{sub.fileCount}</td>
-                    {/* Submitted At */}
-                    <td className="hidden lg:table-cell text-muted-foreground text-[12px]">{formatDate(sub.submitDate)}</td>
-                    {/* Status */}
-                    <td>
-                      <div className="flex flex-col gap-0.5">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold ${SUB_STATUS_BADGE[sub.status]}`}>
-                            {sub.status === 'In Progress' && (
-                              <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-                            )}
-                            {sub.status}
+                      </td>
+                      {/* Batch ID */}
+                      <td className="font-mono text-[12px] text-primary">{batchId}</td>
+                      {/* Package */}
+                      <td onClick={e => e.stopPropagation()}>
+                        <div className="flex flex-col">
+                          <span className="font-mono text-[12px] text-primary">{sub.packageNum}</span>
+                          {sub.packageName && <span className="text-[11px] text-muted-foreground">{sub.packageName}</span>}
+                        </div>
+                      </td>
+                      {/* Target Record */}
+                      <td onClick={e => e.stopPropagation()}>
+                        {subTargetRec ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                            {subTargetRec.contractNumber} · {subTargetRec.counterparty}
                           </span>
-                          {sub.isResubmit && (
-                            <span
-                              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold border border-violet-300 bg-violet-50 text-violet-700"
-                              title={sub.correctionNote ? `Correction note: ${sub.correctionNote}` : 'This package was previously declined and resubmitted'}
-                            >
-                              <RotateCcw className="w-2.5 h-2.5" />
-                              {sub.attemptNumber ? `Attempt ${sub.attemptNumber}` : 'Resubmitted'}
+                        ) : (
+                          <span className="text-[12px] text-muted-foreground/60 italic">Unassigned</span>
+                        )}
+                      </td>
+                      {/* Files */}
+                      <td className="hidden lg:table-cell text-muted-foreground">{sub.fileCount}</td>
+                      {/* Submitted At */}
+                      <td className="hidden lg:table-cell text-muted-foreground text-[12px]">{formatDate(sub.submitDate)}</td>
+                      {/* Status */}
+                      <td onClick={e => e.stopPropagation()}>
+                        <div className="flex flex-col gap-0.5">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold ${SUB_STATUS_BADGE[sub.status]}`}>
+                              {sub.status === 'In Progress' && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                              )}
+                              {sub.status}
+                            </span>
+                            {sub.isResubmit && (
+                              <span
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold border border-violet-300 bg-violet-50 text-violet-700"
+                                title={sub.correctionNote ? `Correction note: ${sub.correctionNote}` : 'This package was previously declined and resubmitted'}
+                              >
+                                <RotateCcw className="w-2.5 h-2.5" />
+                                {sub.attemptNumber ? `Attempt ${sub.attemptNumber}` : 'Resubmitted'}
+                              </span>
+                            )}
+                          </div>
+                          {sub.status === 'Declined' && sub.declineReasonLabel && (
+                            <span className="text-[11px] text-orange-600 leading-tight">{sub.declineReasonLabel}</span>
+                          )}
+                          {sub.correctionNote && (
+                            <span className="text-[11px] text-muted-foreground italic leading-tight max-w-[200px] truncate" title={sub.correctionNote}>
+                              "{sub.correctionNote}"
                             </span>
                           )}
                         </div>
-                        {sub.status === 'Declined' && sub.declineReasonLabel && (
-                          <span className="text-[11px] text-orange-600 leading-tight">{sub.declineReasonLabel}</span>
-                        )}
-                        {sub.correctionNote && (
-                          <span className="text-[11px] text-muted-foreground italic leading-tight max-w-[200px] truncate" title={sub.correctionNote}>
-                            "{sub.correctionNote}"
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    {/* Actions */}
-                    <td>
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => setDetailSub(sub)}
-                          className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                          aria-label="View submission details"
-                          title="View submission details"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                        </button>
-                        {sub.status === 'Pending' && !isReadOnly && (
+                      </td>
+                      {/* Actions */}
+                      <td onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center gap-1">
                           <button
-                            onClick={() => unsubmitPackage(sub)}
-                            className="px-2 py-0.5 rounded text-[11px] font-semibold border border-red-300 text-red-600 bg-red-50 hover:bg-red-100 transition-colors"
-                            title="Unsubmit this package"
+                            onClick={() => setDetailSub(sub)}
+                            className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                            aria-label="View submission details"
+                            title="View submission details"
                           >
-                            Unsubmit
+                            <Eye className="w-3.5 h-3.5" />
                           </button>
-                        )}
-                        {sub.status === 'Declined' && !isReadOnly && (
-                          <button
-                            onClick={() => setResubmitTarget(sub)}
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold border border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100 transition-colors"
-                            title="Restore package to Contract Packages for resubmission"
-                          >
-                            <RotateCcw className="w-3 h-3" />
-                            Resubmit
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
+                          {sub.status === 'Pending' && !isReadOnly && (
+                            <button
+                              onClick={() => unsubmitPackage(sub)}
+                              className="px-2 py-0.5 rounded text-[11px] font-semibold border border-red-300 text-red-600 bg-red-50 hover:bg-red-100 transition-colors"
+                              title="Unsubmit this package"
+                            >
+                              Unsubmit
+                            </button>
+                          )}
+                          {sub.status === 'Declined' && !isReadOnly && (
+                            <button
+                              onClick={() => setResubmitTarget(sub)}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold border border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100 transition-colors"
+                              title="Restore package to Contract Packages for resubmission"
+                            >
+                              <RotateCcw className="w-3 h-3" />
+                              Resubmit
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                    {/* Expanded file list */}
+                    {subExpanded && (
+                      <tr key={`${sub.id}-expanded`} className="bg-muted/10">
+                        <td colSpan={TOTAL_SUB_COLS} className="px-0 py-0">
+                          <div className="pl-10 pr-4 py-2 border-t border-border/40">
+                            <table className="w-full text-[12px]">
+                              <thead>
+                                <tr className="text-muted-foreground">
+                                  <th className="text-left font-medium pb-1.5 pr-4">File Name</th>
+                                  <th className="text-left font-medium pb-1.5 pr-4">Type</th>
+                                  <th className="text-left font-medium pb-1.5">Role</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {sub.files.map(f => (
+                                  <tr key={f.docId} className="border-t border-border/30">
+                                    <td className="py-1.5 pr-4">
+                                      <div className="flex items-center gap-1.5">
+                                        <FileText className="w-3 h-3 text-muted-foreground shrink-0" />
+                                        <span className="font-medium text-foreground truncate max-w-[220px]" title={f.name}>{f.name}</span>
+                                      </div>
+                                    </td>
+                                    <td className="py-1.5 pr-4">
+                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-muted text-muted-foreground border border-border">
+                                        {f.name.toLowerCase().endsWith('.tiff') || f.name.toLowerCase().endsWith('.tif') ? 'TIFF' : 'PDF'}
+                                      </span>
+                                    </td>
+                                    <td className="py-1.5">
+                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-50 text-slate-600 border border-slate-200">{f.role}</span>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </>
                   );
                 })}
               </tbody>
@@ -2676,6 +2811,22 @@ export default function PipelineDashboard() {
       ══════════════════════════════════════════════════════════════════════ */}
       {(() => {
         const committedDocs = stagedDocs.filter(d => d.document_job_status === 'committed');
+        // Group committed docs by target_record_id — each group becomes one expandable row
+        const committedGroups = Array.from(
+          committedDocs.reduce((map, doc) => {
+            const key = doc.target_record_id ?? '__unassigned__';
+            if (!map.has(key)) map.set(key, []);
+            map.get(key)!.push(doc);
+            return map;
+          }, new Map<string, typeof committedDocs>())
+        ).map(([key, docs]) => ({
+          key,
+          docs,
+          rec: findContractRecord(key === '__unassigned__' ? null : key),
+          // Derive a Batch ID from the group key for display
+          batchId: `BATCH-${key.slice(-6).toUpperCase()}`,
+        }));
+        const TOTAL_COMMITTED_COLS = 7;
         return (
           <div className="rounded-lg bg-card border border-border shadow-sm overflow-hidden">
             {/* Header */}
@@ -2700,74 +2851,127 @@ export default function PipelineDashboard() {
                 <table className="data-table w-full text-[13px]">
                   <thead>
                     <tr>
-                      <th className="text-left">File Name</th>
-                      <th className="text-left">Type</th>
-                      <th className="text-left">Workspace</th>
+                      <th className="text-left w-8"></th>{/* expand chevron */}
+                      <th className="text-left">Batch ID</th>
                       <th className="text-left">Contract Record</th>
-                      <th className="text-left">Uploader</th>
+                      <th className="text-left">Workspace</th>
+                      <th className="text-left">Files</th>
                       <th className="text-left">Committed</th>
                       <th></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {committedDocs.map(doc => {
-                      const rec = findContractRecord(doc.target_record_id);
+                    {committedGroups.map(group => {
+                      const groupExpanded = expandedCommitted.has(group.key);
                       return (
-                        <tr key={doc.id}>
-                          <td>
-                            <div className="flex items-center gap-2">
-                              <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                              <span className="font-medium text-foreground truncate max-w-[200px]" title={doc.display_name}>{doc.display_name}</span>
-                            </div>
-                          </td>
-                          <td>
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-muted text-muted-foreground border border-border">
-                              {getMimeLabel(doc.mime_type)}
-                            </span>
-                          </td>
-                          <td>
-                            <span className="text-[12px] text-primary bg-accent px-2 py-0.5 rounded font-medium">{doc.workspace_tag}</span>
-                          </td>
-                          <td>
-                            {rec ? (
-                              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                <CheckCircle2 className="w-3 h-3" />
-                                {rec.contractNumber} · {rec.counterparty}
+                        <>
+                          <tr
+                            key={group.key}
+                            className={`cursor-pointer hover:bg-muted/30 transition-colors ${
+                              groupExpanded ? 'bg-muted/20' : ''
+                            }`}
+                            onClick={() => toggleExpand(expandedCommitted, setExpandedCommitted, group.key)}
+                          >
+                            {/* Expand chevron */}
+                            <td className="w-8 pr-0">
+                              <span className="text-muted-foreground transition-transform duration-150 inline-block" style={{ transform: groupExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}>
+                                <ChevronRight className="w-3.5 h-3.5" />
                               </span>
-                            ) : (
-                              <span className="text-[12px] text-muted-foreground italic">{doc.target_record_id ?? '—'}</span>
-                            )}
-                          </td>
-                          <td className="text-[12px] text-muted-foreground">{doc.uploader}</td>
-                          <td className="font-mono text-[12px] text-muted-foreground">{doc.upload_date}</td>
-                          <td>
-                            <div className="flex items-center gap-1">
-                              <button
-                                onClick={() => setDetailDoc(doc as DocForPanel)}
-                                className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                                title="View document details"
-                              >
-                                <Eye className="w-3.5 h-3.5" />
-                              </button>
-                              {rec && (
+                            </td>
+                            {/* Batch ID */}
+                            <td className="font-mono text-[12px] text-muted-foreground">{group.batchId}</td>
+                            {/* Contract Record */}
+                            <td>
+                              {group.rec ? (
+                                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                  <CheckCircle2 className="w-3 h-3" />
+                                  {group.rec.contractNumber} · {group.rec.counterparty}
+                                </span>
+                              ) : (
+                                <span className="text-[12px] text-muted-foreground italic">{group.key === '__unassigned__' ? 'Unassigned' : group.key}</span>
+                              )}
+                            </td>
+                            {/* Workspace */}
+                            <td>
+                              <span className="text-[12px] text-primary bg-accent px-2 py-0.5 rounded font-medium">
+                                {group.docs[0]?.workspace_tag ?? '—'}
+                              </span>
+                            </td>
+                            {/* File count */}
+                            <td className="text-muted-foreground">{group.docs.length} file{group.docs.length !== 1 ? 's' : ''}</td>
+                            {/* Latest committed date */}
+                            <td className="font-mono text-[12px] text-muted-foreground">
+                              {group.docs.reduce((latest, d) => d.upload_date > latest ? d.upload_date : latest, '')}
+                            </td>
+                            {/* Actions */}
+                            <td onClick={e => e.stopPropagation()}>
+                              {group.rec && (
                                 <a
-                                  href={`/contracts/${doc.target_record_id}`}
+                                  href={`/contracts/${group.key}`}
                                   className="p-1 rounded hover:bg-emerald-50 text-emerald-600 hover:text-emerald-700 transition-colors"
-                                  title={`View in Contract Record ${rec.contractNumber}`}
-                                  onClick={e => { e.preventDefault(); toast.info(`Navigating to Contract Record ${rec.contractNumber}`, { description: 'Contract Records viewer coming soon.' }); }}
+                                  title={`View in Contract Record ${group.rec.contractNumber}`}
+                                  onClick={e => { e.preventDefault(); toast.info(`Navigating to Contract Record ${group.rec!.contractNumber}`, { description: 'Contract Records viewer coming soon.' }); }}
                                 >
                                   <ExternalLink className="w-3.5 h-3.5" />
                                 </a>
                               )}
-                            </div>
-                          </td>
-                        </tr>
+                            </td>
+                          </tr>
+                          {/* Expanded file list */}
+                          {groupExpanded && (
+                            <tr key={`${group.key}-expanded`} className="bg-muted/10">
+                              <td colSpan={TOTAL_COMMITTED_COLS} className="px-0 py-0">
+                                <div className="pl-10 pr-4 py-2 border-t border-border/40">
+                                  <table className="w-full text-[12px]">
+                                    <thead>
+                                      <tr className="text-muted-foreground">
+                                        <th className="text-left font-medium pb-1.5 pr-4">File Name</th>
+                                        <th className="text-left font-medium pb-1.5 pr-4">Type</th>
+                                        <th className="text-left font-medium pb-1.5 pr-4">Uploader</th>
+                                        <th className="text-left font-medium pb-1.5">Committed</th>
+                                        <th className="pb-1.5"></th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {group.docs.map(doc => (
+                                        <tr key={doc.id} className="border-t border-border/30">
+                                          <td className="py-1.5 pr-4">
+                                            <div className="flex items-center gap-1.5">
+                                              <FileText className="w-3 h-3 text-muted-foreground shrink-0" />
+                                              <span className="font-medium text-foreground truncate max-w-[220px]" title={doc.display_name}>{doc.display_name}</span>
+                                            </div>
+                                          </td>
+                                          <td className="py-1.5 pr-4">
+                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-muted text-muted-foreground border border-border">
+                                              {getMimeLabel(doc.mime_type)}
+                                            </span>
+                                          </td>
+                                          <td className="py-1.5 pr-4 text-muted-foreground">{doc.uploader}</td>
+                                          <td className="py-1.5 font-mono text-muted-foreground">{doc.upload_date}</td>
+                                          <td className="py-1.5">
+                                            <button
+                                              onClick={() => setDetailDoc(doc as DocForPanel)}
+                                              className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                                              title="View document details"
+                                            >
+                                              <Eye className="w-3 h-3" />
+                                            </button>
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </>
                       );
                     })}
                   </tbody>
                 </table>
                 <div className="px-5 py-3 border-t border-border bg-muted/30">
-                  <p className="text-[12px] text-muted-foreground">{committedDocs.length} committed document{committedDocs.length !== 1 ? 's' : ''} — read-only audit view</p>
+                  <p className="text-[12px] text-muted-foreground">{committedDocs.length} committed document{committedDocs.length !== 1 ? 's' : ''} in {committedGroups.length} batch{committedGroups.length !== 1 ? 'es' : ''} — read-only audit view</p>
                 </div>
               </div>
             )}

@@ -828,10 +828,30 @@ export default function ExtractionQueue() {
     return () => unsub();
   }, []);
 
+  // Expandable batch rows — Set of batch_ref values that are currently expanded
+  const [expandedBatches, setExpandedBatches] = useState<Set<string>>(new Set());
+  function toggleBatch(batchRef: string) {
+    setExpandedBatches(prev => {
+      const next = new Set(prev);
+      if (next.has(batchRef)) next.delete(batchRef); else next.add(batchRef);
+      return next;
+    });
+  }
+
   // TODO: Backend integration required — GET /api/document-jobs
   const filtered = activeTab === 'all'
     ? jobs
     : jobs.filter(j => j.status === activeTab);
+
+  // Group filtered jobs by batch_ref for expandable batch rows
+  const batchGroups = Array.from(
+    filtered.reduce((map, job) => {
+      const key = job.batch_ref || '__no_batch__';
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(job);
+      return map;
+    }, new Map<string, ProcessingJob[]>())
+  ).map(([batchRef, batchJobs]) => ({ batchRef, jobs: batchJobs }));
 
   return (
     <div className="flex flex-col min-h-full min-w-0 bg-[var(--color-lg-page-bg)]">
@@ -879,9 +899,9 @@ export default function ExtractionQueue() {
           <table className="data-table w-full min-w-[900px] text-[13px]">
             <thead>
               <tr>
-                <th className="text-left">Job ID</th>
-                <th className="text-left">File Name</th>
-                <th className="text-left">Batch</th>
+                <th className="text-left w-8"></th>{/* expand chevron */}
+                <th className="text-left">Batch ID</th>
+                <th className="text-left">Files</th>
                 <th className="text-left">Status</th>
                 <th className="text-left">OCR Confidence</th>
                 <th className="text-left hidden xl:table-cell">Agent</th>
@@ -892,75 +912,128 @@ export default function ExtractionQueue() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map(job => (
-                <tr
-                  key={job.id}
-                  className={`cursor-pointer ${selectedJob?.id === job.id ? 'bg-accent/60' : ''}`}
-                  onClick={() => setSelectedJob(job)}
-                >
-                  <td className="font-mono text-[12px] text-primary">{job.display_id}</td>
-                  <td>
-                    <span className="font-medium text-foreground truncate max-w-[180px] block" title={job.file_name}>
-                      {job.file_name}
-                    </span>
-                  </td>
-                  <td className="font-mono text-[12px] text-muted-foreground">{job.batch_ref}</td>
-                  <td>
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold ${STATUS_BADGE[job.status]}`}>
-                      {job.status === 'processing' && <RefreshCw className="w-3 h-3 animate-spin" />}
-                      {STATUS_LABEL[job.status]}
-                    </span>
-                  </td>
-                  <td>
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold ${getConfidenceClass(job.ocr_confidence)}`}>
-                      {Math.round(job.ocr_confidence * 100)}%
-                    </span>
-                  </td>
-                  <td className="hidden xl:table-cell"><AgentBadge status={job.agent_status} /></td>
-                  <td className="font-mono text-[12px] text-muted-foreground">{job.started}</td>
-                  <td className="text-muted-foreground hidden xl:table-cell">{job.duration}</td>
-                  <td className="text-muted-foreground hidden xl:table-cell">{job.assigned}</td>
-                  <td>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 text-[11px] gap-1"
-                        onClick={e => { e.stopPropagation(); setClassificationItem(job); }}
+              {batchGroups.map(group => {
+                const batchExpanded = expandedBatches.has(group.batchRef);
+                const TOTAL_EQ_COLS = 10;
+                // Derive aggregate status: if any job is processing → processing, any failed → warning, else first job status
+                const aggStatus: ProcessingJob['status'] = group.jobs.some(j => j.status === 'processing') ? 'processing'
+                  : group.jobs.some(j => j.status === 'failed') ? 'failed'
+                  : group.jobs.some(j => j.status === 'warning') ? 'warning'
+                  : group.jobs[0]?.status ?? 'ocr_queued';
+                const avgConf = group.jobs.length
+                  ? group.jobs.reduce((s, j) => s + j.ocr_confidence, 0) / group.jobs.length
+                  : 0;
+                return (
+                  <>
+                    {/* Batch summary row */}
+                    <tr
+                      key={group.batchRef}
+                      className={`cursor-pointer hover:bg-muted/30 transition-colors ${
+                        batchExpanded ? 'bg-muted/20' : ''
+                      }`}
+                      onClick={() => toggleBatch(group.batchRef)}
+                    >
+                      <td className="w-8 pr-0">
+                        <span className="text-muted-foreground transition-transform duration-150 inline-block" style={{ transform: batchExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}>
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </span>
+                      </td>
+                      <td className="font-mono text-[12px] text-primary">{group.batchRef || '—'}</td>
+                      <td>
+                        <span className="text-[12px] text-foreground font-medium">{group.jobs.length} file{group.jobs.length !== 1 ? 's' : ''}</span>
+                      </td>
+                      <td>
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold ${STATUS_BADGE[aggStatus]}`}>
+                          {aggStatus === 'processing' && <RefreshCw className="w-3 h-3 animate-spin" />}
+                          {STATUS_LABEL[aggStatus]}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold ${getConfidenceClass(avgConf)}`}>
+                          {Math.round(avgConf * 100)}%
+                        </span>
+                      </td>
+                      <td className="hidden xl:table-cell"><AgentBadge status={group.jobs[0]?.agent_status ?? 'queued'} /></td>
+                      <td className="font-mono text-[12px] text-muted-foreground">{group.jobs[0]?.started ?? '—'}</td>
+                      <td className="text-muted-foreground hidden xl:table-cell">{group.jobs[0]?.duration ?? '—'}</td>
+                      <td className="text-muted-foreground hidden xl:table-cell">{group.jobs[0]?.assigned ?? '—'}</td>
+                      <td></td>
+                    </tr>
+                    {/* Expanded: individual job rows */}
+                    {batchExpanded && group.jobs.map(job => (
+                      <tr
+                        key={job.id}
+                        className={`bg-muted/5 hover:bg-muted/20 transition-colors cursor-pointer border-t border-border/30 ${
+                          selectedJob?.id === job.id ? 'bg-accent/60' : ''
+                        }`}
+                        onClick={e => { e.stopPropagation(); setSelectedJob(job); }}
                       >
-                        Classify
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 text-[11px] gap-1"
-                        onClick={e => { e.stopPropagation(); setFieldMappingItem(job); }}
-                      >
-                        Map Fields
-                      </Button>
-                      {job.status !== 'declined' && (
-                        <Button
-                          size="sm"
-                          className="h-7 text-[11px] gap-1"
-                          onClick={e => { e.stopPropagation(); setWorkflowJob(job); setWorkflowInitialStep(1); }}
-                        >
-                          <Zap className="w-3 h-3" /> Process
-                        </Button>
-                      )}
-                      {job.status !== 'declined' && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 text-[11px] gap-1 text-destructive border-destructive/40 hover:bg-destructive/10"
-                          onClick={e => { e.stopPropagation(); setDeclineTarget(job); setDeclineReasonCategory(''); setDeclineReason(''); }}
-                        >
-                          <XCircle className="w-3 h-3" /> Decline
-                        </Button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                        <td className="w-8"></td>{/* indent */}
+                        <td className="font-mono text-[12px] text-muted-foreground pl-4">{job.display_id}</td>
+                        <td>
+                          <span className="font-medium text-foreground truncate max-w-[180px] block" title={job.file_name}>
+                            {job.file_name}
+                          </span>
+                        </td>
+                        <td>
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold ${STATUS_BADGE[job.status]}`}>
+                            {job.status === 'processing' && <RefreshCw className="w-3 h-3 animate-spin" />}
+                            {STATUS_LABEL[job.status]}
+                          </span>
+                        </td>
+                        <td>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold ${getConfidenceClass(job.ocr_confidence)}`}>
+                            {Math.round(job.ocr_confidence * 100)}%
+                          </span>
+                        </td>
+                        <td className="hidden xl:table-cell"><AgentBadge status={job.agent_status} /></td>
+                        <td className="font-mono text-[12px] text-muted-foreground">{job.started}</td>
+                        <td className="text-muted-foreground hidden xl:table-cell">{job.duration}</td>
+                        <td className="text-muted-foreground hidden xl:table-cell">{job.assigned}</td>
+                        <td>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-[11px] gap-1"
+                              onClick={e => { e.stopPropagation(); setClassificationItem(job); }}
+                            >
+                              Classify
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-[11px] gap-1"
+                              onClick={e => { e.stopPropagation(); setFieldMappingItem(job); }}
+                            >
+                              Map Fields
+                            </Button>
+                            {job.status !== 'declined' && (
+                              <Button
+                                size="sm"
+                                className="h-7 text-[11px] gap-1"
+                                onClick={e => { e.stopPropagation(); setWorkflowJob(job); setWorkflowInitialStep(1); }}
+                              >
+                                <Zap className="w-3 h-3" /> Process
+                              </Button>
+                            )}
+                            {job.status !== 'declined' && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-[11px] gap-1 text-destructive border-destructive/40 hover:bg-destructive/10"
+                                onClick={e => { e.stopPropagation(); setDeclineTarget(job); setDeclineReasonCategory(''); setDeclineReason(''); }}
+                              >
+                                <XCircle className="w-3 h-3" /> Decline
+                              </Button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </>
+                );
+              })}
             </tbody>
           </table>
         </div>
