@@ -27,6 +27,9 @@ import {
   Archive, ExternalLink
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger
+} from '@/components/ui/tooltip';
 import { Input } from '@/components/ui/input';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
@@ -1967,8 +1970,32 @@ export default function PipelineDashboard() {
                               );
                             })()
                           : doc.submission_path === 'unknown'
-                            ? <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">Awaiting Assignment</span>
-                            : <span className="inline-flex items-center gap-1 text-[12px] text-muted-foreground/60 italic"><span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 shrink-0" />Unassigned</span>
+                            ? (
+                              <TooltipProvider delayDuration={300}>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 cursor-help">Awaiting Assignment</span>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" className="max-w-[260px] text-[12px] leading-relaxed">
+                                    <p className="font-semibold mb-1">Awaiting Assignment</p>
+                                    <p>The submitter flagged uncertainty about which Contract Record this document belongs to. A Preparer must review and assign it before it can be packaged.</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )
+                            : (
+                              <TooltipProvider delayDuration={300}>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="inline-flex items-center gap-1 text-[12px] text-muted-foreground/60 italic cursor-help"><span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 shrink-0" />Unassigned</span>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" className="max-w-[260px] text-[12px] leading-relaxed">
+                                    <p className="font-semibold mb-1">Unassigned</p>
+                                    <p>No target Contract Record was specified at upload. A Preparer can assign this document to an existing record or create a new one before packaging.</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )
                         }
                       </td>
                       {/* Status */}
