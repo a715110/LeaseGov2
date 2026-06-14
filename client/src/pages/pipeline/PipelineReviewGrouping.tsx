@@ -569,6 +569,31 @@ export default function PipelineReviewGrouping() {
             <Layers className="w-3.5 h-3.5" />
             Mode: {submissionMode}
           </span>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 text-[13px]"
+            onClick={() => {
+              // Manually trigger a session save and confirm to the user
+              const histState = window.history.state as { navToken?: number } | null;
+              const session: ReviewSession = {
+                files,
+                packageName,
+                filterRole,
+                activeFileId,
+                zoom,
+                selectedFileNames: files.map(f => f.display_name),
+                navToken: histState?.navToken,
+              };
+              saveSession(session);
+              toast.success('Draft saved — you can return to this grouping from the Pipeline Dashboard.', {
+                duration: 5000,
+              });
+            }}
+          >
+            <Save className="w-3.5 h-3.5" />
+            Save Draft
+          </Button>
         </div>
       </div>
 
