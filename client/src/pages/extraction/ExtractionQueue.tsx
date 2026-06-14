@@ -34,6 +34,7 @@ import { cn } from '@/lib/utils';
 import { subscribeToEvents, publishEvent } from '@/lib/eventBus';
 import { WorkspaceBadge, getWorkspaceColour } from '@/components/pipeline/UploadDialog';
 import { MOCK_ASSIGNEES } from '@/lib/mockData';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
 import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -808,6 +809,9 @@ export default function ExtractionQueue() {
     setFileReasons({});
   }
 
+  // Inline assignee reassignment — tracks which job row has its dropdown open
+  const [editingAssigneeJobId, setEditingAssigneeJobId] = useState<string | null>(null);
+
   // S4: inline dialog states
   const [classificationItem, setClassificationItem] = useState<ProcessingJob | null>(null);
   const [fieldMappingItem, setFieldMappingItem] = useState<ProcessingJob | null>(null);
@@ -1082,27 +1086,96 @@ export default function ExtractionQueue() {
                         <td className="hidden xl:table-cell"><AgentBadge status={job.agent_status} /></td>
                         <td className="font-mono text-[12px] text-muted-foreground">{job.started}</td>
                         <td className="text-muted-foreground hidden xl:table-cell">{job.duration}</td>
-                        <td className="hidden xl:table-cell">
-                          {(() => {
-                            const assignee = job.assignee_id
-                              ? MOCK_ASSIGNEES.find(a => a.id === job.assignee_id)
-                              : null;
-                            return assignee ? (
-                              <div className="flex items-center gap-1.5">
-                                <span
-                                  className="inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold text-white shrink-0"
-                                  style={{ background: assignee.avatarColor ?? '#6366f1' }}
-                                >
-                                  {assignee.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
-                                </span>
-                                <span className="text-[12px] text-foreground truncate max-w-[100px]">{assignee.name}</span>
-                              </div>
-                            ) : (
-                              <span className="text-[11px] text-muted-foreground italic">
-                                {job.assigned === '—' ? 'Auto-routed' : job.assigned}
-                              </span>
-                            );
-                          })()}
+                        <td className="hidden xl:table-cell" onClick={e => e.stopPropagation()}>
+                          {editingAssigneeJobId === job.id ? (
+                            // Inline reassignment dropdown
+                            <Select
+                              value={job.assignee_id ?? '__auto__'}
+                              onValueChange={val => {
+                                // DEMO ONLY: mutate local state; PRODUCTION: PATCH /api/v1/extraction/jobs/{job.id}/assignee
+                                setJobs(prev => prev.map(j =>
+                                  j.id === job.id
+                                    ? { ...j, assignee_id: val === '__auto__' ? undefined : val, assigned: val === '__auto__' ? '—' : (MOCK_ASSIGNEES.find(a => a.id === val)?.name ?? '—') }
+                                    : j
+                                ));
+                                setEditingAssigneeJobId(null);
+                                toast.success('Assignee updated');
+                              }}
+                              onOpenChange={open => { if (!open) setEditingAssigneeJobId(null); }}
+                              open
+                            >
+                              <SelectTrigger className="h-7 text-[11px] w-[160px]">
+                                <SelectValue placeholder="Select assignee" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="__auto__">
+                                  <span className="italic text-muted-foreground">Auto-routed</span>
+                                </SelectItem>
+                                {MOCK_ASSIGNEES.map(a => (
+                                  <SelectItem key={a.id} value={a.id}>
+                                    <div className="flex items-center gap-2">
+                                      <span
+                                        className="inline-flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-bold text-white shrink-0"
+                                        style={{ background: a.avatarColor ?? '#6366f1' }}
+                                      >
+                                        {a.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
+                                      </span>
+                                      <span>{a.name}</span>
+                                      <span className="text-muted-foreground text-[10px] ml-auto">{a.role}</span>
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            (() => {
+                              const assignee = job.assignee_id
+                                ? MOCK_ASSIGNEES.find(a => a.id === job.assignee_id)
+                                : null;
+                              return (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <button
+                                      className="flex items-center gap-1.5 group rounded px-1 py-0.5 hover:bg-muted transition-colors"
+                                      onClick={e => { e.stopPropagation(); setEditingAssigneeJobId(job.id); }}
+                                      title="Click to reassign"
+                                    >
+                                      {assignee ? (
+                                        <>
+                                          <span
+                                            className="inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold text-white shrink-0"
+                                            style={{ background: assignee.avatarColor ?? '#6366f1' }}
+                                          >
+                                            {assignee.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
+                                          </span>
+                                          <span className="text-[12px] text-foreground truncate max-w-[90px]">{assignee.name}</span>
+                                        </>
+                                      ) : (
+                                        <span className="text-[11px] text-muted-foreground italic">
+                                          {job.assigned === '—' ? 'Auto-routed' : job.assigned}
+                                        </span>
+                                      )}
+                                    </button>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" className="text-left">
+                                    {assignee ? (
+                                      <div className="flex flex-col gap-0.5">
+                                        <span className="font-semibold">{assignee.name}</span>
+                                        <span className="text-[11px] opacity-80">{assignee.email ?? '—'}</span>
+                                        <span className="text-[10px] opacity-60">{assignee.role}</span>
+                                        <span className="text-[10px] opacity-50 mt-0.5">Click to reassign</span>
+                                      </div>
+                                    ) : (
+                                      <div className="flex flex-col gap-0.5">
+                                        <span className="font-semibold">Auto-routed</span>
+                                        <span className="text-[10px] opacity-60">Click to assign manually</span>
+                                      </div>
+                                    )}
+                                  </TooltipContent>
+                                </Tooltip>
+                              );
+                            })()
+                          )}
                         </td>
                         <td>
                           <div className="flex items-center gap-1">
@@ -1141,6 +1214,43 @@ export default function ExtractionQueue() {
               })}
             </tbody>
           </table>
+          {/* Empty state — shown when workspace pill or status tab filters out all jobs */}
+          {batchGroups.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-20 gap-3 text-center">
+              <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                <FileText className="w-6 h-6 text-muted-foreground" />
+              </div>
+              {workspacePill ? (
+                <>
+                  <p className="text-[14px] font-medium text-foreground">
+                    No jobs in the <span className="font-semibold">{workspacePill}</span> workspace
+                  </p>
+                  <p className="text-[12px] text-muted-foreground">
+                    Try selecting a different workspace or clear the filter.
+                  </p>
+                  <button
+                    onClick={() => setWorkspacePill('')}
+                    className="mt-1 px-3 py-1.5 rounded-md bg-muted text-[12px] font-medium text-foreground hover:bg-accent transition-colors"
+                  >
+                    Clear filter
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className="text-[14px] font-medium text-foreground">No jobs match this filter</p>
+                  <p className="text-[12px] text-muted-foreground">
+                    Try switching to the All tab or uploading new documents.
+                  </p>
+                  <button
+                    onClick={() => setActiveTab('all')}
+                    className="mt-1 px-3 py-1.5 rounded-md bg-muted text-[12px] font-medium text-foreground hover:bg-accent transition-colors"
+                  >
+                    Show all jobs
+                  </button>
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Side panel */}

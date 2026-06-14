@@ -201,18 +201,20 @@ export interface Assignee {
   role: 'Preparer' | 'Lease Admin';
   workspaceId: string;
   avatarColor?: string;
+  /** Work email — shown in avatar tooltip; PRODUCTION: from user directory */
+  email?: string;
 }
 
 export const MOCK_ASSIGNEES: Assignee[] = [
-  { id: 'user-prep-001', name: 'R. Thompson',  role: 'Preparer',    workspaceId: 'ws-001', avatarColor: '#3b82f6' },
-  { id: 'user-prep-002', name: 'L. Nguyen',    role: 'Preparer',    workspaceId: 'ws-002', avatarColor: '#8b5cf6' },
-  { id: 'user-prep-003', name: 'M. Okonkwo',   role: 'Preparer',    workspaceId: 'ws-003', avatarColor: '#f59e0b' },
-  { id: 'user-prep-004', name: 'S. Patel',     role: 'Preparer',    workspaceId: 'ws-004', avatarColor: '#10b981' },
-  { id: 'user-prep-005', name: 'D. Hartley',   role: 'Preparer',    workspaceId: 'ws-005', avatarColor: '#6366f1' },
-  { id: 'user-admin-001', name: 'C. Reyes',    role: 'Lease Admin', workspaceId: 'ws-001', avatarColor: '#ec4899' },
-  { id: 'user-admin-002', name: 'F. Andersen', role: 'Lease Admin', workspaceId: 'ws-004', avatarColor: '#14b8a6' },
-  { id: 'user-admin-003', name: 'J. Moreau',   role: 'Lease Admin', workspaceId: 'ws-002', avatarColor: '#f97316' },
-  { id: 'user-admin-004', name: 'T. Osei',     role: 'Lease Admin', workspaceId: 'ws-005', avatarColor: '#64748b' },
+  { id: 'user-prep-001', name: 'R. Thompson',  role: 'Preparer',    workspaceId: 'ws-001', avatarColor: '#3b82f6', email: 'r.thompson@leasegov.internal' },
+  { id: 'user-prep-002', name: 'L. Nguyen',    role: 'Preparer',    workspaceId: 'ws-002', avatarColor: '#8b5cf6', email: 'l.nguyen@leasegov.internal' },
+  { id: 'user-prep-003', name: 'M. Okonkwo',   role: 'Preparer',    workspaceId: 'ws-003', avatarColor: '#f59e0b', email: 'm.okonkwo@leasegov.internal' },
+  { id: 'user-prep-004', name: 'S. Patel',     role: 'Preparer',    workspaceId: 'ws-004', avatarColor: '#10b981', email: 's.patel@leasegov.internal' },
+  { id: 'user-prep-005', name: 'D. Hartley',   role: 'Preparer',    workspaceId: 'ws-005', avatarColor: '#6366f1', email: 'd.hartley@leasegov.internal' },
+  { id: 'user-admin-001', name: 'C. Reyes',    role: 'Lease Admin', workspaceId: 'ws-001', avatarColor: '#ec4899', email: 'c.reyes@leasegov.internal' },
+  { id: 'user-admin-002', name: 'F. Andersen', role: 'Lease Admin', workspaceId: 'ws-004', avatarColor: '#14b8a6', email: 'f.andersen@leasegov.internal' },
+  { id: 'user-admin-003', name: 'J. Moreau',   role: 'Lease Admin', workspaceId: 'ws-002', avatarColor: '#f97316', email: 'j.moreau@leasegov.internal' },
+  { id: 'user-admin-004', name: 'T. Osei',     role: 'Lease Admin', workspaceId: 'ws-005', avatarColor: '#64748b', email: 't.osei@leasegov.internal' },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
