@@ -17,7 +17,7 @@ import {
   RefreshCw, ChevronRight, BarChart2, X, Clock,
   CheckCircle2, AlertTriangle, XCircle, Cpu, User,
   Settings, Info, CheckCheck, Plus, Trash2, GripVertical,
-  ArrowLeft, Zap, FileText
+  ArrowLeft, Zap, FileText, Search
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useLocation, useSearch } from 'wouter';
@@ -876,12 +876,20 @@ export default function ExtractionQueue() {
 
   // Workspace quick-filter pill ('' = All)
   const [workspacePill, setWorkspacePill] = useState<string>('');
+  // Text search: matches file_name or batch_ref (case-insensitive)
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
   // TODO: Backend integration required — GET /api/document-jobs
   const filtered = (activeTab === 'all'
     ? jobs
     : jobs.filter(j => j.status === activeTab)
-  ).filter(j => !workspacePill || j.workspace === workspacePill);
+  )
+    .filter(j => !workspacePill || j.workspace === workspacePill)
+    .filter(j => {
+      if (!searchQuery.trim()) return true;
+      const q = searchQuery.toLowerCase();
+      return j.file_name.toLowerCase().includes(q) || (j.batch_ref ?? '').toLowerCase().includes(q);
+    });
 
   // Derive which workspaces are present in the current job list
   const WORKSPACE_PILLS = ['Retail', 'Office', 'Industrial', 'Land', 'Corporate Leasing'];
@@ -934,6 +942,35 @@ export default function ExtractionQueue() {
             </span>
           </button>
         ))}
+      </div>
+
+      {/* Search + filter toolbar */}
+      <div className="flex items-center gap-3 px-6 py-2.5 border-b border-border bg-muted/10">
+        <div className="relative flex-1 max-w-xs">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+          <Input
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Search by file name or batch ID…"
+            className="pl-8 h-8 text-[12px]"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+        {(searchQuery || workspacePill) && (
+          <button
+            onClick={() => { setSearchQuery(''); setWorkspacePill(''); }}
+            className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Clear all filters
+          </button>
+        )}
       </div>
 
       {/* Workspace quick-filter pills */}

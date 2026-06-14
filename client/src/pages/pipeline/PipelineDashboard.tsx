@@ -107,6 +107,8 @@ interface PackageFile {
   docId: string;
   name: string;
   role: DocumentRole;
+  /** Assignee carried from StagedDocument; null = auto-routed */
+  assignee_id?: string | null;
 }
 
 interface ContractPackage {
@@ -119,6 +121,8 @@ interface ContractPackage {
   createdBy: string;
   createdAt: string;
   status: 'Pending' | 'Ready';
+  /** Assignee for the whole package — carried from the first file's assignee_id */
+  assignee_id?: string | null;
 }
 
 interface Submission {
@@ -133,6 +137,8 @@ interface Submission {
   workspace: string;
   submittedBy: string;
   submitDate: string;
+  /** Assignee carried from ContractPackage */
+  assignee_id?: string | null;
   status: 'Pending' | 'In Progress' | 'Completed' | 'Failed' | 'Declined';
   declineReason?: string;
   declineReasonLabel?: string;
@@ -1449,6 +1455,8 @@ export default function PipelineDashboard() {
   const [detailBatch, setDetailBatch] = useState<IntakeBatch | null>(null);
   // S1c — Bulk selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  // Inline assignee reassignment in Stage Documents
+  const [editingAssigneeDocId, setEditingAssigneeDocId] = useState<string | null>(null);
   // Grouping dialog
   const [groupingDocs, setGroupingDocs] = useState<StagedDocument[] | null>(null);
   // Add-to-package dialog
@@ -1800,15 +1808,21 @@ export default function PipelineDashboard() {
   function confirmGrouping(files: PackageFile[]) {
     if (!groupingDocs) return;
     const docIds = new Set(groupingDocs.map(d => d.id));
+    // Carry assignee from the staged docs into each PackageFile and the package itself
+    const filesWithAssignee: PackageFile[] = files.map(f => {
+      const srcDoc = groupingDocs.find(d => d.id === f.docId);
+      return { ...f, assignee_id: srcDoc?.assignee_id ?? null };
+    });
     const pkg: ContractPackage = {
       id: `pkg-${Date.now()}`,
       packageNum: nextPackageNum(),
-      mode: files.length >= 2 ? 'Package' : 'Single',
-      files,
+      mode: filesWithAssignee.length >= 2 ? 'Package' : 'Single',
+      files: filesWithAssignee,
       workspace: groupingDocs[0].workspace_tag,
       createdBy: groupingDocs[0].uploader,
       createdAt: new Date().toISOString(),
-      status: files.every(f => f.role !== 'Undefined') ? 'Ready' : 'Pending',
+      status: filesWithAssignee.every(f => f.role !== 'Undefined') ? 'Ready' : 'Pending',
+      assignee_id: groupingDocs[0].assignee_id ?? null,
     };
     setStagedDocs(prev => prev.filter(d => !docIds.has(d.id)));
     setContractPackages(prev => [pkg, ...prev]);
@@ -1838,6 +1852,7 @@ export default function PipelineDashboard() {
       submittedBy: pkg.createdBy,
       submitDate: new Date().toISOString(),
       status: 'Pending',
+      assignee_id: pkg.assignee_id ?? null,
       ...(pkgMeta._attemptNumber !== undefined && {
         isResubmit: true,
         attemptNumber: pkgMeta._attemptNumber,
@@ -2319,24 +2334,94 @@ export default function PipelineDashboard() {
                             )
                         }
                       </td>
-                      {/* Assignee */}
-                      <td className="hidden xl:table-cell">
-                        {(() => {
-                          const assignee = doc.assignee_id
-                            ? MOCK_ASSIGNEES.find(a => a.id === doc.assignee_id)
-                            : null;
-                          return assignee ? (
-                            <div className="flex items-center gap-1.5">
-                              <span className="inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold text-white shrink-0"
-                                style={{ background: assignee.avatarColor ?? '#6366f1' }}>
-                                {assignee.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
-                              </span>
-                              <span className="text-[12px] text-foreground truncate max-w-[100px]">{assignee.name}</span>
-                            </div>
-                          ) : (
-                            <span className="text-[11px] text-muted-foreground italic">Auto-routed</span>
-                          );
-                        })()}
+                      {/* Assignee — inline-edit with tooltip */}
+                      <td className="hidden xl:table-cell" onClick={e => e.stopPropagation()}>
+                        {editingAssigneeDocId === doc.id ? (
+                          <Select
+                            value={doc.assignee_id ?? '__auto__'}
+                            onValueChange={val => {
+                              // DEMO ONLY: mutate local state; PRODUCTION: PATCH /api/v1/pipeline/staged/{doc.id}/assignee
+                              const newAssignee = val === '__auto__' ? null : val;
+                              setStagedDocs(prev => prev.map(d =>
+                                d.id === doc.id ? { ...d, assignee_id: newAssignee } : d
+                              ));
+                              setEditingAssigneeDocId(null);
+                              const name = newAssignee ? (MOCK_ASSIGNEES.find(a => a.id === newAssignee)?.name ?? 'assignee') : 'Auto-routed';
+                              toast.success(`Assignee updated to ${name}`);
+                            }}
+                            onOpenChange={open => { if (!open) setEditingAssigneeDocId(null); }}
+                            open
+                          >
+                            <SelectTrigger className="h-7 text-[11px] w-[160px]">
+                              <SelectValue placeholder="Select assignee" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__auto__">
+                                <span className="italic text-muted-foreground">Auto-routed</span>
+                              </SelectItem>
+                              {MOCK_ASSIGNEES.map(a => (
+                                <SelectItem key={a.id} value={a.id}>
+                                  <div className="flex items-center gap-2">
+                                    <span
+                                      className="inline-flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-bold text-white shrink-0"
+                                      style={{ background: a.avatarColor ?? '#6366f1' }}
+                                    >
+                                      {a.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
+                                    </span>
+                                    <span>{a.name}</span>
+                                    <span className="text-muted-foreground text-[10px] ml-auto">{a.role}</span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          (() => {
+                            const assignee = doc.assignee_id
+                              ? MOCK_ASSIGNEES.find(a => a.id === doc.assignee_id)
+                              : null;
+                            return (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button
+                                    className="flex items-center gap-1.5 rounded px-1 py-0.5 hover:bg-muted transition-colors"
+                                    onClick={e => { e.stopPropagation(); if (!isReadOnly) setEditingAssigneeDocId(doc.id); }}
+                                    title={isReadOnly ? undefined : 'Click to reassign'}
+                                  >
+                                    {assignee ? (
+                                      <>
+                                        <span
+                                          className="inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold text-white shrink-0"
+                                          style={{ background: assignee.avatarColor ?? '#6366f1' }}
+                                        >
+                                          {assignee.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
+                                        </span>
+                                        <span className="text-[12px] text-foreground truncate max-w-[90px]">{assignee.name}</span>
+                                      </>
+                                    ) : (
+                                      <span className="text-[11px] text-muted-foreground italic">Auto-routed</span>
+                                    )}
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="text-left">
+                                  {assignee ? (
+                                    <div className="flex flex-col gap-0.5">
+                                      <span className="font-semibold">{assignee.name}</span>
+                                      <span className="text-[11px] opacity-80">{assignee.email ?? '—'}</span>
+                                      <span className="text-[10px] opacity-60">{assignee.role}</span>
+                                      {!isReadOnly && <span className="text-[10px] opacity-50 mt-0.5">Click to reassign</span>}
+                                    </div>
+                                  ) : (
+                                    <div className="flex flex-col gap-0.5">
+                                      <span className="font-semibold">Auto-routed</span>
+                                      {!isReadOnly && <span className="text-[10px] opacity-60">Click to assign manually</span>}
+                                    </div>
+                                  )}
+                                </TooltipContent>
+                              </Tooltip>
+                            );
+                          })()
+                        )}
                       </td>
                       {/* Uploaded */}
                       <td className="hidden lg:table-cell font-mono text-[12px] text-muted-foreground">{doc.upload_date}</td>
@@ -2386,6 +2471,19 @@ export default function PipelineDashboard() {
               disabled={selectedIds.size === 0}
               onClick={() => {
                 const selected = stagedDocs.filter(d => selectedIds.has(d.id));
+                // Enforce same-assignee rule: all selected files must share the same assignee
+                // (null/undefined counts as a distinct value — 'auto-routed' is a valid common value)
+                const assigneeIds = Array.from(new Set(selected.map(d => d.assignee_id ?? null)));
+                if (assigneeIds.length > 1) {
+                  const names = assigneeIds.map(id =>
+                    id ? (MOCK_ASSIGNEES.find(a => a.id === id)?.name ?? id) : 'Auto-routed'
+                  ).join(', ');
+                  toast.error('Mixed assignees — cannot package together', {
+                    description: `Selected files have different assignees: ${names}. Reassign to a single preparer before packaging.`,
+                    duration: 6000,
+                  });
+                  return;
+                }
                 // Pass full document objects so Review & Group can build ReviewFile
                 // records from real data instead of filtering its own MOCK_FILES.
                 // navToken lets Review & Group detect a fresh selection and discard
@@ -2474,6 +2572,7 @@ export default function PipelineDashboard() {
                     { col: 'files',      label: 'Docs',          hide: true  },
                     { col: null,         label: 'Target Record', hide: false },
                     { col: 'workspace',  label: 'Workspace',     hide: true  },
+                    { col: null,         label: 'Assignee',      hide: true  },
                     { col: null,         label: 'Roles',         hide: true  },
                     { col: 'status',     label: 'Status',        hide: false },
                     { col: null,         label: 'Actions',       hide: false },
@@ -2501,7 +2600,7 @@ export default function PipelineDashboard() {
                   <th />
                   <th />
                   <th className="px-3 py-1"><ColFilter value={pkgColFilters.packageNum} onChange={v => setPkgColFilters(f => ({ ...f, packageNum: v }))} placeholder="Filter #…" /></th>
-                  <th className="hidden lg:table-cell" /><th /><th className="hidden lg:table-cell px-3 py-1"><ColFilter value={pkgColFilters.workspace} onChange={v => setPkgColFilters(f => ({ ...f, workspace: v }))} placeholder="Filter…" /></th><th className="hidden lg:table-cell" /><th /><th />
+                  <th className="hidden lg:table-cell" /><th /><th className="hidden lg:table-cell px-3 py-1"><ColFilter value={pkgColFilters.workspace} onChange={v => setPkgColFilters(f => ({ ...f, workspace: v }))} placeholder="Filter…" /></th><th className="hidden lg:table-cell" /><th className="hidden lg:table-cell" /><th /><th />
                 </tr>
               </thead>
               <tbody>
@@ -2517,7 +2616,7 @@ export default function PipelineDashboard() {
                   const pkgExpanded = expandedPkgs.has(pkg.id);
                   // Derive a preview Batch ID (becomes real batchRef when submitted)
                   const pkgBatchId = `BATCH-${pkg.id.slice(-6).toUpperCase()}`;
-                  const TOTAL_PKG_COLS = 9;
+                  const TOTAL_PKG_COLS = 10;
                   return (
                     <React.Fragment key={pkg.id}>
                       <tr
@@ -2558,6 +2657,33 @@ export default function PipelineDashboard() {
                         {/* Workspace */}
                         <td className="hidden lg:table-cell">
                           <WorkspaceBadge name={pkg.workspace} size="xs" />
+                        </td>
+                        {/* Assignee */}
+                        <td className="hidden lg:table-cell">
+                          {(() => {
+                            const a = pkg.assignee_id ? MOCK_ASSIGNEES.find(x => x.id === pkg.assignee_id) : null;
+                            return a ? (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div className="flex items-center gap-1.5 cursor-default">
+                                    <span className="inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold text-white shrink-0" style={{ background: a.avatarColor ?? '#6366f1' }}>
+                                      {a.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
+                                    </span>
+                                    <span className="text-[12px] text-foreground truncate max-w-[90px]">{a.name}</span>
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="text-left">
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className="font-semibold">{a.name}</span>
+                                    <span className="text-[11px] opacity-80">{a.email ?? '—'}</span>
+                                    <span className="text-[10px] opacity-60">{a.role}</span>
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
+                            ) : (
+                              <span className="text-[11px] text-muted-foreground italic">Auto-routed</span>
+                            );
+                          })()}
                         </td>
                         {/* Role completeness badge */}
                         <td className="hidden lg:table-cell">
@@ -2716,6 +2842,7 @@ export default function PipelineDashboard() {
                     { col: 'packageNum',  label: 'Package',       hide: false },
                     { col: null,          label: 'Target Record', hide: false },
                     { col: 'workspace',   label: 'Workspace',     hide: true  },
+                    { col: null,          label: 'Assignee',      hide: true  },
                     { col: 'files',       label: 'Files',         hide: true  },
                     { col: 'submitDate',  label: 'Submitted At',  hide: true  },
                     { col: 'status',      label: 'Status',        hide: false },
@@ -2744,14 +2871,14 @@ export default function PipelineDashboard() {
                   <th />
                   <th />
                   <th className="px-3 py-1"><ColFilter value={subColFilters.packageNum} onChange={v => setSubColFilters(f => ({ ...f, packageNum: v }))} placeholder="Filter #…" /></th>
-                  <th /><th className="hidden lg:table-cell px-3 py-1"><ColFilter value={subColFilters.workspace} onChange={v => setSubColFilters(f => ({ ...f, workspace: v }))} placeholder="Filter…" /></th><th className="hidden lg:table-cell" /><th className="hidden lg:table-cell" /><th /><th />
+                  <th /><th className="hidden lg:table-cell px-3 py-1"><ColFilter value={subColFilters.workspace} onChange={v => setSubColFilters(f => ({ ...f, workspace: v }))} placeholder="Filter…" /></th><th className="hidden lg:table-cell" /><th className="hidden lg:table-cell" /><th className="hidden lg:table-cell" /><th /><th />
                 </tr>
               </thead>
               <tbody>
                 {filteredSubs.map(sub => {
                   const batchId = sub.batchRef ?? (sub.id.startsWith('sub-v3') ? 'BATCH-2026-0041' : `BATCH-${sub.id.slice(-6).toUpperCase()}`);
                   const subExpanded = expandedSubs.has(sub.id);
-                  const TOTAL_SUB_COLS = 9;
+                  const TOTAL_SUB_COLS = 10;
                   const subTargetRec = findContractRecord(
                     sub.files[0]?.docId
                       ? (stagedDocs.find(d => d.id === sub.files[0].docId)?.target_record_id ?? null)
@@ -2793,6 +2920,33 @@ export default function PipelineDashboard() {
                       {/* Workspace */}
                       <td className="hidden lg:table-cell">
                         <WorkspaceBadge name={sub.workspace} size="xs" />
+                      </td>
+                      {/* Assignee */}
+                      <td className="hidden lg:table-cell">
+                        {(() => {
+                          const a = sub.assignee_id ? MOCK_ASSIGNEES.find(x => x.id === sub.assignee_id) : null;
+                          return a ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="flex items-center gap-1.5 cursor-default">
+                                  <span className="inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold text-white shrink-0" style={{ background: a.avatarColor ?? '#6366f1' }}>
+                                    {a.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
+                                  </span>
+                                  <span className="text-[12px] text-foreground truncate max-w-[90px]">{a.name}</span>
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="text-left">
+                                <div className="flex flex-col gap-0.5">
+                                  <span className="font-semibold">{a.name}</span>
+                                  <span className="text-[11px] opacity-80">{a.email ?? '—'}</span>
+                                  <span className="text-[10px] opacity-60">{a.role}</span>
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          ) : (
+                            <span className="text-[11px] text-muted-foreground italic">Auto-routed</span>
+                          );
+                        })()}
                       </td>
                       {/* Files */}
                       <td className="hidden lg:table-cell text-muted-foreground">{sub.fileCount}</td>
@@ -3058,6 +3212,7 @@ export default function PipelineDashboard() {
                                       <tr className="text-muted-foreground">
                                         <th className="text-left font-medium pb-1.5 pr-4">File Name</th>
                                         <th className="text-left font-medium pb-1.5 pr-4">Type</th>
+                                        <th className="text-left font-medium pb-1.5 pr-4">Assignee</th>
                                         <th className="text-left font-medium pb-1.5 pr-4">Uploader</th>
                                         <th className="text-left font-medium pb-1.5">Committed</th>
                                         <th className="pb-1.5"></th>
@@ -3076,6 +3231,31 @@ export default function PipelineDashboard() {
                                             <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-muted text-muted-foreground border border-border">
                                               {getMimeLabel(doc.mime_type)}
                                             </span>
+                                          </td>
+                                          <td className="py-1.5 pr-4">
+                                            {(() => {
+                                              const a = doc.assignee_id ? MOCK_ASSIGNEES.find(x => x.id === doc.assignee_id) : null;
+                                              return a ? (
+                                                <Tooltip>
+                                                  <TooltipTrigger asChild>
+                                                    <div className="flex items-center gap-1 cursor-default">
+                                                      <span className="inline-flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-bold text-white shrink-0" style={{ background: a.avatarColor ?? '#6366f1' }}>
+                                                        {a.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
+                                                      </span>
+                                                      <span className="text-[11px] text-foreground">{a.name}</span>
+                                                    </div>
+                                                  </TooltipTrigger>
+                                                  <TooltipContent side="top" className="text-left">
+                                                    <div className="flex flex-col gap-0.5">
+                                                      <span className="font-semibold">{a.name}</span>
+                                                      <span className="text-[11px] opacity-80">{a.email ?? '—'}</span>
+                                                    </div>
+                                                  </TooltipContent>
+                                                </Tooltip>
+                                              ) : (
+                                                <span className="text-[11px] text-muted-foreground italic">Auto-routed</span>
+                                              );
+                                            })()}
                                           </td>
                                           <td className="py-1.5 pr-4 text-muted-foreground">{doc.uploader}</td>
                                           <td className="py-1.5 font-mono text-muted-foreground">{doc.upload_date}</td>
