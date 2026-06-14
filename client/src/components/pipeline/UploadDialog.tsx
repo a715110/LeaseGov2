@@ -51,13 +51,14 @@ export type RecordDestination = 'new_record' | 'existing_record' | 'unknown' | n
 export interface UploadDialogProps {
   open: boolean;
   onClose: () => void;
-  /** V3 callback — passes all context fields for StagedDocument creation */
+  /** V4 callback — passes all context fields for StagedDocument creation, including optional assignee override */
   onConfirm: (
     files: StagedFile[],
     workspaceTag: string,
     targetRecordId: string | null,
     submissionPath: RecordDestination,
     contextNotes: string | null,
+    assigneeId: string | null,
   ) => void;
 }
 
@@ -497,6 +498,7 @@ export function UploadDialog({ open, onClose, onConfirm }: UploadDialogProps) {
       targetRecordId,
       recordDest,
       contextNotes.trim() || null,
+      assigneeId || null,
     );
 
     setConfirmedCount(validFiles.length);
@@ -575,6 +577,17 @@ export function UploadDialog({ open, onClose, onConfirm }: UploadDialogProps) {
                     : recordDest === 'new_record' ? 'New Record (Draft)'
                     : 'Unassigned'
                   }
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Assigned to</span>
+                <span className="font-medium text-foreground">
+                  {(() => {
+                    const a = MOCK_ASSIGNEES.find(x => x.id === assigneeId);
+                    return a
+                      ? <span className="inline-flex items-center gap-1.5">{a.name}<span className="text-muted-foreground text-[11px]">{a.role}</span></span>
+                      : <span className="text-muted-foreground italic">System auto-routes</span>;
+                  })()}
                 </span>
               </div>
             </div>
@@ -908,19 +921,81 @@ export function UploadDialog({ open, onClose, onConfirm }: UploadDialogProps) {
                 <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground block mb-1.5">
                   Assign to <span className="text-muted-foreground/60">(optional)</span>
                 </label>
-                <Select value={assigneeId} onValueChange={setAssigneeId}>
+                <Select value={assigneeId} onValueChange={v => setAssigneeId(v === '__auto__' ? '' : v)}>
                   <SelectTrigger className="h-9 text-[13px]">
-                    <SelectValue placeholder="System auto-routes to workspace Preparer" />
+                    <SelectValue>
+                      {assigneeId ? (() => {
+                        const a = MOCK_ASSIGNEES.find(x => x.id === assigneeId);
+                        return a ? (
+                          <span className="flex items-center gap-1.5">
+                            <span className="font-medium text-foreground">{a.name}</span>
+                            <span className="text-muted-foreground text-[11px]">{a.role}</span>
+                          </span>
+                        ) : null;
+                      })() : (
+                        <span className="text-muted-foreground text-[13px]">System auto-routes to workspace Preparer</span>
+                      )}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    {(workspaceId ? assigneesForWorkspace : MOCK_ASSIGNEES).map(a => (
-                      <SelectItem key={a.id} value={a.id} className="text-[13px]">
-                        <span className="font-medium">{a.name}</span>
-                        <span className="ml-2 text-muted-foreground text-[11px]">{a.role}</span>
-                      </SelectItem>
-                    ))}
+                    {/* Default — system routing */}
+                    <SelectItem value="__auto__" className="text-[13px] text-muted-foreground italic">
+                      System auto-routes (default)
+                    </SelectItem>
+                    {/* Workspace assignees */}
+                    {assigneesForWorkspace.length > 0 && (
+                      <>
+                        <div className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground border-t border-border mt-1">
+                          {workspaceTag || 'Workspace'} team
+                        </div>
+                        {assigneesForWorkspace.map(a => (
+                          <SelectItem key={a.id} value={a.id} className="text-[13px]">
+                            <span className="flex items-center gap-2">
+                              <span className="font-medium">{a.name}</span>
+                              <span className="text-muted-foreground text-[11px]">{a.role}</span>
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </>
+                    )}
+                    {/* All other assignees (override) */}
+                    {(() => {
+                      const others = MOCK_ASSIGNEES.filter(a => a.workspaceId !== workspaceId);
+                      if (others.length === 0) return null;
+                      return (
+                        <>
+                          <div className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground border-t border-border mt-1">
+                            Other teams
+                          </div>
+                          {others.map(a => {
+                            const ws = MOCK_WORKSPACES.find(w => w.id === a.workspaceId);
+                            return (
+                              <SelectItem key={a.id} value={a.id} className="text-[13px]">
+                                <span className="flex items-center gap-2">
+                                  <span className="font-medium">{a.name}</span>
+                                  <span className="text-muted-foreground text-[11px]">{a.role}</span>
+                                  {ws && <WorkspaceBadge name={ws.name} size="xs" />}
+                                </span>
+                              </SelectItem>
+                            );
+                          })}
+                        </>
+                      );
+                    })()}
                   </SelectContent>
                 </Select>
+                {assigneeId && (
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    Overriding default routing.{' '}
+                    <button
+                      type="button"
+                      onClick={() => setAssigneeId('')}
+                      className="text-primary underline hover:no-underline"
+                    >
+                      Revert to auto-route
+                    </button>
+                  </p>
+                )}
               </div>
             </div>
           </div>

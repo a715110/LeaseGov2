@@ -203,11 +203,15 @@ export interface Assignee {
 }
 
 export const MOCK_ASSIGNEES: Assignee[] = [
-  { id: 'user-prep-001', name: 'R. Thompson',  role: 'Preparer',   workspaceId: 'ws-001' },
-  { id: 'user-prep-002', name: 'L. Nguyen',    role: 'Preparer',   workspaceId: 'ws-002' },
-  { id: 'user-prep-003', name: 'M. Okonkwo',   role: 'Preparer',   workspaceId: 'ws-003' },
+  { id: 'user-prep-001', name: 'R. Thompson',  role: 'Preparer',    workspaceId: 'ws-001' },
+  { id: 'user-prep-002', name: 'L. Nguyen',    role: 'Preparer',    workspaceId: 'ws-002' },
+  { id: 'user-prep-003', name: 'M. Okonkwo',   role: 'Preparer',    workspaceId: 'ws-003' },
+  { id: 'user-prep-004', name: 'S. Patel',     role: 'Preparer',    workspaceId: 'ws-004' },
+  { id: 'user-prep-005', name: 'D. Hartley',   role: 'Preparer',    workspaceId: 'ws-005' },
   { id: 'user-admin-001', name: 'C. Reyes',    role: 'Lease Admin', workspaceId: 'ws-001' },
   { id: 'user-admin-002', name: 'F. Andersen', role: 'Lease Admin', workspaceId: 'ws-004' },
+  { id: 'user-admin-003', name: 'J. Moreau',   role: 'Lease Admin', workspaceId: 'ws-002' },
+  { id: 'user-admin-004', name: 'T. Osei',     role: 'Lease Admin', workspaceId: 'ws-005' },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

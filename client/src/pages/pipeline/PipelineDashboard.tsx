@@ -1715,13 +1715,14 @@ export default function PipelineDashboard() {
     setSelectedIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   };
 
-  // ── Upload confirm handler (V3 — 5-argument callback) ──
+  // ── Upload confirm handler (V4 — 6-argument callback, includes optional assignee override) ──
   function handleUploadConfirm(
     uploadedFiles: UploadedFile[],
     workspaceTag: string,
     targetRecordId: string | null,
     submissionPath: 'new_record' | 'existing_record' | 'unknown' | null,
     contextNotes: string | null,
+    _assigneeId: string | null, // DEMO ONLY — PRODUCTION: pass to POST /api/v1/pipeline/staged as assignee_id
   ) {
     const now = new Date();
     const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
