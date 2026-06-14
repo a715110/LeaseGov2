@@ -48,6 +48,8 @@ interface ProcessingWorkflowDialogProps {
   initialStep?: number;
   /** S6b: pre-confirmed template (passed when re-opening from queue) */
   preConfirmedTemplate?: ExtractionTemplate | null;
+  /** Optional: all file names in the same batch, used for amendment detection */
+  batchFiles?: string[];
 }
 
 // ─── Step definitions ─────────────────────────────────────────────────────────
@@ -75,6 +77,12 @@ function confidenceClass(c: number) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
+// ─── Amendment detection helper ─────────────────────────────────────────────
+function detectAmendment(fileName: string, batchFiles: string[]): boolean {
+  const AMENDMENT_PATTERNS = /amend|amendment|addendum|addenda|rider|supplement|modification/i;
+  return AMENDMENT_PATTERNS.test(fileName) || batchFiles.some(f => AMENDMENT_PATTERNS.test(f));
+}
+
 export function ProcessingWorkflowDialog({
   open,
   onClose,
@@ -82,7 +90,9 @@ export function ProcessingWorkflowDialog({
   fileName = 'Retail-HQ-Lease-2026.pdf',
   initialStep = 1,
   preConfirmedTemplate = null,
+  batchFiles = [],
 }: ProcessingWorkflowDialogProps) {
+  const hasAmendment = detectAmendment(fileName, batchFiles);
   const [currentStep, setCurrentStep] = useState(initialStep);
   // S6b: confirmed template flows from Step 2 → Step 5
   const extractionStore = useExtractionStore();
@@ -273,6 +283,27 @@ export function ProcessingWorkflowDialog({
           {currentStep === 2 && (
             <div className="flex flex-col gap-4">
               <h3 className="text-[14px] font-semibold text-foreground">Map Fields</h3>
+              {/* Amendment detection banner */}
+              {hasAmendment && (
+                <div className="flex items-start gap-2.5 rounded-lg border border-amber-300 bg-amber-50 px-3.5 py-3">
+                  <span className="mt-0.5 text-amber-500 shrink-0">
+                    {/* Warning triangle inline SVG to avoid extra import */}
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                      <line x1="12" y1="9" x2="12" y2="13"/>
+                      <line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                  </span>
+                  <div className="flex flex-col gap-0.5">
+                    <p className="text-[13px] font-semibold text-amber-800">Amendment detected in this batch</p>
+                    <p className="text-[12px] text-amber-700 leading-relaxed">
+                      One or more files appear to be amendments, addenda, or riders.
+                      Before selecting a template, verify this amendment against the base contract
+                      to ensure the correct fields and clauses are mapped.
+                    </p>
+                  </div>
+                </div>
+              )}
               <p className="text-[13px] text-muted-foreground">
                 Select the extraction template to use for this document.
               </p>

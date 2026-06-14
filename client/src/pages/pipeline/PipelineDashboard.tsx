@@ -2439,6 +2439,7 @@ export default function PipelineDashboard() {
                     { col: 'packageNum', label: 'Package ID',    hide: false },
                     { col: 'files',      label: 'Docs',          hide: true  },
                     { col: null,         label: 'Target Record', hide: false },
+                    { col: 'workspace',  label: 'Workspace',     hide: true  },
                     { col: null,         label: 'Roles',         hide: true  },
                     { col: 'status',     label: 'Status',        hide: false },
                     { col: null,         label: 'Actions',       hide: false },
@@ -2466,7 +2467,7 @@ export default function PipelineDashboard() {
                   <th />
                   <th />
                   <th className="px-3 py-1"><ColFilter value={pkgColFilters.packageNum} onChange={v => setPkgColFilters(f => ({ ...f, packageNum: v }))} placeholder="Filter #…" /></th>
-                  <th className="hidden lg:table-cell" /><th /><th className="hidden lg:table-cell" /><th /><th />
+                  <th className="hidden lg:table-cell" /><th /><th className="hidden lg:table-cell px-3 py-1"><ColFilter value={pkgColFilters.workspace} onChange={v => setPkgColFilters(f => ({ ...f, workspace: v }))} placeholder="Filter…" /></th><th className="hidden lg:table-cell" /><th /><th />
                 </tr>
               </thead>
               <tbody>
@@ -2482,7 +2483,7 @@ export default function PipelineDashboard() {
                   const pkgExpanded = expandedPkgs.has(pkg.id);
                   // Derive a preview Batch ID (becomes real batchRef when submitted)
                   const pkgBatchId = `BATCH-${pkg.id.slice(-6).toUpperCase()}`;
-                  const TOTAL_PKG_COLS = 8;
+                  const TOTAL_PKG_COLS = 9;
                   return (
                     <React.Fragment key={pkg.id}>
                       <tr
@@ -2519,6 +2520,10 @@ export default function PipelineDashboard() {
                               <AlertTriangle className="w-3 h-3" /> No record assigned
                             </span>
                           )}
+                        </td>
+                        {/* Workspace */}
+                        <td className="hidden lg:table-cell">
+                          <WorkspaceBadge name={pkg.workspace} size="xs" />
                         </td>
                         {/* Role completeness badge */}
                         <td className="hidden lg:table-cell">
@@ -2676,6 +2681,7 @@ export default function PipelineDashboard() {
                     { col: null,          label: 'Batch ID',      hide: false },
                     { col: 'packageNum',  label: 'Package',       hide: false },
                     { col: null,          label: 'Target Record', hide: false },
+                    { col: 'workspace',   label: 'Workspace',     hide: true  },
                     { col: 'files',       label: 'Files',         hide: true  },
                     { col: 'submitDate',  label: 'Submitted At',  hide: true  },
                     { col: 'status',      label: 'Status',        hide: false },
@@ -2704,14 +2710,14 @@ export default function PipelineDashboard() {
                   <th />
                   <th />
                   <th className="px-3 py-1"><ColFilter value={subColFilters.packageNum} onChange={v => setSubColFilters(f => ({ ...f, packageNum: v }))} placeholder="Filter #…" /></th>
-                  <th /><th className="hidden lg:table-cell" /><th className="hidden lg:table-cell" /><th /><th />
+                  <th /><th className="hidden lg:table-cell px-3 py-1"><ColFilter value={subColFilters.workspace} onChange={v => setSubColFilters(f => ({ ...f, workspace: v }))} placeholder="Filter…" /></th><th className="hidden lg:table-cell" /><th className="hidden lg:table-cell" /><th /><th />
                 </tr>
               </thead>
               <tbody>
                 {filteredSubs.map(sub => {
                   const batchId = sub.batchRef ?? (sub.id.startsWith('sub-v3') ? 'BATCH-2026-0041' : `BATCH-${sub.id.slice(-6).toUpperCase()}`);
                   const subExpanded = expandedSubs.has(sub.id);
-                  const TOTAL_SUB_COLS = 8;
+                  const TOTAL_SUB_COLS = 9;
                   const subTargetRec = findContractRecord(
                     sub.files[0]?.docId
                       ? (stagedDocs.find(d => d.id === sub.files[0].docId)?.target_record_id ?? null)
@@ -2749,6 +2755,10 @@ export default function PipelineDashboard() {
                         ) : (
                           <span className="text-[12px] text-muted-foreground/60 italic">Unassigned</span>
                         )}
+                      </td>
+                      {/* Workspace */}
+                      <td className="hidden lg:table-cell">
+                        <WorkspaceBadge name={sub.workspace} size="xs" />
                       </td>
                       {/* Files */}
                       <td className="hidden lg:table-cell text-muted-foreground">{sub.fileCount}</td>

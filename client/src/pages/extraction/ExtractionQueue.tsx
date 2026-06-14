@@ -1168,6 +1168,7 @@ export default function ExtractionQueue() {
           jobId={workflowJob?.display_id}
           fileName={workflowJob?.file_name}
           initialStep={workflowInitialStep}
+          batchFiles={workflowJob ? jobs.filter(j => j.batch_ref === workflowJob.batch_ref && j.id !== workflowJob.id).map(j => j.file_name) : []}
         />
         {/* Batch-level Decline Package dialog — package-level with per-file reason rows */}
         <Dialog open={!!declineBatch} onOpenChange={v => { if (!v) closeDeclineBatch(); }}>
