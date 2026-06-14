@@ -1727,11 +1727,65 @@ export default function PipelineDashboard() {
     if (allFilteredSelected) {
       setSelectedIds(prev => { const n = new Set(prev); filteredDocs.forEach(d => n.delete(d.id)); return n; });
     } else {
-      setSelectedIds(prev => { const n = new Set(prev); filteredDocs.forEach(d => n.add(d.id)); return n; });
+      setSelectedIds(prev => {
+        const n = new Set(prev);
+        // Determine the assignee anchor: first already-selected doc, or first filtered doc
+        const currentlySelected = activeStagedDocs.filter(d => n.has(d.id));
+        const anchorAssignee = currentlySelected.length > 0
+          ? (currentlySelected[0].assignee_id ?? null)
+          : (filteredDocs[0]?.assignee_id ?? null);
+        let blocked = 0;
+        filteredDocs.forEach(d => {
+          if ((d.assignee_id ?? null) === anchorAssignee) {
+            n.add(d.id);
+          } else {
+            blocked++;
+          }
+        });
+        if (blocked > 0) {
+          const anchorName = anchorAssignee
+            ? (MOCK_ASSIGNEES.find(a => a.id === anchorAssignee)?.name ?? anchorAssignee)
+            : 'Auto-routed';
+          toast.warning(`${blocked} file${blocked !== 1 ? 's' : ''} skipped`, {
+            description: `Only files assigned to ${anchorName} were selected. Reassign the remaining files to include them.`,
+            duration: 5000,
+          });
+        }
+        return n;
+      });
     }
   };
   const toggleOne = (id: string) => {
-    setSelectedIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+    setSelectedIds(prev => {
+      const n = new Set(prev);
+      if (n.has(id)) {
+        // Deselect — always allowed
+        n.delete(id);
+        return n;
+      }
+      // Selecting: enforce same-assignee rule
+      const incomingDoc = activeStagedDocs.find(d => d.id === id);
+      const currentlySelected = activeStagedDocs.filter(d => n.has(d.id));
+      if (currentlySelected.length > 0 && incomingDoc) {
+        const existingAssignee = currentlySelected[0].assignee_id ?? null;
+        const incomingAssignee = incomingDoc.assignee_id ?? null;
+        if (existingAssignee !== incomingAssignee) {
+          const existingName = existingAssignee
+            ? (MOCK_ASSIGNEES.find(a => a.id === existingAssignee)?.name ?? existingAssignee)
+            : 'Auto-routed';
+          const incomingName = incomingAssignee
+            ? (MOCK_ASSIGNEES.find(a => a.id === incomingAssignee)?.name ?? incomingAssignee)
+            : 'Auto-routed';
+          toast.error('Mixed assignees — cannot select together', {
+            description: `Current selection is assigned to ${existingName}. "${incomingDoc.display_name}" is assigned to ${incomingName}. Reassign one before packaging.`,
+            duration: 5000,
+          });
+          return prev; // reject the selection change
+        }
+      }
+      n.add(id);
+      return n;
+    });
   };
 
   // ── Upload confirm handler (V4 — 6-argument callback, includes optional assignee override) ──
