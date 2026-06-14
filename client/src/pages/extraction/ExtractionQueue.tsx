@@ -32,7 +32,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { subscribeToEvents, publishEvent } from '@/lib/eventBus';
-import { WorkspaceBadge } from '@/components/pipeline/UploadDialog';
+import { WorkspaceBadge, getWorkspaceColour } from '@/components/pipeline/UploadDialog';
+import { MOCK_ASSIGNEES } from '@/lib/mockData';
 
 import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -58,6 +59,8 @@ interface ProcessingJob {
   decline_reason?: string;
   /** Workspace this batch belongs to (derived from upload metadata) */
   workspace?: string;
+  /** Assigned preparer ID — maps to MOCK_ASSIGNEES; '—' means auto-routed */
+  assignee_id?: string;
 }
 
 /** Per-file reason entry inside the batch decline dialog */
@@ -95,7 +98,7 @@ const MOCK_JOBS: ProcessingJob[] = [
     id: 'j1', display_id: 'JOB-2026-0441',
     file_name: 'Retail-HQ-Lease-2026.pdf', batch_ref: 'BATCH-2026-0042', workspace: 'Retail',
     status: 'ocr_complete', ocr_confidence: 0.94,
-    started: '09:14', duration: '1m 22s', assigned: 'J. Martinez',
+    started: '09:14', duration: '1m 22s', assigned: 'L. Nguyen', assignee_id: 'user-prep-002',
     agent_status: 'complete', extraction_mode: 'ai_assisted',
     pages: [
       {page:1,confidence:0.97},{page:2,confidence:0.95},{page:3,confidence:0.93},
@@ -114,7 +117,7 @@ const MOCK_JOBS: ProcessingJob[] = [
     id: 'j2', display_id: 'JOB-2026-0442',
     file_name: 'Office-Tower-Amendment-3.pdf', batch_ref: 'BATCH-2026-0042', workspace: 'Retail',
     status: 'processing', ocr_confidence: 0.68,
-    started: '09:18', duration: '0m 44s', assigned: 'J. Martinez',
+    started: '09:18', duration: '0m 44s', assigned: 'L. Nguyen', assignee_id: 'user-prep-002',
     agent_status: 'active', extraction_mode: 'ai_assisted',
     pages: [
       {page:1,confidence:0.91},{page:2,confidence:0.88},{page:3,confidence:0.75},
@@ -131,7 +134,7 @@ const MOCK_JOBS: ProcessingJob[] = [
     id: 'j3', display_id: 'JOB-2026-0443',
     file_name: 'Warehouse-Lease-Exhibit-A.tiff', batch_ref: 'BATCH-2026-0042', workspace: 'Retail',
     status: 'ocr_complete', ocr_confidence: 0.91,
-    started: '09:10', duration: '2m 05s', assigned: 'A. Chen',
+    started: '09:10', duration: '2m 05s', assigned: 'M. Okonkwo', assignee_id: 'user-prep-003',
     agent_status: 'awaiting_checkpoint', extraction_mode: 'hybrid',
     pages: [
       {page:1,confidence:0.93},{page:2,confidence:0.90},{page:3,confidence:0.88},
@@ -147,7 +150,7 @@ const MOCK_JOBS: ProcessingJob[] = [
     id: 'j4', display_id: 'JOB-2026-0440',
     file_name: 'Corrupted-Scan-Draft.pdf', batch_ref: 'BATCH-2026-0041', workspace: 'Office',
     status: 'failed', ocr_confidence: 0.12,
-    started: '08:42', duration: '0m 18s', assigned: 'A. Chen',
+    started: '08:42', duration: '0m 18s', assigned: 'M. Okonkwo', assignee_id: 'user-prep-003',
     agent_status: 'queued', extraction_mode: 'manual',
     pages: [{page:1,confidence:0.12}],
     log: [
@@ -159,7 +162,7 @@ const MOCK_JOBS: ProcessingJob[] = [
     id: 'j5', display_id: 'JOB-2026-0439',
     file_name: 'Ground-Lease-Base-Contract.pdf', batch_ref: 'BATCH-2026-0041', workspace: 'Office',
     status: 'ocr_complete', ocr_confidence: 0.97,
-    started: '08:30', duration: '3m 12s', assigned: 'S. Patel',
+    started: '08:30', duration: '3m 12s', assigned: 'S. Patel', assignee_id: 'user-prep-004',
     agent_status: 'complete', extraction_mode: 'ai_assisted',
     pages: [
       {page:1,confidence:0.98},{page:2,confidence:0.97},{page:3,confidence:0.96},
@@ -867,10 +870,18 @@ export default function ExtractionQueue() {
     });
   }
 
+  // Workspace quick-filter pill ('' = All)
+  const [workspacePill, setWorkspacePill] = useState<string>('');
+
   // TODO: Backend integration required — GET /api/document-jobs
-  const filtered = activeTab === 'all'
+  const filtered = (activeTab === 'all'
     ? jobs
-    : jobs.filter(j => j.status === activeTab);
+    : jobs.filter(j => j.status === activeTab)
+  ).filter(j => !workspacePill || j.workspace === workspacePill);
+
+  // Derive which workspaces are present in the current job list
+  const WORKSPACE_PILLS = ['Retail', 'Office', 'Industrial', 'Land', 'Corporate Leasing'];
+  const presentWorkspaces = WORKSPACE_PILLS.filter(ws => jobs.some(j => j.workspace === ws));
 
   // Group filtered jobs by batch_ref for expandable batch rows
   const batchGroups = Array.from(
@@ -920,6 +931,42 @@ export default function ExtractionQueue() {
           </button>
         ))}
       </div>
+
+      {/* Workspace quick-filter pills */}
+      {presentWorkspaces.length >= 2 && (
+        <div className="flex items-center gap-1.5 px-6 py-2.5 border-b border-border bg-muted/20 flex-wrap">
+          <button
+            onClick={() => setWorkspacePill('')}
+            className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-all duration-150 ${
+              workspacePill === ''
+                ? 'bg-foreground text-background shadow-sm'
+                : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground'
+            }`}
+          >
+            All
+          </button>
+          {presentWorkspaces.map(ws => {
+            const c = getWorkspaceColour(ws);
+            const active = workspacePill === ws;
+            const count = jobs.filter(j => j.workspace === ws).length;
+            return (
+              <button
+                key={ws}
+                onClick={() => setWorkspacePill(active ? '' : ws)}
+                className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-semibold ring-1 transition-all duration-150 ${
+                  active
+                    ? `${c.bg} ${c.text} ${c.ring} shadow-sm scale-[1.04]`
+                    : 'bg-muted text-muted-foreground ring-border hover:ring-1 hover:' + c.ring + ' hover:' + c.text
+                }`}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full ${active ? c.dot : 'bg-muted-foreground'}`} />
+                {ws}
+                <span className="ml-0.5 opacity-60">({count})</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Content */}
       <div className="flex flex-1 overflow-hidden min-w-0">
@@ -1035,7 +1082,28 @@ export default function ExtractionQueue() {
                         <td className="hidden xl:table-cell"><AgentBadge status={job.agent_status} /></td>
                         <td className="font-mono text-[12px] text-muted-foreground">{job.started}</td>
                         <td className="text-muted-foreground hidden xl:table-cell">{job.duration}</td>
-                        <td className="text-muted-foreground hidden xl:table-cell">{job.assigned}</td>
+                        <td className="hidden xl:table-cell">
+                          {(() => {
+                            const assignee = job.assignee_id
+                              ? MOCK_ASSIGNEES.find(a => a.id === job.assignee_id)
+                              : null;
+                            return assignee ? (
+                              <div className="flex items-center gap-1.5">
+                                <span
+                                  className="inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold text-white shrink-0"
+                                  style={{ background: assignee.avatarColor ?? '#6366f1' }}
+                                >
+                                  {assignee.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
+                                </span>
+                                <span className="text-[12px] text-foreground truncate max-w-[100px]">{assignee.name}</span>
+                              </div>
+                            ) : (
+                              <span className="text-[11px] text-muted-foreground italic">
+                                {job.assigned === '—' ? 'Auto-routed' : job.assigned}
+                              </span>
+                            );
+                          })()}
+                        </td>
                         <td>
                           <div className="flex items-center gap-1">
                             <Button
