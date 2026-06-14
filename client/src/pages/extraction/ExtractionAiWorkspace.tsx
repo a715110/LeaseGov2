@@ -269,6 +269,18 @@ export default function ExtractionAiWorkspace() {
   const [heatmap, setHeatmap] = useState(false);
   const [automationPanelOpen, setAutomationPanelOpen] = useState(true);
 
+  // ─── Confidence threshold (persisted) — declared first; used in derived counts below ──
+  const THRESHOLD_KEY = 'leasegov_confidence_threshold';
+  const [confidenceThreshold, setConfidenceThreshold] = useState<number>(() => {
+    const stored = localStorage.getItem(THRESHOLD_KEY);
+    return stored ? Number(stored) : 90;
+  });
+  const handleThresholdChange = useCallback((val: number[]) => {
+    const v = val[0];
+    setConfidenceThreshold(v);
+    localStorage.setItem(THRESHOLD_KEY, String(v));
+  }, []);
+
   // TODO: Backend integration required — GET /api/extraction-records/:id
   const totalFields = 73;
   const extractedCount = fields.filter(f => f.ai_extracted_value !== null).length;
@@ -297,18 +309,6 @@ export default function ExtractionAiWorkspace() {
   const isFullAutonomous = automationLevel === 'full_autonomous';
   const isCollaborative  = automationLevel === 'collaborative';
   const isFullManual     = automationLevel === 'full_manual';
-
-  // ─── Confidence threshold (persisted) ─────────────────────────────────────
-  const THRESHOLD_KEY = 'leasegov_confidence_threshold';
-  const [confidenceThreshold, setConfidenceThreshold] = useState<number>(() => {
-    const stored = localStorage.getItem(THRESHOLD_KEY);
-    return stored ? Number(stored) : 90;
-  });
-  const handleThresholdChange = useCallback((val: number[]) => {
-    const v = val[0];
-    setConfidenceThreshold(v);
-    localStorage.setItem(THRESHOLD_KEY, String(v));
-  }, []);
 
   // ─── Checkpoint ─────────────────────────────────────────────────────────────
   const { activeCheckpoint } = useCheckpoints(contractRecordId, {
