@@ -32,6 +32,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { subscribeToEvents, publishEvent } from '@/lib/eventBus';
+import { WorkspaceBadge } from '@/components/pipeline/UploadDialog';
 
 import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -55,6 +56,8 @@ interface ProcessingJob {
   log: { time: string; message: string; level: 'info' | 'warn' | 'error' }[];
   /** Per-file decline reason set by Preparer at package-level decline */
   decline_reason?: string;
+  /** Workspace this batch belongs to (derived from upload metadata) */
+  workspace?: string;
 }
 
 /** Per-file reason entry inside the batch decline dialog */
@@ -90,7 +93,7 @@ interface ExtractionTemplate {
 const MOCK_JOBS: ProcessingJob[] = [
   {
     id: 'j1', display_id: 'JOB-2026-0441',
-    file_name: 'Retail-HQ-Lease-2026.pdf', batch_ref: 'BATCH-2026-0042',
+    file_name: 'Retail-HQ-Lease-2026.pdf', batch_ref: 'BATCH-2026-0042', workspace: 'Retail',
     status: 'ocr_complete', ocr_confidence: 0.94,
     started: '09:14', duration: '1m 22s', assigned: 'J. Martinez',
     agent_status: 'complete', extraction_mode: 'ai_assisted',
@@ -109,7 +112,7 @@ const MOCK_JOBS: ProcessingJob[] = [
   },
   {
     id: 'j2', display_id: 'JOB-2026-0442',
-    file_name: 'Office-Tower-Amendment-3.pdf', batch_ref: 'BATCH-2026-0042',
+    file_name: 'Office-Tower-Amendment-3.pdf', batch_ref: 'BATCH-2026-0042', workspace: 'Retail',
     status: 'processing', ocr_confidence: 0.68,
     started: '09:18', duration: '0m 44s', assigned: 'J. Martinez',
     agent_status: 'active', extraction_mode: 'ai_assisted',
@@ -126,7 +129,7 @@ const MOCK_JOBS: ProcessingJob[] = [
   },
   {
     id: 'j3', display_id: 'JOB-2026-0443',
-    file_name: 'Warehouse-Lease-Exhibit-A.tiff', batch_ref: 'BATCH-2026-0042',
+    file_name: 'Warehouse-Lease-Exhibit-A.tiff', batch_ref: 'BATCH-2026-0042', workspace: 'Retail',
     status: 'ocr_complete', ocr_confidence: 0.91,
     started: '09:10', duration: '2m 05s', assigned: 'A. Chen',
     agent_status: 'awaiting_checkpoint', extraction_mode: 'hybrid',
@@ -142,7 +145,7 @@ const MOCK_JOBS: ProcessingJob[] = [
   },
   {
     id: 'j4', display_id: 'JOB-2026-0440',
-    file_name: 'Corrupted-Scan-Draft.pdf', batch_ref: 'BATCH-2026-0041',
+    file_name: 'Corrupted-Scan-Draft.pdf', batch_ref: 'BATCH-2026-0041', workspace: 'Office',
     status: 'failed', ocr_confidence: 0.12,
     started: '08:42', duration: '0m 18s', assigned: 'A. Chen',
     agent_status: 'queued', extraction_mode: 'manual',
@@ -154,7 +157,7 @@ const MOCK_JOBS: ProcessingJob[] = [
   },
   {
     id: 'j5', display_id: 'JOB-2026-0439',
-    file_name: 'Ground-Lease-Base-Contract.pdf', batch_ref: 'BATCH-2026-0041',
+    file_name: 'Ground-Lease-Base-Contract.pdf', batch_ref: 'BATCH-2026-0041', workspace: 'Office',
     status: 'ocr_complete', ocr_confidence: 0.97,
     started: '08:30', duration: '3m 12s', assigned: 'S. Patel',
     agent_status: 'complete', extraction_mode: 'ai_assisted',
@@ -832,12 +835,13 @@ export default function ExtractionQueue() {
   useEffect(() => {
     const unsub = subscribeToEvents((event) => {
       if (event.type !== 'BATCH_SUBMITTED') return;
-      const payload = event.payload as { batchId?: string; packageNum?: string };
+      const payload = event.payload as { batchId?: string; packageNum?: string; workspace?: string };
       const newJob: ProcessingJob = {
         id: `job-${Date.now()}`,
         display_id: `DJ-${Math.floor(1000 + Math.random() * 9000)}`,
         file_name: payload.packageNum ?? 'Submitted Package',
         batch_ref: payload.batchId ?? '',
+        workspace: payload.workspace,
         status: 'ocr_queued',
         ocr_confidence: 0,
         started: new Date().toLocaleTimeString(),
@@ -927,6 +931,7 @@ export default function ExtractionQueue() {
                 <th className="text-left w-8"></th>{/* expand chevron */}
                 <th className="text-left">Batch ID</th>
                 <th className="text-left">Files</th>
+                <th className="text-left">Workspace</th>
                 <th className="text-left">Status</th>
                 <th className="text-left">OCR Confidence</th>
                 <th className="text-left hidden xl:table-cell">Agent</th>
@@ -939,7 +944,7 @@ export default function ExtractionQueue() {
             <tbody>
               {batchGroups.map(group => {
                 const batchExpanded = expandedBatches.has(group.batchRef);
-                const TOTAL_EQ_COLS = 10;
+                const TOTAL_EQ_COLS = 11;
                 // Derive aggregate status: if any job is processing → processing, any failed → warning, else first job status
                 const aggStatus: ProcessingJob['status'] = group.jobs.some(j => j.status === 'processing') ? 'processing'
                   : group.jobs.some(j => j.status === 'failed') ? 'failed'
@@ -965,6 +970,11 @@ export default function ExtractionQueue() {
                       <td className="font-mono text-[12px] text-primary">{group.batchRef || '—'}</td>
                       <td>
                         <span className="text-[12px] text-foreground font-medium">{group.jobs.length} file{group.jobs.length !== 1 ? 's' : ''}</span>
+                      </td>
+                      <td>
+                        {group.jobs[0]?.workspace
+                          ? <WorkspaceBadge name={group.jobs[0].workspace} size="xs" />
+                          : <span className="text-muted-foreground text-[11px]">—</span>}
                       </td>
                       <td>
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold ${STATUS_BADGE[aggStatus]}`}>

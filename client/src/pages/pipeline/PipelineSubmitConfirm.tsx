@@ -105,11 +105,15 @@ export default function PipelineSubmitConfirm() {
     setIsSubmitting(true);
     // DEMO ONLY: notify Preparer tab that a new batch is ready for extraction.
     // PRODUCTION: replace with: await api.post('/api/v1/intake-batches/${batchReference}/submit')
+    // DEMO ONLY: read workspace preference from localStorage so ExtractionQueue can show WorkspaceBadge.
+    // PRODUCTION: workspace is stored on the submission record and returned by the backend.
+    const workspace = localStorage.getItem('leasegov_user_workspace') ?? undefined;
     publishEvent({
       type: 'BATCH_SUBMITTED',
       payload: {
         batchId: batchReference,
         packageNum: packageName ?? batchReference,
+        workspace,
       },
       sourceRole: 'document_submitter',
     });

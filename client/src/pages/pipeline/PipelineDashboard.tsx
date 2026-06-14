@@ -50,6 +50,7 @@ import { useNotifications } from '@/contexts/NotificationContext';
 import { usePipelineCounts } from '@/contexts/PipelineCountsContext';
 import {
   MOCK_CONTRACT_RECORDS,
+  MOCK_ASSIGNEES,
   findContractRecord,
 } from '@/lib/mockData';
 
@@ -85,6 +86,8 @@ interface StagedDocument {
   submitter_context_notes: string | null;
   /** V3: document-level job status for Table 1 committed state */
   document_job_status: 'staged' | 'committed' | 'processing' | 'complete';
+  /** Assignee override — null means system auto-routes */
+  assignee_id: string | null;
 }
 
 interface IntakeBatch {
@@ -167,6 +170,7 @@ const MOCK_DOCUMENTS: StagedDocument[] = [
     submission_path: null,
     submitter_context_notes: null,
     document_job_status: 'staged',
+    assignee_id: 'user-prep-002', // L. Nguyen
   },
   {
     id: 'doc-2',
@@ -184,6 +188,7 @@ const MOCK_DOCUMENTS: StagedDocument[] = [
     submission_path: null,
     submitter_context_notes: null,
     document_job_status: 'staged',
+    assignee_id: 'user-prep-003', // M. Okonkwo
   },
   {
     id: 'doc-3',
@@ -201,6 +206,7 @@ const MOCK_DOCUMENTS: StagedDocument[] = [
     submission_path: 'existing_record',
     submitter_context_notes: 'Renewal for Acme Corp main location. Please prioritise.',
     document_job_status: 'committed',
+    assignee_id: 'user-prep-002', // L. Nguyen
   },
   {
     id: 'doc-4',
@@ -218,6 +224,7 @@ const MOCK_DOCUMENTS: StagedDocument[] = [
     submission_path: 'existing_record',
     submitter_context_notes: null,
     document_job_status: 'committed',
+    assignee_id: null,
   },
   {
     id: 'doc-5',
@@ -235,6 +242,7 @@ const MOCK_DOCUMENTS: StagedDocument[] = [
     submission_path: 'existing_record',
     submitter_context_notes: 'Ground lease renewal — compare against approved record.',
     document_job_status: 'committed',
+    assignee_id: 'user-prep-004', // S. Patel
   },
   {
     id: 'doc-6',
@@ -252,6 +260,7 @@ const MOCK_DOCUMENTS: StagedDocument[] = [
     submission_path: 'existing_record',
     submitter_context_notes: null,
     document_job_status: 'committed',
+    assignee_id: 'user-prep-004', // S. Patel
   },
   {
     id: 'doc-8',
@@ -269,6 +278,7 @@ const MOCK_DOCUMENTS: StagedDocument[] = [
     submission_path: 'unknown',  // DocSubmitter was not sure of target record
     submitter_context_notes: 'Not sure which record this belongs to — please advise.',
     document_job_status: 'staged',
+    assignee_id: null, // Auto-routed
   },
 ];
 
@@ -1556,6 +1566,7 @@ export default function PipelineDashboard() {
               submission_path: null,
               submitter_context_notes: null,
               document_job_status: 'staged' as const,
+              assignee_id: null, // DEMO ONLY — restored from decline, auto-routed
             };
           });
           // Prepend restored docs to Table 1
@@ -1745,6 +1756,7 @@ export default function PipelineDashboard() {
         submission_path: submissionPath,
         submitter_context_notes: contextNotes,
         document_job_status: 'staged' as const,
+        assignee_id: _assigneeId, // DEMO ONLY — PRODUCTION: pass to POST /api/v1/pipeline/staged
       }));
     const invalidCount = uploadedFiles.filter(f => f.status === 'invalid').length;
     setStagedDocs(prev => [...newDocs, ...prev]);
@@ -1840,7 +1852,7 @@ export default function PipelineDashboard() {
     // The backend will create the submission record and push a notification to the Preparer.
     publishEvent({
       type: 'BATCH_SUBMITTED',
-      payload: { batchId: batchRef, packageNum: pkg.packageNum, batchRef },
+      payload: { batchId: batchRef, packageNum: pkg.packageNum, batchRef, workspace: pkg.workspace },
       sourceRole: 'document_submitter',
     });
   }
@@ -1869,6 +1881,7 @@ export default function PipelineDashboard() {
         submission_path: null,
         submitter_context_notes: null,
         document_job_status: 'staged' as const,
+        assignee_id: null, // DEMO ONLY — restored from ungroup
       };
     });
     setContractPackages(prev => prev.filter(p => p.id !== pkg.id));
@@ -1962,6 +1975,7 @@ export default function PipelineDashboard() {
       submission_path: null,
       submitter_context_notes: null,
       document_job_status: 'staged' as const,
+      assignee_id: null, // DEMO ONLY — restored from remove-file action
     };
     setContractPackages(prev => prev.map(p => p.id === pkgId ? updatedPkg : p));
     setStagedDocs(prev => [restoredDoc, ...prev]);
@@ -2225,6 +2239,7 @@ export default function PipelineDashboard() {
                   <th className="text-left hidden lg:table-cell">Type</th>
                   <th className="text-left">Workspace</th>
                   <th className="text-left">Record</th>
+                  <th className="text-left hidden xl:table-cell">Assignee</th>
                   <th className="text-left hidden lg:table-cell">Uploaded</th>
                   <th></th>
                 </tr>
@@ -2234,7 +2249,7 @@ export default function PipelineDashboard() {
                   <th className="px-3 py-1"><ColFilter value={colFilters.name} onChange={v => setColFilters(f => ({ ...f, name: v }))} placeholder="Filter name…" /></th>
                   <th className="hidden lg:table-cell" />
                   <th className="px-3 py-1"><ColFilter value={colFilters.workspace} onChange={v => setColFilters(f => ({ ...f, workspace: v }))} placeholder="Filter workspace…" /></th>
-                  <th /><th className="hidden lg:table-cell" /><th />
+                  <th /><th className="hidden xl:table-cell" /><th className="hidden lg:table-cell" /><th />
                 </tr>
               </thead>
               <tbody>
@@ -2303,6 +2318,25 @@ export default function PipelineDashboard() {
                               </TooltipProvider>
                             )
                         }
+                      </td>
+                      {/* Assignee */}
+                      <td className="hidden xl:table-cell">
+                        {(() => {
+                          const assignee = doc.assignee_id
+                            ? MOCK_ASSIGNEES.find(a => a.id === doc.assignee_id)
+                            : null;
+                          return assignee ? (
+                            <div className="flex items-center gap-1.5">
+                              <span className="inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold text-white shrink-0"
+                                style={{ background: assignee.avatarColor ?? '#6366f1' }}>
+                                {assignee.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
+                              </span>
+                              <span className="text-[12px] text-foreground truncate max-w-[100px]">{assignee.name}</span>
+                            </div>
+                          ) : (
+                            <span className="text-[11px] text-muted-foreground italic">Auto-routed</span>
+                          );
+                        })()}
                       </td>
                       {/* Uploaded */}
                       <td className="hidden lg:table-cell font-mono text-[12px] text-muted-foreground">{doc.upload_date}</td>
