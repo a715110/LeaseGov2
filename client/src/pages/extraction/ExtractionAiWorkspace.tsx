@@ -15,7 +15,7 @@
  *                  disposition, evidence_anchor_id), EvidenceAnchor
  */
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useLocation, useSearch } from "wouter";
 import { ContractAgentProgressPanel } from '@/components/agents/ContractAgentProgressPanel';
 import { ContractCheckpointCard } from '@/components/checkpoints/ContractCheckpointCard';
@@ -30,6 +30,8 @@ import {
   Cpu, StopCircle, FileText, ChevronRight, Edit2, ArrowLeft
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
 
 import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
@@ -97,6 +99,79 @@ function AnchorIcon({ status }: { status: AnchorStatus }) {
   return <Link2Off className="w-3.5 h-3.5 text-[var(--color-lg-error)]" />;
 }
 
+// ─── Field history tooltip ───────────────────────────────────────────────────
+
+interface FieldHistoryEntry {
+  actor: 'AI' | 'Preparer' | 'Reviewer';
+  value: string | null;
+  note?: string;
+  timestamp?: string;
+}
+
+function getFieldHistory(field: ExtractionField): FieldHistoryEntry[] {
+  const history: FieldHistoryEntry[] = [];
+  history.push({
+    actor: 'AI',
+    value: field.ai_extracted_value,
+    note: field.ai_confidence !== null ? `${Math.round(field.ai_confidence * 100)}% confidence` : 'Not extracted',
+    timestamp: '09:15',
+  });
+  if (field.preparer_value !== null || field.disposition) {
+    history.push({
+      actor: 'Preparer',
+      value: field.preparer_value ?? field.ai_extracted_value,
+      note: field.disposition ? `Marked as ${field.disposition.replace('_', ' ')}` : undefined,
+      timestamp: '09:47',
+    });
+  }
+  return history;
+}
+
+const ACTOR_COLOURS: Record<FieldHistoryEntry['actor'], string> = {
+  AI: 'bg-blue-100 text-blue-700',
+  Preparer: 'bg-amber-100 text-amber-700',
+  Reviewer: 'bg-emerald-100 text-emerald-700',
+};
+
+function FieldHistoryTooltip({ field }: { field: ExtractionField }) {
+  const history = getFieldHistory(field);
+  if (history.length === 0) return null;
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-muted hover:bg-muted/80 text-muted-foreground text-[9px] font-bold transition-colors"
+            onClick={e => e.stopPropagation()}
+            aria-label="Field history"
+          >
+            H
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="right" className="p-0 max-w-[260px]" align="start">
+          <div className="p-3">
+            <p className="text-[11px] font-semibold text-foreground mb-2">Field History</p>
+            <div className="flex flex-col gap-2">
+              {history.map((entry, i) => (
+                <div key={i} className="flex items-start gap-2">
+                  <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold shrink-0 ${ACTOR_COLOURS[entry.actor]}`}>
+                    {entry.actor}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] text-foreground truncate">{entry.value ?? 'Not extracted'}</p>
+                    {entry.note && <p className="text-[10px] text-muted-foreground">{entry.note}</p>}
+                  </div>
+                  {entry.timestamp && <span className="text-[10px] text-muted-foreground shrink-0">{entry.timestamp}</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
 // ─── Field row ────────────────────────────────────────────────────────────────
 
 interface FieldRowProps {
@@ -137,6 +212,7 @@ function FieldRow({ field, onConfirm, isActive, onActivate }: FieldRowProps) {
             </span>
           )}
           <AnchorIcon status={field.anchor_status} />
+          <FieldHistoryTooltip field={field} />
         </div>
         <p className={`text-[12px] ${field.ai_extracted_value ? "text-foreground" : "text-muted-foreground italic"}`}>
           {field.ai_extracted_value ?? "Not extracted"}
@@ -196,7 +272,7 @@ export default function ExtractionAiWorkspace() {
   // TODO: Backend integration required — GET /api/extraction-records/:id
   const totalFields = 73;
   const extractedCount = fields.filter(f => f.ai_extracted_value !== null).length;
-  const lowConfCount = fields.filter(f => f.ai_confidence !== null && f.ai_confidence < 0.90).length;
+  const lowConfCount = fields.filter(f => f.ai_confidence !== null && f.ai_confidence < (confidenceThreshold / 100)).length;
   const missingCount = fields.filter(f => f.ai_extracted_value === null).length;
   const criticalConfirmed = fields.filter(f => f.is_critical && f.confirmed).length;
   const totalCritical = fields.filter(f => f.is_critical).length;
@@ -221,6 +297,18 @@ export default function ExtractionAiWorkspace() {
   const isFullAutonomous = automationLevel === 'full_autonomous';
   const isCollaborative  = automationLevel === 'collaborative';
   const isFullManual     = automationLevel === 'full_manual';
+
+  // ─── Confidence threshold (persisted) ─────────────────────────────────────
+  const THRESHOLD_KEY = 'leasegov_confidence_threshold';
+  const [confidenceThreshold, setConfidenceThreshold] = useState<number>(() => {
+    const stored = localStorage.getItem(THRESHOLD_KEY);
+    return stored ? Number(stored) : 90;
+  });
+  const handleThresholdChange = useCallback((val: number[]) => {
+    const v = val[0];
+    setConfidenceThreshold(v);
+    localStorage.setItem(THRESHOLD_KEY, String(v));
+  }, []);
 
   // ─── Checkpoint ─────────────────────────────────────────────────────────────
   const { activeCheckpoint } = useCheckpoints(contractRecordId, {
@@ -298,6 +386,29 @@ export default function ExtractionAiWorkspace() {
         <span className="text-muted-foreground ml-auto">
           Critical confirmed: <strong className="text-foreground">{criticalConfirmed}/{totalCritical}</strong>
         </span>
+        {/* Confidence threshold slider */}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-2 border-l border-border pl-5 ml-2">
+                <span className="text-[11px] text-muted-foreground whitespace-nowrap">Threshold</span>
+                <Slider
+                  min={50}
+                  max={99}
+                  step={1}
+                  value={[confidenceThreshold]}
+                  onValueChange={handleThresholdChange}
+                  className="w-24"
+                  aria-label="Confidence threshold"
+                />
+                <span className="font-mono text-[12px] font-semibold text-foreground w-8 text-right">{confidenceThreshold}%</span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-[11px] max-w-[220px]">
+              Fields below this confidence level are highlighted as low confidence. Setting persists across sessions.
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
 
       {/* Split panels */}

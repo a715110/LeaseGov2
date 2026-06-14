@@ -18,7 +18,7 @@
  *   ai_confidence, rework_flagged), EvidenceAnchor
  */
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useLocation, useSearch } from "wouter";
 import { ContractCheckpointCard } from '@/components/checkpoints/ContractCheckpointCard';
 import { GracefulDegradationBanner } from '@/components/automation/GracefulDegradationBanner';
@@ -33,7 +33,8 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Slider } from "@/components/ui/slider";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
 
 import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
@@ -73,11 +74,84 @@ const INITIAL_FIELDS: VerificationField[] = [
 const CATEGORIES = ["core_metadata", "financial", "property"];
 const CATEGORY_LABELS: Record<string, string> = { core_metadata:"Core Metadata", financial:"Financial", property:"Property" };
 
-function getConfidenceClass(c: number | null) {
+function getConfidenceClass(c: number | null, threshold = 90) {
   if (c === null) return "confidence-low";
-  if (c >= 0.90) return "confidence-high";
+  if (c * 100 >= threshold) return "confidence-high";
   if (c >= 0.60) return "confidence-medium";
   return "confidence-low";
+}
+
+// ─── Field history tooltip ──────────────────────────────────────────────────
+
+interface FieldHistoryEntry {
+  actor: 'AI' | 'Preparer' | 'Reviewer';
+  value: string | null;
+  note?: string;
+  timestamp?: string;
+}
+
+const ACTOR_COLOURS: Record<FieldHistoryEntry['actor'], string> = {
+  AI: 'bg-blue-100 text-blue-700',
+  Preparer: 'bg-amber-100 text-amber-700',
+  Reviewer: 'bg-emerald-100 text-emerald-700',
+};
+
+function getVerificationFieldHistory(field: VerificationField): FieldHistoryEntry[] {
+  const history: FieldHistoryEntry[] = [];
+  history.push({
+    actor: 'AI',
+    value: field.ai_extracted_value,
+    note: field.ai_confidence !== null ? `${Math.round(field.ai_confidence * 100)}% confidence` : 'Not extracted',
+    timestamp: '09:15',
+  });
+  if (field.preparer_value !== null || field.disposition) {
+    history.push({
+      actor: 'Preparer',
+      value: field.preparer_value ?? field.ai_extracted_value,
+      note: field.disposition ? `Marked as ${field.disposition.replace('_', ' ')}` : undefined,
+      timestamp: '09:47',
+    });
+  }
+  return history;
+}
+
+function VerificationFieldHistoryTooltip({ field }: { field: VerificationField }) {
+  const history = getVerificationFieldHistory(field);
+  if (history.length === 0) return null;
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-muted hover:bg-muted/80 text-muted-foreground text-[9px] font-bold transition-colors"
+            onClick={e => e.stopPropagation()}
+            aria-label="Field history"
+          >
+            H
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="right" className="p-0 max-w-[260px]" align="start">
+          <div className="p-3">
+            <p className="text-[11px] font-semibold text-foreground mb-2">Field History</p>
+            <div className="flex flex-col gap-2">
+              {history.map((entry, i) => (
+                <div key={i} className="flex items-start gap-2">
+                  <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold shrink-0 ${ACTOR_COLOURS[entry.actor]}`}>
+                    {entry.actor}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] text-foreground truncate">{entry.value ?? 'Not extracted'}</p>
+                    {entry.note && <p className="text-[10px] text-muted-foreground">{entry.note}</p>}
+                  </div>
+                  {entry.timestamp && <span className="text-[10px] text-muted-foreground shrink-0">{entry.timestamp}</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
 }
 
 export default function ExtractionVerification() {
@@ -134,6 +208,18 @@ export default function ExtractionVerification() {
   const { activeCheckpoint } = useCheckpoints(contractRecordId, {
     checkpointType: 'extraction_review',
   });
+
+  // ─── Confidence threshold (shared with AI Workspace via localStorage) ───────────────
+  const THRESHOLD_KEY = 'leasegov_confidence_threshold';
+  const [confidenceThreshold, setConfidenceThreshold] = useState<number>(() => {
+    const stored = localStorage.getItem(THRESHOLD_KEY);
+    return stored ? Number(stored) : 90;
+  });
+  const handleThresholdChange = useCallback((val: number[]) => {
+    const v = val[0];
+    setConfidenceThreshold(v);
+    localStorage.setItem(THRESHOLD_KEY, String(v));
+  }, []);
 
   return (
     <div className="flex flex-col" style={{ height: "100vh" }}>
@@ -221,13 +307,14 @@ export default function ExtractionVerification() {
                             {field.is_critical && <Shield className="w-3.5 h-3.5 shrink-0" style={{ color: "var(--color-lg-critical)" }} aria-label="Critical Field — Cannot be deferred" />}
                             <span className="text-[13px] font-medium text-foreground flex-1">{field.field_label}</span>
                             {field.ai_confidence !== null && (
-                              <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold ${getConfidenceClass(field.ai_confidence)}`}>
+                              <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold ${getConfidenceClass(field.ai_confidence, confidenceThreshold)}`}>
                                 {Math.round(field.ai_confidence * 100)}%
                               </span>
                             )}
                             {field.anchor_status === "confirmed" && <Link2 className="w-3.5 h-3.5 text-[var(--color-lg-success)]" />}
                             {field.anchor_status === "proposed"  && <Link2 className="w-3.5 h-3.5 text-[var(--color-lg-warning)]" />}
                             {field.anchor_status === "missing"   && <Link2Off className="w-3.5 h-3.5 text-[var(--color-lg-error)]" />}
+                            <VerificationFieldHistoryTooltip field={field} />
                           </div>
 
                           {/* Before/after for corrected */}
@@ -325,6 +412,29 @@ export default function ExtractionVerification() {
 
       {/* Fixed 64px bottom gate bar */}
       <div className="shrink-0 h-16 border-t border-border bg-card px-6 flex items-center gap-6">
+        {/* Confidence threshold slider */}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-2 pr-5 border-r border-border">
+                <span className="text-[11px] text-muted-foreground whitespace-nowrap">Threshold</span>
+                <Slider
+                  min={50}
+                  max={99}
+                  step={1}
+                  value={[confidenceThreshold]}
+                  onValueChange={handleThresholdChange}
+                  className="w-20"
+                  aria-label="Confidence threshold"
+                />
+                <span className="font-mono text-[12px] font-semibold text-foreground w-8 text-right">{confidenceThreshold}%</span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="text-[11px] max-w-[220px]">
+              Fields below this confidence level are highlighted as low confidence. Shared with AI Workspace.
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
         <div className="flex items-center gap-1.5">
           <div className="h-1.5 w-24 bg-muted rounded overflow-hidden">
             <div className="h-full bg-primary rounded transition-all" style={{ width: `${(disposedCount / totalFields) * 100}%` }} />
