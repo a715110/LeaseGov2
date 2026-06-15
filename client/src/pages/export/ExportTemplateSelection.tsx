@@ -13,7 +13,8 @@
  */
 
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
+import { useMemo } from "react";
 import { CheckCircle2, Lock, FileSpreadsheet, FileText, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
@@ -88,13 +89,44 @@ const FORMAT_ICON: Record<string, React.ReactNode> = {
   pdf_only:      <FileText className="w-3.5 h-3.5" />,
   pdf_and_excel: <><FileSpreadsheet className="w-3.5 h-3.5" /><FileText className="w-3.5 h-3.5" /></>,
 };
+// ─── Record metadata lookup (keyed by record ID from ?record= query param) ───
+// Mirrors the MOCK_RECORDS in RecordsSearch — update both if adding new records.
+const MOCK_RECORD_TITLES: Record<string, { contract_number: string; title: string; status: string }> = {
+  r1: { contract_number: "CR-2026-0088", title: "Office Tower — 350 Fifth Ave",       status: "approved" },
+  r2: { contract_number: "CR-2026-0087", title: "Retail HQ — 1200 Market St",         status: "pending_approval" },
+  r3: { contract_number: "CR-2026-0086", title: "Warehouse Lease — Industrial Park",  status: "under_review" },
+  r4: { contract_number: "CR-2026-0085", title: "Ground Lease — Civic Center",        status: "correction_in_progress" },
+  r5: { contract_number: "CR-2026-0084", title: "Tech Campus — Building A",           status: "approved" },
+  r6: { contract_number: "CR-2026-0083", title: "Suburban Office — Suite 400",        status: "draft" },
+  r7: { contract_number: "CR-2026-0082", title: "Downtown Retail — Corner Unit",      status: "approved" },
+  r8: { contract_number: "CR-2026-0081", title: "Distribution Center — Zone 3",       status: "approved" },
+};
+const STATUS_BADGE_CLS: Record<string, string> = {
+  approved:               "badge-valid",
+  pending_approval:       "badge-warning",
+  under_review:           "badge-processing",
+  correction_in_progress: "badge-invalid",
+  draft:                  "badge-muted",
+};
+const STATUS_LABEL: Record<string, string> = {
+  approved:               "Approved",
+  pending_approval:       "Pending Approval",
+  under_review:           "Under Review",
+  correction_in_progress: "Correction in Progress",
+  draft:                  "Draft",
+};
 
 export default function ExportTemplateSelection() {
   const _screenKey = SCREEN_KEYS.EXPORT_TEMPLATE_SELECTION;
   const [, navigate] = useLocation();
+  const searchStr = useSearch();
   const [selected, setSelected] = useState<string | null>(null);
 
   const selectedTemplate = MOCK_TEMPLATES.find(t => t.id === selected);
+
+  // Read ?record= query param to show the correct record context card
+  const recordId = useMemo(() => new URLSearchParams(searchStr).get('record') ?? 'r1', [searchStr]);
+  const recordMeta = MOCK_RECORD_TITLES[recordId] ?? MOCK_RECORD_TITLES.r1;
 
   // TODO: Backend integration required — POST /api/export/tasks (creates UploadTask, locks template version)
   // Template-to-task mapping: in production this would be returned by the API
@@ -102,7 +134,7 @@ export default function ExportTemplateSelection() {
   function handleSelect() {
     if (!selected) return;
     const taskId = TEMPLATE_TO_TASK[selected] ?? 'ut1';
-    navigate(`/export/staging?task=${taskId}`);
+    navigate(`/export/staging?task=${taskId}&record=${recordId}`);
   }
 
   return (
@@ -118,14 +150,14 @@ export default function ExportTemplateSelection() {
       </div>
 
       <div className="px-6 pb-8 flex flex-col gap-6 max-w-5xl">
-        {/* Record context card */}
+        {/* Record context card — driven by ?record= query param */}
         <div className="bg-card border border-border rounded-lg p-4 flex items-center gap-6">
           <Lock className="w-4 h-4 text-muted-foreground shrink-0" />
           <div className="flex items-center gap-8 flex-1 text-[12px]">
-            <div><span className="text-muted-foreground">Record: </span><span className="font-mono font-semibold text-foreground">CR-2026-0041</span></div>
-            <div><span className="text-muted-foreground">Title: </span><span className="font-medium text-foreground">Retail HQ — 200 Park Ave</span></div>
+            <div><span className="text-muted-foreground">Record: </span><span className="font-mono font-semibold text-foreground">{recordMeta.contract_number}</span></div>
+            <div><span className="text-muted-foreground">Title: </span><span className="font-medium text-foreground">{recordMeta.title}</span></div>
             <div><span className="text-muted-foreground">Type: </span><span className="font-medium text-foreground">Property Lease</span></div>
-            <div><span className="text-muted-foreground">Status: </span><span className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-semibold badge-valid">Approved</span></div>
+            <div><span className="text-muted-foreground">Status: </span><span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-semibold ${STATUS_BADGE_CLS[recordMeta.status] ?? 'badge-muted'}`}>{STATUS_LABEL[recordMeta.status] ?? recordMeta.status}</span></div>
           </div>
           <span className="text-[11px] text-muted-foreground bg-muted/30 px-2 py-1 rounded">Record locked for export</span>
         </div>
@@ -218,7 +250,7 @@ export default function ExportTemplateSelection() {
         )}
 
         <div className="flex items-center justify-between pt-2">
-          <Button variant="outline" onClick={() => navigate("/records/r1")}>Cancel</Button>
+          <Button variant="outline" onClick={() => navigate(`/records/${recordId}`)}>Cancel</Button>
           <Button disabled={!selected} onClick={handleSelect} className="gap-2">
             <RefreshCw className="w-4 h-4" />
             Select and Continue

@@ -503,3 +503,27 @@ export function computeOverdueCount(): number {
     t => t.status !== 'approved' && t.sla_deadline_at !== null && new Date(t.sla_deadline_at!).getTime() < now
   ).length;
 }
+
+/**
+ * Returns SLA urgency breakdown:
+ * - overdue: deadline has passed
+ * - warning: deadline within 48 hours but not yet passed
+ * - level: 'overdue' | 'warning' | 'ok' — the highest urgency across all tasks
+ */
+export function computeSlaStatus(): { overdue: number; warning: number; level: 'overdue' | 'warning' | 'ok' } {
+  const now = Date.now();
+  const WARNING_MS = 48 * 60 * 60 * 1000; // 48 hours in milliseconds
+  let overdue = 0;
+  let warning = 0;
+  for (const t of MOCK_APPROVAL_SLA_DEADLINES) {
+    if (t.status === 'approved' || t.sla_deadline_at === null) continue;
+    const deadline = new Date(t.sla_deadline_at).getTime();
+    if (deadline < now) {
+      overdue++;
+    } else if (deadline - now <= WARNING_MS) {
+      warning++;
+    }
+  }
+  const level = overdue > 0 ? 'overdue' : warning > 0 ? 'warning' : 'ok';
+  return { overdue, warning, level };
+}

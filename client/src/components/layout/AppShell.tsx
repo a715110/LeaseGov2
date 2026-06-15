@@ -44,7 +44,7 @@ import { useNotifications } from '../../contexts/NotificationContext'
 import { usePipelineCounts } from '../../contexts/PipelineCountsContext'
 import { useDevMode } from '../../contexts/DevModeContext'
 import { LeaseGovThemeContext } from '../../contexts/LeaseGovThemeContext'
-import { computeOverdueCount } from '../../lib/mockApprovalsData'
+import { computeSlaStatus } from '../../lib/mockApprovalsData'
 import type { UserRole } from '../../lib/types'
 import { ROLE_LABELS } from '../../lib/types'
 import type { ThemeKey, ColorMode } from '../../types/shared/ThemeMode'
@@ -272,12 +272,15 @@ function ThemePicker() {
 interface NotificationBellProps {
   onClick: () => void
   overdueCount: number
+  warningCount: number
+  slaLevel: 'overdue' | 'warning' | 'ok'
 }
-function NotificationBell({ onClick, overdueCount }: NotificationBellProps) {
+function NotificationBell({ onClick, overdueCount, warningCount, slaLevel }: NotificationBellProps) {
   const { unreadCount } = useNotifications()
   const ariaLabel = [
     unreadCount > 0 ? `${unreadCount} unread` : '',
     overdueCount > 0 ? `${overdueCount} overdue SLA` : '',
+    warningCount > 0 && overdueCount === 0 ? `${warningCount} SLA warning` : '',
   ].filter(Boolean).join(', ')
   return (
     <button
@@ -295,22 +298,39 @@ function NotificationBell({ onClick, overdueCount }: NotificationBellProps) {
           {unreadCount > 9 ? '9+' : unreadCount}
         </span>
       )}
-      {/* Amber badge: overdue SLA tasks — primary position when no unread badge */}
-      {overdueCount > 0 && unreadCount === 0 && (
+      {/* SLA badge: overdue (amber) or warning (yellow) — primary position when no unread badge */}
+      {slaLevel !== 'ok' && unreadCount === 0 && (
         <span
-          className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[9px] font-bold text-white"
+          className={[
+            'absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold',
+            slaLevel === 'overdue' ? 'bg-amber-500 text-white' : 'bg-yellow-400 text-yellow-900',
+          ].join(' ')}
           aria-hidden="true"
-          title={`${overdueCount} approval task${overdueCount > 1 ? 's' : ''} with overdue SLA`}
+          title={
+            slaLevel === 'overdue'
+              ? `${overdueCount} approval task${overdueCount > 1 ? 's' : ''} with overdue SLA`
+              : `${warningCount} approval task${warningCount > 1 ? 's' : ''} approaching SLA deadline`
+          }
         >
-          {overdueCount > 9 ? '9+' : overdueCount}
+          {slaLevel === 'overdue'
+            ? (overdueCount > 9 ? '9+' : overdueCount)
+            : (warningCount > 9 ? '9+' : warningCount)
+          }
         </span>
       )}
-      {/* Amber dot: overdue SLA indicator alongside red unread badge */}
-      {overdueCount > 0 && unreadCount > 0 && (
+      {/* SLA dot: indicator alongside red unread badge */}
+      {slaLevel !== 'ok' && unreadCount > 0 && (
         <span
-          className="absolute -left-0.5 -bottom-0.5 h-2.5 w-2.5 rounded-full bg-amber-500 ring-1 ring-background"
+          className={[
+            'absolute -left-0.5 -bottom-0.5 h-2.5 w-2.5 rounded-full ring-1 ring-background',
+            slaLevel === 'overdue' ? 'bg-amber-500' : 'bg-yellow-400',
+          ].join(' ')}
           aria-hidden="true"
-          title={`${overdueCount} approval task${overdueCount > 1 ? 's' : ''} with overdue SLA`}
+          title={
+            slaLevel === 'overdue'
+              ? `${overdueCount} approval task${overdueCount > 1 ? 's' : ''} with overdue SLA`
+              : `${warningCount} approval task${warningCount > 1 ? 's' : ''} approaching SLA deadline`
+          }
         />
       )}
     </button>
@@ -761,7 +781,17 @@ export default function AppShell({
           <div className="flex items-center gap-2 shrink-0">
             <RoleSwitcher />
             <ThemePicker />
-            <NotificationBell onClick={() => setNotifOpen(true)} overdueCount={computeOverdueCount()} />
+            {(() => {
+              const slaStatus = computeSlaStatus()
+              return (
+                <NotificationBell
+                  onClick={() => setNotifOpen(true)}
+                  overdueCount={slaStatus.overdue}
+                  warningCount={slaStatus.warning}
+                  slaLevel={slaStatus.level}
+                />
+              )
+            })()}
           </div>
         </header>
 
