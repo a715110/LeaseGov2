@@ -18,8 +18,9 @@
  * Data model refs: UploadTask, CompliancePacket
  */
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
+import { publishEvent } from "@/lib/eventBus";
 import { Download, CheckCircle2, Lock, AlertTriangle, Upload, Eye, ToggleLeft, ToggleRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -102,12 +103,32 @@ export default function ExportUploadTask() {
     if (el.scrollTop + el.clientHeight >= el.scrollHeight - 10) setDaScrolled(true);
   }
 
+  // Publish record-lock events when task starts and completes
+  useEffect(() => {
+    publishEvent({
+      type: 'UPLOAD_TASK_STARTED',
+      payload: { task_id: 'UT-2026-0041', record_id: 'r1', lock_status: 'upload_task_active' },
+      sourceRole: 'accountant',
+    });
+    return () => {
+      // No cleanup needed — completion event is published in completeTask
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // TODO: Backend integration required — PATCH /api/export/tasks/:id/status
   function advanceStatus(next: TaskStatus) { setTaskStatus(next); }
 
   // TODO: Backend integration required — POST /api/export/tasks/:id/complete
   function completeTask() {
-    if (pacSacChecked && daChecked) advanceStatus("completed");
+    if (pacSacChecked && daChecked) {
+      advanceStatus("completed");
+      publishEvent({
+        type: 'UPLOAD_TASK_COMPLETED',
+        payload: { task_id: 'UT-2026-0041', record_id: 'r1', lock_status: 'unlocked' },
+        sourceRole: 'accountant',
+      });
+    }
   }
 
   if (taskStatus === "completed") {

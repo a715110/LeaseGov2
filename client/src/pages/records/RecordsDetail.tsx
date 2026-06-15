@@ -14,8 +14,9 @@
  * Data model refs: ContractRecord, PropertyLease, ContractRecordSnapshot
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, useParams } from "wouter";
+import { subscribeToEvents } from "@/lib/eventBus";
 import {
   ChevronRight, Star, StarOff, Lock, AlertTriangle, Bot, Clock, Edit3
 } from "lucide-react";
@@ -133,6 +134,24 @@ export default function RecordsDetail() {
 
   const lockBanner = LOCK_BANNER[record.lock_status];
   const automationStyle = AUTOMATION_BADGE[record.automation_level] || AUTOMATION_BADGE.full_manual;
+
+  // Listen for export task events to drive the lock banner
+  useEffect(() => {
+    return subscribeToEvents((event) => {
+      if (event.type === 'UPLOAD_TASK_STARTED') {
+        const p = event.payload as { record_id?: string };
+        if (!p.record_id || p.record_id === recordId || p.record_id === 'r1') {
+          setRecord(r => ({ ...r, lock_status: 'upload_task_active' as LockStatus }));
+        }
+      }
+      if (event.type === 'UPLOAD_TASK_COMPLETED') {
+        const p = event.payload as { record_id?: string };
+        if (!p.record_id || p.record_id === recordId || p.record_id === 'r1') {
+          setRecord(r => ({ ...r, lock_status: 'unlocked' as LockStatus }));
+        }
+      }
+    });
+  }, [recordId]);
 
   function toggleWatchlist() {
     setRecord(r => ({ ...r, is_watchlisted: !r.is_watchlisted }));

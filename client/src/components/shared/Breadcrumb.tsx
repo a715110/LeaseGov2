@@ -46,7 +46,9 @@ const ROUTE_LABELS: Array<{ prefix: string; label: string }> = [
   { prefix: '/approvals',               label: 'Approvals' },
   // Export
   { prefix: '/export/templates',         label: 'Templates' },
-  { prefix: '/export/queue',             label: 'Queue' },
+  { prefix: '/export/staging',           label: 'Staging' },
+  { prefix: '/export/preflight',         label: 'Pre-Flight' },
+  { prefix: '/export/tasks',             label: 'Upload Task' },
   { prefix: '/export',                   label: 'Export' },
   // Reassessment
   { prefix: '/reassessment/sweep',       label: 'Period Sweep' },

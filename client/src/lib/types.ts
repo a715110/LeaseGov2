@@ -23,6 +23,8 @@ export type DemoEventType =
   | 'APPROVE_FOR_FINAL'
   | 'RECORD_APPROVED'
   | 'DECLINE_SUBMITTED'
+  | 'UPLOAD_TASK_STARTED'
+  | 'UPLOAD_TASK_COMPLETED'
   | 'DEMO_RESET';
 
 import type { UserRole } from '@/types/shared/UserRole';

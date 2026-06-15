@@ -111,7 +111,7 @@ export default function RecordTabOverview({ record, onWatchlistToggle }: RecordT
           <Button variant="outline" size="sm" className="w-full justify-start gap-2 h-8 text-[12px]" onClick={() => navigate("/reassessment/trigger")}>
             <TrendingUp className="w-3.5 h-3.5" /> Start Reassessment
           </Button>
-          <Button variant="outline" size="sm" className="w-full justify-start gap-2 h-8 text-[12px]" onClick={() => navigate("/export/queue")}>
+          <Button variant="outline" size="sm" className="w-full justify-start gap-2 h-8 text-[12px]" onClick={() => navigate("/export/templates")}>
             <Upload className="w-3.5 h-3.5" /> Export Record
           </Button>
           <Button variant="outline" size="sm" className="w-full justify-start gap-2 h-8 text-[12px]" onClick={() => navigate(`/records/${record.id}/correction`)}>
