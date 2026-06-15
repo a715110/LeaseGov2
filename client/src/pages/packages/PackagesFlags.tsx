@@ -119,6 +119,12 @@ export default function PackagesFlags() {
   const [, navigate] = useLocation();
   const params = useParams<{ packageId: string }>();
   const packageId = params.packageId ?? 'PKG-2026-0041';
+  const PACKAGES_LABEL: Record<string, string> = {
+    'PKG-2026-0041': 'Office Tower — 350 Fifth Ave',
+    'PKG-2026-002':  'Globex Ground Lease Package',
+    'PKG-2026-001':  'Acme Corp Retail Package',
+  };
+  const packageLabel = PACKAGES_LABEL[packageId] ?? packageId;
   const [flags, setFlags] = useState<PackageFlag[]>(INITIAL_FLAGS);
 
   const openBlockingCount = flags.filter(f => f.status === "open" && f.severity === "blocking").length;
@@ -158,7 +164,7 @@ export default function PackagesFlags() {
               </span>
             )}
           </div>
-          <p className="page-subtitle">{packageId} · Office Tower — 350 Fifth Ave</p>
+          <p className="page-subtitle">{packageId} · {packageLabel}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => navigate(`/packages/${packageId}`)}>

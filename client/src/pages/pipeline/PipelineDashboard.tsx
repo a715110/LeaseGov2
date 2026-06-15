@@ -2879,7 +2879,7 @@ export default function PipelineDashboard() {
                         {/* Package ID */}
                         <td onClick={e => e.stopPropagation()}>
                           <div className="flex flex-col">
-                            <span className="font-mono text-[12px] text-primary">{pkg.packageNum}</span>
+                            <button className="font-mono text-[12px] text-primary hover:underline text-left" onClick={() => navigate(`/packages/${pkg.packageNum}`)}>{pkg.packageNum}</button>
                             {pkg.packageName && <span className="text-[11px] text-muted-foreground">{pkg.packageName}</span>}
                           </div>
                         </td>

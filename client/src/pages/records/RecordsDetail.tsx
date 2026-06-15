@@ -255,7 +255,12 @@ export default function RecordsDetail() {
                 ? "border-[var(--color-lg-primary)] text-[var(--color-lg-primary)]"
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => {
+              setActiveTab(tab.id);
+              const url = new URL(window.location.href);
+              url.searchParams.set('tab', tab.id);
+              window.history.replaceState(null, '', url.toString());
+            }}
           >
             {tab.label}
           </button>

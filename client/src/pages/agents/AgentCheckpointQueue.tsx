@@ -138,7 +138,7 @@ function getMockCheckpoints(): HumanCheckpoint[] {
       assigned_to: 'J. Martinez',
     },
     {
-      id: 'cp-002', contract_id: 'CR-2026-0039', contract_label: 'Office Tower Amendment',
+      id: 'cp-002', contract_id: 'c4', contract_label: 'Office Tower Amendment',
       checkpoint_type: 'classification_confirm',
       agent_confidence: 0.94, agent_recommendation: 'Classified as Amendment — Rent Adjustment. High confidence. Lease modification path recommended.',
       deadline_at: new Date(Date.now() + 18 * 3600000).toISOString(),
@@ -146,7 +146,7 @@ function getMockCheckpoints(): HumanCheckpoint[] {
       assigned_to: 'S. Patel',
     },
     {
-      id: 'cp-003', contract_id: 'CR-2026-0037', contract_label: 'Warehouse Lease Exhibit',
+      id: 'cp-003', contract_id: 'c3', contract_label: 'Warehouse Lease Exhibit',
       checkpoint_type: 'assessment_confirm',
       agent_confidence: 0.71, agent_recommendation: 'Renewal option recommended. Medium confidence — lease terms ambiguous on exercise window.',
       deadline_at: new Date(Date.now() + 30 * 3600000).toISOString(),
@@ -162,7 +162,7 @@ function getMockCheckpoints(): HumanCheckpoint[] {
       assigned_to: 'R. Thompson',
     },
     {
-      id: 'cp-005', contract_id: 'CR-2026-0033', contract_label: 'Industrial Park Schedule',
+      id: 'cp-005', contract_id: 'c5', contract_label: 'Industrial Park Schedule',
       checkpoint_type: 'analysis_confirm',
       agent_confidence: 0.82, agent_recommendation: 'Analysis memo drafted. Recommend lease modification path. Option exercise date within 90 days.',
       deadline_at: new Date(Date.now() - 1 * 3600000).toISOString(), // overdue
@@ -422,7 +422,18 @@ export default function AgentCheckpointQueue() {
                         <Button
                           size="sm"
                           className="h-7 text-[11px] gap-1"
-                          onClick={() => navigate(config.route)}
+                          onClick={() => {
+                            const isReassessmentType = ['classification_confirm', 'assessment_confirm', 'analysis_confirm'].includes(cp.checkpoint_type)
+                            const subRoute = cp.checkpoint_type === 'classification_confirm' ? 'classify'
+                              : cp.checkpoint_type === 'assessment_confirm' ? 'assessment'
+                              : cp.checkpoint_type === 'analysis_confirm' ? 'analysis'
+                              : null
+                            if (isReassessmentType && subRoute) {
+                              navigate(`/reassessment/cases/${cp.contract_id}/${subRoute}`)
+                            } else {
+                              navigate(config.route)
+                            }
+                          }}
                           style={{ background: 'var(--color-lg-primary)', color: '#fff' }}
                         >
                           Open <ChevronRight className="h-3 w-3" />

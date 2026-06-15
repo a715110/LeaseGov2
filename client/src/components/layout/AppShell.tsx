@@ -44,7 +44,7 @@ import { useNotifications } from '../../contexts/NotificationContext'
 import { usePipelineCounts } from '../../contexts/PipelineCountsContext'
 import { useDevMode } from '../../contexts/DevModeContext'
 import { LeaseGovThemeContext } from '../../contexts/LeaseGovThemeContext'
-import { computeSlaStatus } from '../../lib/mockApprovalsData'
+import { computeSlaStatus, getSlaOverdueTasks } from '../../lib/mockApprovalsData'
 import type { UserRole } from '../../lib/types'
 import { ROLE_LABELS } from '../../lib/types'
 import type { ThemeKey, ColorMode } from '../../types/shared/ThemeMode'
@@ -491,6 +491,20 @@ export default function AppShell({
   useEffect(() => {
     if (seededRef.current) return
     seededRef.current = true
+    // SLA-overdue and warning notifications — seeded from real task data
+    const slaTasks = getSlaOverdueTasks()
+    for (const task of slaTasks) {
+      const deadlineLabel = new Date(task.sla_deadline_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' } as Intl.DateTimeFormatOptions)
+      addNotification({
+        title: task.isOverdue
+          ? `SLA overdue: ${task.task_reference}`
+          : `SLA warning: ${task.task_reference}`,
+        body: `${task.record_title} — deadline ${deadlineLabel}`,
+        severity: task.isOverdue ? 'error' : 'warning',
+        href: `/approvals/review/${task.id}`,
+      })
+    }
+    // Other system notifications
     addNotification({ title: 'PKG-003 is ready for approval', severity: 'success', href: ROUTE_PATHS.approvalsQueue })
     addNotification({ title: 'Validation warning on Office-Tower-Amendment.pdf', body: 'Page 7 has a low-confidence extraction score. Manual review recommended.', severity: 'warning', href: ROUTE_PATHS.pipelineDashboard })
     addNotification({ title: '2 documents failed ingestion', body: 'Corrupted-Scan-Draft.pdf and one other file could not be processed.', severity: 'error', href: ROUTE_PATHS.pipelineDashboard })

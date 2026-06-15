@@ -16,6 +16,7 @@
  */
 
 import { useState, useCallback, useEffect } from "react";
+import { subscribeToEvents } from "@/lib/eventBus";
 import { useLocation } from "wouter";
 import {
   Clock, AlertTriangle, CheckCircle2, XCircle,
@@ -202,6 +203,22 @@ export default function ApprovalsQueue() {
     const actionable = tasks.filter(t => ['pending', 'resubmitted', 'opened'].includes(t.status)).length
     setApprovalsCount(actionable)
   }, [tasks, setApprovalsCount])
+
+  // Subscribe to REVIEW_OPENED — flip matching 'pending' row to 'opened'
+  useEffect(() => {
+    return subscribeToEvents((event) => {
+      if (event.type === 'REVIEW_OPENED') {
+        const p = event.payload as { task_id?: string };
+        setTasks(prev => prev.map(t => {
+          if (t.status !== 'pending') return t;
+          if (p.task_id && t.id === p.task_id) {
+            return { ...t, status: 'opened' as TaskStatus, opened_at: new Date().toISOString() };
+          }
+          return t;
+        }));
+      }
+    });
+  }, [])
 
   // Reassign dialog state
   const [reassignTask, setReassignTask] = useState<ApprovalTask | null>(null);

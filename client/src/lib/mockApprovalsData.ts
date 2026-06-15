@@ -527,3 +527,41 @@ export function computeSlaStatus(): { overdue: number; warning: number; level: '
   const level = overdue > 0 ? 'overdue' : warning > 0 ? 'warning' : 'ok';
   return { overdue, warning, level };
 }
+
+/** Returns non-approved tasks that are SLA-overdue or within the 48-hour warning window,
+ *  enriched with task_reference and record_title for use in notification entries. */
+export function getSlaOverdueTasks(): Array<{
+  id: string;
+  task_reference: string;
+  record_title: string;
+  sla_deadline_at: string;
+  isOverdue: boolean;
+}> {
+  const now = Date.now();
+  const WARNING_MS = 48 * 60 * 60 * 1000;
+  const META: Record<string, { task_reference: string; record_title: string }> = {
+    t1: { task_reference: 'AT-2026-0041', record_title: 'Office Tower — 350 Fifth Ave' },
+    t2: { task_reference: 'AT-2026-0040', record_title: 'Retail HQ — 1200 Market St' },
+    t3: { task_reference: 'AT-2026-0039', record_title: 'Warehouse Lease — Scope Increase' },
+    t4: { task_reference: 'AT-2026-0038', record_title: 'Ground Lease — Civic Center' },
+    t5: { task_reference: 'AT-2026-0037', record_title: 'Industrial Park — Unit 7' },
+    t6: { task_reference: 'AT-2026-0036', record_title: 'Tech Campus — Rent Modification' },
+    t7: { task_reference: 'AT-2026-0035', record_title: 'Suburban Office — Suite 400' },
+  };
+  return MOCK_APPROVAL_SLA_DEADLINES
+    .filter(t => t.status !== 'approved' && t.sla_deadline_at !== null)
+    .filter(t => {
+      const deadline = new Date(t.sla_deadline_at!).getTime();
+      return deadline < now || deadline - now <= WARNING_MS;
+    })
+    .map(t => {
+      const deadline = new Date(t.sla_deadline_at!).getTime();
+      return {
+        id: t.id,
+        task_reference: META[t.id]?.task_reference ?? t.id,
+        record_title: META[t.id]?.record_title ?? 'Unknown Record',
+        sla_deadline_at: t.sla_deadline_at!,
+        isOverdue: deadline < now,
+      };
+    });
+}

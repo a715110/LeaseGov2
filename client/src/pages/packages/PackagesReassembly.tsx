@@ -94,6 +94,12 @@ export default function PackagesReassembly() {
   const [, navigate] = useLocation();
   const params = useParams<{ packageId: string }>();
   const packageId = params.packageId ?? 'PKG-2026-0041';
+  const PACKAGES_LABEL: Record<string, string> = {
+    'PKG-2026-0041': 'Office Tower — 350 Fifth Ave',
+    'PKG-2026-002':  'Globex Ground Lease Package',
+    'PKG-2026-001':  'Acme Corp Retail Package',
+  };
+  const packageLabel = PACKAGES_LABEL[packageId] ?? packageId;
 
   // BR5: Read live event from sessionStorage if available (set by PackagesComposition on Change Role / Remove)
   // Falls back to REASSEMBLY_EVENT mock for direct navigation
@@ -112,7 +118,7 @@ export default function PackagesReassembly() {
             <h1 className="page-title">Package Re-Assembly</h1>
             <ScreenNumberBadge screenKey="packages-reassembly" />
           </div>
-          <p className="page-subtitle">{packageId} · Office Tower — 350 Fifth Ave</p>
+          <p className="page-subtitle">{packageId} · {packageLabel}</p>
         </div>
       </div>
 
