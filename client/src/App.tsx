@@ -224,9 +224,19 @@ function Router() {
           <ApprovalsQueue />
         </ScreenGate>
       </Route>
+      <Route path="/approvals/review/:id">
+        <ScreenGate screenKey={SCREEN_KEYS.APPROVALS_REVIEW} fallback={<NotFound />}>
+          <ApprovalsReview />
+        </ScreenGate>
+      </Route>
       <Route path="/approvals/review">
         <ScreenGate screenKey={SCREEN_KEYS.APPROVALS_REVIEW} fallback={<NotFound />}>
           <ApprovalsReview />
+        </ScreenGate>
+      </Route>
+      <Route path="/approvals/final/:id">
+        <ScreenGate screenKey={SCREEN_KEYS.APPROVALS_APPROVER} fallback={<NotFound />}>
+          <ApprovalsApprover />
         </ScreenGate>
       </Route>
       <Route path="/approvals/final">

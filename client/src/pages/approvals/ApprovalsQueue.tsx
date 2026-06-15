@@ -477,7 +477,7 @@ export default function ApprovalsQueue() {
                       <Button
                         size="sm"
                         className="h-7 gap-1 text-[12px]"
-                        onClick={() => navigate(task.approval_stage === "final_approval" ? "/approvals/final" : "/approvals/review")}
+                        onClick={() => navigate(task.approval_stage === "final_approval" ? `/approvals/final/${task.id}` : `/approvals/review/${task.id}`)}
                       >
                         Open <ChevronRight className="w-3.5 h-3.5" />
                       </Button>

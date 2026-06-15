@@ -19,7 +19,7 @@
  */
 
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useParams } from "wouter";
 import { ContractCheckpointCard } from '@/components/checkpoints/ContractCheckpointCard';
 import { AutomationPolicyBadge } from '@/components/automation/AutomationPolicyBadge';
 import { useCheckpoints } from '@/hooks/useCheckpoints';
@@ -85,8 +85,9 @@ export default function ApprovalsApprover() {
   const s = MOCK_SUMMARY;
   const canApprove = !s.sod_violation && (!s.has_deferred || deferredAcknowledged);
 
-  // FC-9: Checkpoint wiring
-  const contractRecordId = 'r1'; // TODO: derive from route params
+  // FC-9: Checkpoint wiring — read task ID from route param, fall back to 'r1'
+  const params = useParams<{ id: string }>();
+  const contractRecordId = params.id || 'r1';
   const automationLevel: 'full_autonomous' | 'collaborative' | 'full_manual' = 'collaborative'; // TODO: from contractRecord
   const { activeCheckpoint } = useCheckpoints(contractRecordId, {
     checkpointType: 'onboarding_approval',

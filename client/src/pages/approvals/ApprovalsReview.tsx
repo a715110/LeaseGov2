@@ -21,7 +21,7 @@
  */
 
 import { useState, useMemo, useEffect } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useParams } from "wouter";
 import { MOCK_REVIEWERS, ROLE_PERSONAS } from "@/lib/mockData";
 import { useRole } from "@/contexts/RoleContext";
 import { useNotifications } from "@/contexts/NotificationContext";
@@ -127,7 +127,8 @@ export default function ApprovalsReview() {
   const { activeRole } = useRole();
   const currentPersona = ROLE_PERSONAS[activeRole] ?? { name: 'Current User', initials: '?', email: '' };
 
-  const contractRecordId = 'r1'; // TODO: derive from route params
+  const routeParams = useParams<{ id: string }>();
+  const contractRecordId = routeParams.id || 'r1'; // read task ID from URL param
   const [automationLevel] = useState<AutomationLevel>('collaborative'); // TODO: from contractRecord?.automation_level
 
   const { activeCheckpoint } = useCheckpoints(contractRecordId, {

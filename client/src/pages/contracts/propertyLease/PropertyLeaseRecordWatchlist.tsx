@@ -3,20 +3,23 @@
  * FC-5 Screen 5.3 — Watchlist tab
  *
  * Spec: WatchlistEntry list for this contract record.
- * - Star toggle at top (mirrors Overview quick-action; persists in local state).
+ * - Star toggle at top (mirrors Overview quick-action; persists in localStorage).
  * - If watchlisted: shows WatchlistEntry cards — reason, added_by, added_at,
  *   expiry_date, priority badge, notes, remove button.
  * - If not watchlisted: empty-state with "Add to Watchlist" CTA.
  * - "Add to Watchlist" dialog: reason dropdown, priority, expiry date, notes.
  * - Matched watchlist rules section (read-only, shows rule name + trigger condition).
  *
+ * Persistence: entries and watchlist state stored in localStorage under
+ *   `leasegov_watchlist_{recordId}` so they survive page reloads.
+ *
  * Data model refs: WatchlistEntry (record_id, reason, priority, added_by,
  *   added_at, expiry_date, notes, rule_id?)
  *
  * Design: Structured Authority — navy primary, amber warning star, Inter typography.
  */
-import { useState } from "react";
-import { Star, StarOff, Plus, X, Bell, BellOff, AlertTriangle, CheckCircle2, Clock } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Star, StarOff, Plus, X, Bell, AlertTriangle, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
@@ -34,15 +37,20 @@ interface WatchlistEntry {
   rule_name: string | null;
 }
 
+interface PersistedWatchlistState {
+  isWatchlisted: boolean;
+  entries: WatchlistEntry[];
+}
+
 interface RecordTabWatchlistProps {
   recordId: string;
   isWatchlisted: boolean;
   onWatchlistToggle: () => void;
 }
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
+// ─── Mock seed data (used only when no localStorage entry exists) ─────────────
 // TODO: Backend integration required — GET /api/records/:id/watchlist
-const INITIAL_ENTRIES: WatchlistEntry[] = [
+const SEED_ENTRIES: WatchlistEntry[] = [
   {
     id: "we-001",
     reason: "option_assessment",
@@ -84,9 +92,45 @@ const PRIORITY_CONFIG: Record<string, { label: string; color: string; bg: string
   low:    { label: "Low",    color: "var(--color-lg-info)",    bg: "var(--color-lg-info-subtle)" },
 };
 
+// ─── localStorage helpers ─────────────────────────────────────────────────────
+function storageKey(recordId: string) {
+  return `leasegov_watchlist_${recordId}`;
+}
+
+function loadFromStorage(recordId: string, parentIsWatchlisted: boolean): PersistedWatchlistState {
+  try {
+    const raw = localStorage.getItem(storageKey(recordId));
+    if (raw) {
+      const parsed = JSON.parse(raw) as PersistedWatchlistState;
+      return parsed;
+    }
+  } catch {
+    // ignore parse errors
+  }
+  // First visit: seed with mock data if parent says watchlisted
+  return {
+    isWatchlisted: parentIsWatchlisted,
+    entries: parentIsWatchlisted ? SEED_ENTRIES : [],
+  };
+}
+
+function saveToStorage(recordId: string, state: PersistedWatchlistState) {
+  try {
+    localStorage.setItem(storageKey(recordId), JSON.stringify(state));
+  } catch {
+    // ignore quota errors
+  }
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
-export default function RecordTabWatchlist({ recordId, isWatchlisted, onWatchlistToggle }: RecordTabWatchlistProps) {
-  const [entries, setEntries] = useState<WatchlistEntry[]>(isWatchlisted ? INITIAL_ENTRIES : []);
+export default function RecordTabWatchlist({ recordId, isWatchlisted: parentIsWatchlisted, onWatchlistToggle }: RecordTabWatchlistProps) {
+  // Initialise from localStorage on first render
+  const [persisted, setPersisted] = useState<PersistedWatchlistState>(() =>
+    loadFromStorage(recordId, parentIsWatchlisted)
+  );
+
+  const { isWatchlisted, entries } = persisted;
+
   const [showDialog, setShowDialog] = useState(false);
 
   // Add dialog state
@@ -95,13 +139,42 @@ export default function RecordTabWatchlist({ recordId, isWatchlisted, onWatchlis
   const [newExpiry, setNewExpiry] = useState("");
   const [newNotes, setNewNotes] = useState("");
 
+  // Persist to localStorage whenever state changes
+  useEffect(() => {
+    saveToStorage(recordId, persisted);
+  }, [recordId, persisted]);
+
+  // Sync parent isWatchlisted prop → local state when parent changes externally
+  useEffect(() => {
+    setPersisted(prev => {
+      if (prev.isWatchlisted !== parentIsWatchlisted) {
+        const next: PersistedWatchlistState = {
+          isWatchlisted: parentIsWatchlisted,
+          entries: parentIsWatchlisted ? (prev.entries.length > 0 ? prev.entries : SEED_ENTRIES) : [],
+        };
+        saveToStorage(recordId, next);
+        return next;
+      }
+      return prev;
+    });
+  }, [parentIsWatchlisted, recordId]);
+
+  const update = useCallback((updater: (prev: PersistedWatchlistState) => PersistedWatchlistState) => {
+    setPersisted(prev => {
+      const next = updater(prev);
+      saveToStorage(recordId, next);
+      return next;
+    });
+  }, [recordId]);
+
   function handleToggle() {
-    if (isWatchlisted && entries.length > 0) {
-      // Removing from watchlist clears all entries
-      setEntries([]);
-    }
+    const removing = isWatchlisted;
+    update(prev => ({
+      isWatchlisted: !prev.isWatchlisted,
+      entries: removing ? [] : prev.entries,
+    }));
     onWatchlistToggle();
-    toast.success(isWatchlisted ? "Removed from watchlist" : "Added to watchlist");
+    toast.success(removing ? "Removed from watchlist" : "Added to watchlist");
   }
 
   function handleAddEntry() {
@@ -117,24 +190,28 @@ export default function RecordTabWatchlist({ recordId, isWatchlisted, onWatchlis
       rule_id: null,
       rule_name: null,
     };
-    setEntries(prev => [entry, ...prev]);
+    update(prev => ({
+      isWatchlisted: true,
+      entries: [entry, ...prev.entries],
+    }));
     if (!isWatchlisted) onWatchlistToggle();
     setShowDialog(false);
     setNewReason("option_assessment");
     setNewPriority("medium");
     setNewExpiry("");
     setNewNotes("");
-    toast.success("Watchlist entry added");
+    toast.success("Watchlist entry added — saved locally");
   }
 
   function handleRemoveEntry(id: string) {
-    setEntries(prev => {
-      const next = prev.filter(e => e.id !== id);
-      if (next.length === 0 && isWatchlisted) {
+    update(prev => {
+      const next = prev.entries.filter(e => e.id !== id);
+      if (next.length === 0 && prev.isWatchlisted) {
         onWatchlistToggle();
         toast.info("All entries removed — record unwatchlisted");
+        return { isWatchlisted: false, entries: [] };
       }
-      return next;
+      return { ...prev, entries: next };
     });
   }
 
@@ -163,9 +240,15 @@ export default function RecordTabWatchlist({ recordId, isWatchlisted, onWatchlis
             }
           </button>
         </div>
-        <Button size="sm" className="gap-1.5 h-8 text-[12px]" onClick={() => setShowDialog(true)}>
-          <Plus className="w-3.5 h-3.5" /> Add Entry
-        </Button>
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-lg-success)] inline-block" />
+            Saved locally
+          </span>
+          <Button size="sm" className="gap-1.5 h-8 text-[12px]" onClick={() => setShowDialog(true)}>
+            <Plus className="w-3.5 h-3.5" /> Add Entry
+          </Button>
+        </div>
       </div>
 
       {/* Empty state */}
