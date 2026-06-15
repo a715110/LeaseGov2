@@ -59,6 +59,7 @@ interface ReviewField {
   ai_confidence: number;
   preparer_value: string;
   reviewer_value: string;
+  reviewer_corrected_at: string | null;
   disposition: Disposition | null;
   rework_flagged: boolean;
 }
@@ -73,20 +74,20 @@ interface Comment {
 
 // TODO: Backend integration required — GET /api/approvals/tasks/:id/fields
 const MOCK_FIELDS: ReviewField[] = [
-  { id:"f1",  field_name:"landlord_name",          field_label:"Landlord Name",          field_category:"core_metadata", is_critical:true,  ai_extracted_value:"Fifth Ave Properties LLC",  ai_confidence:0.97, preparer_value:"Fifth Ave Properties LLC",  reviewer_value:"", disposition:"accepted", rework_flagged:false },
-  { id:"f2",  field_name:"tenant_name",             field_label:"Tenant Name",             field_category:"core_metadata", is_critical:true,  ai_extracted_value:"Acme Corporation",          ai_confidence:0.99, preparer_value:"Acme Corporation",          reviewer_value:"", disposition:"accepted", rework_flagged:false },
-  { id:"f3",  field_name:"commencement_date",       field_label:"Commencement Date",       field_category:"core_metadata", is_critical:true,  ai_extracted_value:"2022-01-01",                ai_confidence:0.95, preparer_value:"2022-01-01",                reviewer_value:"", disposition:"accepted", rework_flagged:false },
-  { id:"f4",  field_name:"expiration_date",         field_label:"Expiration Date",         field_category:"core_metadata", is_critical:true,  ai_extracted_value:"2032-12-31",                ai_confidence:0.94, preparer_value:"2032-12-31",                reviewer_value:"", disposition:"accepted", rework_flagged:false },
-  { id:"f5",  field_name:"property_address_street", field_label:"Property Address",        field_category:"property",      is_critical:true,  ai_extracted_value:"350 Fifth Avenue, New York", ai_confidence:0.98, preparer_value:"350 Fifth Avenue, New York", reviewer_value:"", disposition:"accepted", rework_flagged:false },
-  { id:"f6",  field_name:"rentable_area_sqft",      field_label:"Rentable Area (sqft)",    field_category:"property",      is_critical:false, ai_extracted_value:"24,500",                    ai_confidence:0.91, preparer_value:"24,500",                    reviewer_value:"", disposition:"accepted", rework_flagged:false },
-  { id:"f7",  field_name:"base_rent_amount",        field_label:"Base Rent Amount",        field_category:"financial",     is_critical:true,  ai_extracted_value:"$38,500/month",             ai_confidence:0.72, preparer_value:"$42,500/month",             reviewer_value:"", disposition:"corrected",rework_flagged:true  },
-  { id:"f8",  field_name:"base_rent_frequency",     field_label:"Rent Frequency",          field_category:"financial",     is_critical:true,  ai_extracted_value:"monthly",                   ai_confidence:0.99, preparer_value:"monthly",                   reviewer_value:"", disposition:"accepted", rework_flagged:false },
-  { id:"f9",  field_name:"escalation_type",         field_label:"Escalation Type",         field_category:"financial",     is_critical:true,  ai_extracted_value:"fixed_percentage",          ai_confidence:0.88, preparer_value:"fixed_percentage",          reviewer_value:"", disposition:"accepted", rework_flagged:false },
-  { id:"f10", field_name:"escalation_rate",         field_label:"Escalation Rate",         field_category:"financial",     is_critical:true,  ai_extracted_value:"3.00%",                     ai_confidence:0.85, preparer_value:"3.00%",                     reviewer_value:"", disposition:"accepted", rework_flagged:false },
-  { id:"f11", field_name:"lease_term_months",       field_label:"Lease Term (months)",     field_category:"legal",         is_critical:true,  ai_extracted_value:"132",                       ai_confidence:0.93, preparer_value:"132",                       reviewer_value:"", disposition:"accepted", rework_flagged:false },
-  { id:"f12", field_name:"lease_classification",    field_label:"Lease Classification",    field_category:"legal",         is_critical:true,  ai_extracted_value:"operating",                 ai_confidence:0.96, preparer_value:"operating",                 reviewer_value:"", disposition:"accepted", rework_flagged:false },
-  { id:"f13", field_name:"renewal_options",         field_label:"Renewal Options",         field_category:"legal",         is_critical:false, ai_extracted_value:"2 × 5yr options",           ai_confidence:0.82, preparer_value:"2 × 5yr options",           reviewer_value:"", disposition:"accepted", rework_flagged:false },
-  { id:"f14", field_name:"security_deposit",        field_label:"Security Deposit",        field_category:"financial",     is_critical:false, ai_extracted_value:"$115,500",                  ai_confidence:0.89, preparer_value:"$115,500",                  reviewer_value:"", disposition:"deferred", rework_flagged:false },
+  { id:"f1",  field_name:"landlord_name",          field_label:"Landlord Name",          field_category:"core_metadata", is_critical:true,  ai_extracted_value:"Fifth Ave Properties LLC",  ai_confidence:0.97, preparer_value:"Fifth Ave Properties LLC",  reviewer_value:"", reviewer_corrected_at:null, disposition:"accepted", rework_flagged:false },
+  { id:"f2",  field_name:"tenant_name",             field_label:"Tenant Name",             field_category:"core_metadata", is_critical:true,  ai_extracted_value:"Acme Corporation",          ai_confidence:0.99, preparer_value:"Acme Corporation",          reviewer_value:"", reviewer_corrected_at:null, disposition:"accepted", rework_flagged:false },
+  { id:"f3",  field_name:"commencement_date",       field_label:"Commencement Date",       field_category:"core_metadata", is_critical:true,  ai_extracted_value:"2022-01-01",                ai_confidence:0.95, preparer_value:"2022-01-01",                reviewer_value:"", reviewer_corrected_at:null, disposition:"accepted", rework_flagged:false },
+  { id:"f4",  field_name:"expiration_date",         field_label:"Expiration Date",         field_category:"core_metadata", is_critical:true,  ai_extracted_value:"2032-12-31",                ai_confidence:0.94, preparer_value:"2032-12-31",                reviewer_value:"", reviewer_corrected_at:null, disposition:"accepted", rework_flagged:false },
+  { id:"f5",  field_name:"property_address_street", field_label:"Property Address",        field_category:"property",      is_critical:true,  ai_extracted_value:"350 Fifth Avenue, New York", ai_confidence:0.98, preparer_value:"350 Fifth Avenue, New York", reviewer_value:"", reviewer_corrected_at:null, disposition:"accepted", rework_flagged:false },
+  { id:"f6",  field_name:"rentable_area_sqft",      field_label:"Rentable Area (sqft)",    field_category:"property",      is_critical:false, ai_extracted_value:"24,500",                    ai_confidence:0.91, preparer_value:"24,500",                    reviewer_value:"", reviewer_corrected_at:null, disposition:"accepted", rework_flagged:false },
+  { id:"f7",  field_name:"base_rent_amount",        field_label:"Base Rent Amount",        field_category:"financial",     is_critical:true,  ai_extracted_value:"$38,500/month",             ai_confidence:0.72, preparer_value:"$42,500/month",             reviewer_value:"", reviewer_corrected_at:null, disposition:"corrected",rework_flagged:true  },
+  { id:"f8",  field_name:"base_rent_frequency",     field_label:"Rent Frequency",          field_category:"financial",     is_critical:true,  ai_extracted_value:"monthly",                   ai_confidence:0.99, preparer_value:"monthly",                   reviewer_value:"", reviewer_corrected_at:null, disposition:"accepted", rework_flagged:false },
+  { id:"f9",  field_name:"escalation_type",         field_label:"Escalation Type",         field_category:"financial",     is_critical:true,  ai_extracted_value:"fixed_percentage",          ai_confidence:0.88, preparer_value:"fixed_percentage",          reviewer_value:"", reviewer_corrected_at:null, disposition:"accepted", rework_flagged:false },
+  { id:"f10", field_name:"escalation_rate",         field_label:"Escalation Rate",         field_category:"financial",     is_critical:true,  ai_extracted_value:"3.00%",                     ai_confidence:0.85, preparer_value:"3.00%",                     reviewer_value:"", reviewer_corrected_at:null, disposition:"accepted", rework_flagged:false },
+  { id:"f11", field_name:"lease_term_months",       field_label:"Lease Term (months)",     field_category:"legal",         is_critical:true,  ai_extracted_value:"132",                       ai_confidence:0.93, preparer_value:"132",                       reviewer_value:"", reviewer_corrected_at:null, disposition:"accepted", rework_flagged:false },
+  { id:"f12", field_name:"lease_classification",    field_label:"Lease Classification",    field_category:"legal",         is_critical:true,  ai_extracted_value:"operating",                 ai_confidence:0.96, preparer_value:"operating",                 reviewer_value:"", reviewer_corrected_at:null, disposition:"accepted", rework_flagged:false },
+  { id:"f13", field_name:"renewal_options",         field_label:"Renewal Options",         field_category:"legal",         is_critical:false, ai_extracted_value:"2 × 5yr options",           ai_confidence:0.82, preparer_value:"2 × 5yr options",           reviewer_value:"", reviewer_corrected_at:null, disposition:"accepted", rework_flagged:false },
+  { id:"f14", field_name:"security_deposit",        field_label:"Security Deposit",        field_category:"financial",     is_critical:false, ai_extracted_value:"$115,500",                  ai_confidence:0.89, preparer_value:"$115,500",                  reviewer_value:"", reviewer_corrected_at:null, disposition:"deferred", rework_flagged:false },
 ];
 
 const MOCK_COMMENTS: Comment[] = [
@@ -240,7 +241,9 @@ export default function ApprovalsReview() {
 
   function saveEdit(fieldId: string) {
     setFields(prev => prev.map(f =>
-      f.id === fieldId ? { ...f, reviewer_value: editValue, disposition:"corrected" } : f
+      f.id === fieldId
+        ? { ...f, reviewer_value: editValue, reviewer_corrected_at: new Date().toISOString(), disposition: "corrected" }
+        : f
     ));
     setEditingFieldId(null);
   }
@@ -277,6 +280,30 @@ export default function ApprovalsReview() {
 
   const canReject = rejectionReasons.length > 0 && rejectionComments.trim().length > 10;
 
+  // Reject pre-fill: build a summary of flagged fields + low-confidence fields
+  function buildRejectPreFill(): string {
+    const lines: string[] = [];
+    const flagged = fields.filter(f => f.rework_flagged);
+    const lowConf = fields.filter(f => f.ai_confidence < 0.80 && !f.rework_flagged);
+    if (flagged.length > 0) {
+      lines.push('Flagged fields requiring correction:');
+      flagged.forEach(f => lines.push(`  • ${f.field_label}: preparer value "${f.preparer_value}" (AI extracted "${f.ai_extracted_value}", confidence ${Math.round(f.ai_confidence * 100)}%)`));
+    }
+    if (lowConf.length > 0) {
+      if (lines.length > 0) lines.push('');
+      lines.push('Low-confidence fields that need verification:');
+      lowConf.forEach(f => lines.push(`  • ${f.field_label}: "${f.preparer_value}" (confidence ${Math.round(f.ai_confidence * 100)}%)`));
+    }
+    return lines.join('\n');
+  }
+
+  // SLA progress bar
+  const SLA_TOTAL_HOURS = 48;
+  const slaStart = new Date(MOCK_TASK_SLA).getTime() - SLA_TOTAL_HOURS * 3_600_000;
+  const slaDeadline = new Date(MOCK_TASK_SLA).getTime();
+  const slaElapsedPct = Math.min(100, Math.max(0, Math.round(((Date.now() - slaStart) / (slaDeadline - slaStart)) * 100)));
+  const slaElapsedHours = Math.min(SLA_TOTAL_HOURS, Math.round((Date.now() - slaStart) / 3_600_000));
+
   return (
     <div className="fixed inset-0 z-50 bg-[var(--color-lg-page-bg)] flex flex-col">
       {/* Header */}
@@ -296,13 +323,29 @@ export default function ApprovalsReview() {
         <div className="flex items-center gap-2">
           {/* SLA countdown chip */}
           {slaCountdown && (
-            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-semibold border ${
-              slaUrgent
-                ? 'border-[var(--color-lg-error)] bg-[var(--color-lg-error-subtle)] text-[var(--color-lg-error)]'
-                : 'border-[var(--color-lg-warning)] bg-[var(--color-lg-warning-subtle)] text-[var(--color-lg-warning)]'
-            }`}>
-              <Clock className="w-3.5 h-3.5" /> {slaCountdown}
-            </span>
+            <div className="flex flex-col items-end gap-1">
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-semibold border ${
+                slaUrgent
+                  ? 'border-[var(--color-lg-error)] bg-[var(--color-lg-error-subtle)] text-[var(--color-lg-error)]'
+                  : 'border-[var(--color-lg-warning)] bg-[var(--color-lg-warning-subtle)] text-[var(--color-lg-warning)]'
+              }`}>
+                <Clock className="w-3.5 h-3.5" /> {slaCountdown}
+              </span>
+              <div className="flex items-center gap-1.5">
+                <div className="w-28 h-1.5 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{
+                      width: `${slaElapsedPct}%`,
+                      backgroundColor: slaUrgent ? 'var(--color-lg-error)' : 'var(--color-lg-warning)',
+                    }}
+                  />
+                </div>
+                <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                  {slaElapsedHours}h / {SLA_TOTAL_HOURS}h
+                </span>
+              </div>
+            </div>
           )}
           {/* SoD indicator */}
           {sodViolation ? (
@@ -325,7 +368,11 @@ export default function ApprovalsReview() {
           <Button
             variant="outline"
             className="border-[var(--color-lg-error)] text-[var(--color-lg-error)] hover:bg-[var(--color-lg-error-subtle)] gap-1.5"
-            onClick={() => setShowRejectForm(true)}
+            onClick={() => {
+              const preFill = buildRejectPreFill();
+              if (preFill && !rejectionComments) setRejectionComments(preFill);
+              setShowRejectForm(true);
+            }}
           >
             <X className="w-4 h-4" /> Reject with Comments
           </Button>
@@ -461,11 +508,28 @@ export default function ApprovalsReview() {
                                     {field.reviewer_value || field.preparer_value || field.ai_extracted_value}
                                   </p>
                                   {field.disposition === "corrected" && (
-                                    <div className="flex items-center gap-2 mt-1 text-[11px] text-muted-foreground">
-                                      <span className="line-through">{field.ai_extracted_value}</span>
-                                      <span>→</span>
-                                      <span className="font-medium text-foreground">{field.preparer_value}</span>
-                                      <span className="px-1.5 py-0.5 rounded bg-blue-50 border border-blue-200 text-blue-700">Preparer</span>
+                                    <div className="flex flex-col gap-1 mt-1">
+                                      {/* AI → Preparer correction */}
+                                      <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                                        <span className="line-through opacity-60">{field.ai_extracted_value}</span>
+                                        <span>→</span>
+                                        <span className="font-medium text-foreground">{field.preparer_value}</span>
+                                        <span className="px-1.5 py-0.5 rounded bg-blue-50 border border-blue-200 text-blue-700 text-[10px] font-semibold">Preparer</span>
+                                      </div>
+                                      {/* Preparer → Reviewer correction (only when reviewer edited) */}
+                                      {field.reviewer_value && field.reviewer_value !== field.preparer_value && (
+                                        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                                          <span className="line-through opacity-60">{field.preparer_value}</span>
+                                          <span>→</span>
+                                          <span className="font-medium text-[var(--color-lg-primary)]">{field.reviewer_value}</span>
+                                          <span className="px-1.5 py-0.5 rounded bg-purple-50 border border-purple-200 text-purple-700 text-[10px] font-semibold">Reviewer</span>
+                                          {field.reviewer_corrected_at && (
+                                            <span className="text-[10px] text-muted-foreground">
+                                              {new Date(field.reviewer_corrected_at).toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' })}
+                                            </span>
+                                          )}
+                                        </div>
+                                      )}
                                     </div>
                                   )}
                                 </div>
