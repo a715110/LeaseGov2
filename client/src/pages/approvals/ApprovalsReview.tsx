@@ -25,6 +25,7 @@ import { useLocation, useParams } from "wouter";
 import { getApprovalTaskData } from "@/lib/mockApprovalsData";
 import { MOCK_REVIEWERS, ROLE_PERSONAS } from "@/lib/mockData";
 import { useRole } from "@/contexts/RoleContext";
+import { publishEvent } from "@/lib/eventBus";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -191,6 +192,16 @@ export default function ApprovalsReview() {
     setReassignTargetId('');
     navigate('/approvals/queue');
   }
+
+  // Publish REVIEW_OPENED on mount so ApprovalsQueue flips the matching row to 'opened'
+  useEffect(() => {
+    publishEvent({
+      type: 'REVIEW_OPENED',
+      payload: { task_id: contractRecordId },
+      sourceRole: activeRole,
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contractRecordId]);
 
   // SLA countdown
   const [slaCountdown, setSlaCountdown] = useState('');

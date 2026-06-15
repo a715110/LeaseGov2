@@ -159,11 +159,15 @@ export default function ExtractionVerification() {
   const [, navigate] = useLocation();
   const search = useSearch();
 
-  // S8: ?from= back navigation
+  // S8: ?from= back navigation; ?record= contract context from AgentCheckpointQueue
   const backDestination = useMemo(() => {
-    const from = new URLSearchParams(search).get('from');
-    if (from === 'workspace') return { path: '/extraction/ai',    label: 'AI Workspace' };
+    const params = new URLSearchParams(search);
+    const from = params.get('from');
+    const record = params.get('record');
+    if (from === 'workspace') return { path: record ? `/extraction/ai?record=${encodeURIComponent(record)}` : '/extraction/ai', label: 'AI Workspace' };
     if (from === 'queue')     return { path: '/extraction/queue', label: 'Processing Queue' };
+    // Arrived from AgentCheckpointQueue via ?record=
+    if (record)               return { path: '/approvals/checkpoints', label: 'Checkpoint Queue' };
     return { path: '/extraction/ai', label: 'AI Workspace' };
   }, [search]);
 
@@ -201,7 +205,8 @@ export default function ExtractionVerification() {
   }
 
   // ─── Automation level ──────────────────────────────────────────────────────
-  const contractRecordId = 'r1'; // TODO: derive from route params
+  // Prefer ?record= param (set by AgentCheckpointQueue) over the static fallback
+  const contractRecordId = useMemo(() => new URLSearchParams(search).get('record') ?? 'r1', [search]);
   const automationLevel = 'collaborative' as const; // TODO: from contractRecord?.automation_level
   const isCollaborative = automationLevel === 'collaborative';
 

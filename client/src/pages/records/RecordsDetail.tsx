@@ -162,6 +162,19 @@ export default function RecordsDetail() {
     });
   }, [recordId]);
 
+  // Sync active tab with browser back/forward navigation.
+  // The tab click handler uses replaceState, so popstate fires when the user
+  // navigates away from and then back to this page via the browser buttons.
+  // Reading ?tab= from the restored URL keeps the tab bar in sync with history.
+  useEffect(() => {
+    function handlePopState() {
+      const tab = new URLSearchParams(window.location.search).get('tab') || 'overview';
+      setActiveTab(tab);
+    }
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   function toggleWatchlist() {
     setRecord(r => ({ ...r, is_watchlisted: !r.is_watchlisted }));
   }

@@ -19,7 +19,7 @@
  */
 
 import { useState, useRef, useEffect } from "react";
-import { useLocation, useParams } from "wouter";
+import { useLocation, useParams, useSearch } from "wouter";
 import { publishEvent } from "@/lib/eventBus";
 import { Download, CheckCircle2, Lock, AlertTriangle, Upload, Eye, ToggleLeft, ToggleRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -127,8 +127,11 @@ export default function ExportUploadTask() {
   const _screenKey = SCREEN_KEYS.EXPORT_UPLOAD_TASK;
   const [, navigate] = useLocation();
   const params = useParams<{ id: string }>();
+  const search = useSearch();
   // Resolve task data from URL param — falls back to ut1 for bare /export/tasks route
   const task = MOCK_UPLOAD_TASKS[params.id ?? ''] ?? DEFAULT_TASK;
+  // ?record= param threaded from AgentCheckpointQueue for breadcrumb back-nav
+  const _recordParam = new URLSearchParams(search).get('record');
 
   const [taskStatus, setTaskStatus] = useState<TaskStatus>("initialized");
   const [downloaded, setDownloaded] = useState(false);

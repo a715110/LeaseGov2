@@ -430,6 +430,14 @@ export default function AgentCheckpointQueue() {
                               : null
                             if (isReassessmentType && subRoute) {
                               navigate(`/reassessment/cases/${cp.contract_id}/${subRoute}`)
+                            } else if (cp.checkpoint_type === 'extraction_review') {
+                              // Pass contract_id as ?record= so ExtractionVerification can
+                              // pre-filter to the correct record without extra navigation.
+                              navigate(`${config.route}?record=${encodeURIComponent(cp.contract_id)}`)
+                            } else if (cp.checkpoint_type === 'export_attest') {
+                              // Export tasks are keyed by contract_id; land directly on the task
+                              // and thread the record context via ?record= for breadcrumb/back-nav.
+                              navigate(`${config.route}/${encodeURIComponent(cp.contract_id)}?record=${encodeURIComponent(cp.contract_id)}`)
                             } else {
                               navigate(config.route)
                             }
