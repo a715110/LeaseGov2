@@ -14,7 +14,7 @@
  */
 
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useParams } from "wouter";
 import { AlertTriangle, CheckCircle2, ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,14 +22,17 @@ import { SCREEN_KEYS } from "@/constants/screenKeys";
 
 import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 // TODO: Backend integration required — GET /api/reassessments/cases/:id
-const MOCK_CASE = {
-  id: "c6",
-  case_ref: "RC-2026-0009",
-  contract_number: "CR-2026-0028",
-  title: "Parking Garage — Level B2",
-  trigger_date: "2025-11-01",
-  detection_date: "2026-04-15",
-  missed_months: 5,
+const MOCK_CASES_LOOKUP: Record<string, { id:string; case_ref:string; contract_number:string; title:string; trigger_date:string; detection_date:string; missed_months:number }> = {
+  c1:  { id:"c1",  case_ref:"RC-2026-0014", contract_number:"CR-2026-0088", title:"Office Tower — 350 Fifth Ave",   trigger_date:"2026-01-15", detection_date:"2026-03-01", missed_months:2 },
+  c2:  { id:"c2",  case_ref:"RC-2026-0013", contract_number:"CR-2026-0072", title:"Retail HQ — 200 Park Ave",       trigger_date:"2025-12-01", detection_date:"2026-02-15", missed_months:3 },
+  c3:  { id:"c3",  case_ref:"RC-2026-0012", contract_number:"CR-2026-0055", title:"Warehouse — 1 Industrial Blvd",  trigger_date:"2026-02-01", detection_date:"2026-04-01", missed_months:2 },
+  c4:  { id:"c4",  case_ref:"RC-2026-0011", contract_number:"CR-2026-0041", title:"Data Center — 500 Tech Park",    trigger_date:"2025-10-01", detection_date:"2026-01-15", missed_months:4 },
+  c5:  { id:"c5",  case_ref:"RC-2026-0010", contract_number:"CR-2026-0033", title:"Branch Office — 88 Main St",     trigger_date:"2026-01-01", detection_date:"2026-03-15", missed_months:3 },
+  c6:  { id:"c6",  case_ref:"RC-2026-0009", contract_number:"CR-2026-0028", title:"Parking Garage — Level B2",      trigger_date:"2025-11-01", detection_date:"2026-04-15", missed_months:5 },
+  c7:  { id:"c7",  case_ref:"RC-2026-0008", contract_number:"CR-2026-0088", title:"Office Tower — 350 Fifth Ave",   trigger_date:"2026-03-01", detection_date:"2026-05-01", missed_months:2 },
+  c8:  { id:"c8",  case_ref:"RC-2026-0007", contract_number:"CR-2026-0072", title:"Retail HQ — 200 Park Ave",       trigger_date:"2025-09-01", detection_date:"2026-01-01", missed_months:4 },
+  c9:  { id:"c9",  case_ref:"RC-2026-0006", contract_number:"CR-2026-0055", title:"Warehouse — 1 Industrial Blvd",  trigger_date:"2026-01-15", detection_date:"2026-04-01", missed_months:3 },
+  c10: { id:"c10", case_ref:"RC-2026-0005", contract_number:"CR-2026-0041", title:"Data Center — 500 Tech Park",    trigger_date:"2025-08-01", detection_date:"2025-12-15", missed_months:5 },
 };
 
 const STEPS = [
@@ -52,6 +55,8 @@ const BEFORE_AFTER_STEP3 = {
 export default function ReassessmentRemediation() {
   const _screenKey = SCREEN_KEYS.REASSESSMENT_REMEDIATION;
   const [, navigate] = useLocation();
+  const params = useParams<{ id: string }>();
+  const MOCK_CASE = MOCK_CASES_LOOKUP[params.id ?? ""] ?? MOCK_CASES_LOOKUP["c6"];
 
   const [activeStep, setActiveStep] = useState(3); // step 3 is active
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set([1, 2]));

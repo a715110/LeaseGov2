@@ -172,6 +172,55 @@ const PARAM_ROUTE_PATTERNS: Array<{
     sectionHref: '/records',
     child: 'Detail',
   },
+  // /reassessment/cases/:id/assessment  →  Reassessment / Assessment
+  {
+    pattern: /^\/reassessment\/cases\/[^/]+\/assessment$/,
+    section: 'Reassessment',
+    sectionHref: '/reassessment/cases',
+    child: 'Assessment',
+  },
+  // /reassessment/cases/:id/analysis  →  Reassessment / Analysis & Memo
+  {
+    pattern: /^\/reassessment\/cases\/[^/]+\/analysis$/,
+    section: 'Reassessment',
+    sectionHref: '/reassessment/cases',
+    child: 'Analysis & Memo',
+  },
+  // /reassessment/cases/:id/memo  →  Reassessment / Memo
+  {
+    pattern: /^\/reassessment\/cases\/[^/]+\/memo$/,
+    section: 'Reassessment',
+    sectionHref: '/reassessment/cases',
+    child: 'Memo',
+  },
+  // /reassessment/cases/:id/package  →  Reassessment / Package Preview
+  {
+    pattern: /^\/reassessment\/cases\/[^/]+\/package$/,
+    section: 'Reassessment',
+    sectionHref: '/reassessment/cases',
+    child: 'Package Preview',
+  },
+  // /reassessment/cases/:id/remediation  →  Reassessment / Remediation
+  {
+    pattern: /^\/reassessment\/cases\/[^/]+\/remediation$/,
+    section: 'Reassessment',
+    sectionHref: '/reassessment/cases',
+    child: 'Remediation',
+  },
+  // /reassessment/cases/:id/classify  →  Reassessment / Classification
+  {
+    pattern: /^\/reassessment\/cases\/[^/]+\/classify$/,
+    section: 'Reassessment',
+    sectionHref: '/reassessment/cases',
+    child: 'Classification',
+  },
+  // /reassessment/cases/:id  →  Reassessment / Case Detail
+  {
+    pattern: /^\/reassessment\/cases\/[^/]+$/,
+    section: 'Reassessment',
+    sectionHref: '/reassessment/cases',
+    child: 'Case Detail',
+  },
 ];
 
 /** Section roots — used to build the parent crumb for static sub-routes */
