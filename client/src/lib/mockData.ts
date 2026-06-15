@@ -226,6 +226,27 @@ export const MOCK_ASSIGNEES: Assignee[] = [
   { id: 'user-admin-004', name: 'T. Osei',     role: 'Lease Admin', workspaceId: 'ws-005', avatarColor: '#64748b', email: 't.osei@leasegov.internal' },
 ];
 
+// ─── Reviewers / Approvers ────────────────────────────────────────────────
+
+/** Reviewer / Approver users for Approval Queue reassignment */
+export interface Reviewer {
+  id: string;
+  name: string;
+  role: 'Reviewer' | 'Approver';
+  avatarColor: string;
+  email: string;
+}
+
+export const MOCK_REVIEWERS: Reviewer[] = [
+  { id: 'user-rev-001', name: 'A. Chen',      role: 'Reviewer', avatarColor: '#3b82f6', email: 'a.chen@leasegov.internal' },
+  { id: 'user-rev-002', name: 'J. Martinez',  role: 'Reviewer', avatarColor: '#8b5cf6', email: 'j.martinez@leasegov.internal' },
+  { id: 'user-rev-003', name: 'P. Nakamura',  role: 'Reviewer', avatarColor: '#f59e0b', email: 'p.nakamura@leasegov.internal' },
+  { id: 'user-rev-004', name: 'B. Okafor',    role: 'Reviewer', avatarColor: '#10b981', email: 'b.okafor@leasegov.internal' },
+  { id: 'user-apr-001', name: 'K. Lindqvist', role: 'Approver', avatarColor: '#ec4899', email: 'k.lindqvist@leasegov.internal' },
+  { id: 'user-apr-002', name: 'H. Vasquez',   role: 'Approver', avatarColor: '#14b8a6', email: 'h.vasquez@leasegov.internal' },
+  { id: 'user-apr-003', name: 'N. Obi',       role: 'Approver', avatarColor: '#f97316', email: 'n.obi@leasegov.internal' },
+];
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /** Look up a ContractRecord by its id */

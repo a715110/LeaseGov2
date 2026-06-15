@@ -8,6 +8,7 @@
  * Prompt 4.1: Tabbed queue. Type badge (Record accent / Reassessment purple).
  *   Age color coding: success <2d / warning <5d / error >5d.
  *   My Submissions tab: Recall action with available/unavailable states.
+ *   Reassign: Reviewer can redirect a pending/resubmitted task to another Reviewer/Approver.
  *
  * Data model refs: ApprovalTask (task_reference, subject_type, status,
  *   approval_stage, priority, submitted_at, opened_at, recall_available,
@@ -18,13 +19,23 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import {
   Clock, AlertTriangle, CheckCircle2, XCircle,
-  ChevronRight, RotateCcw, AlertCircle, Filter
+  ChevronRight, RotateCcw, AlertCircle, Filter, UserCog
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle
+} from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
+} from "@/components/ui/select";
+import { toast } from "sonner";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
+import { MOCK_REVIEWERS } from "@/lib/mockData";
+import { useNotifications } from "@/contexts/NotificationContext";
 
 import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
+
 type SubjectType = "contract_record" | "reassessment_case";
 type ApprovalStage = "review" | "final_approval";
 type TaskStatus = "pending" | "opened" | "approved" | "rejected" | "rework_in_progress" | "resubmitted";
@@ -44,18 +55,20 @@ interface ApprovalTask {
   priority: Priority;
   sla_deadline_at: string | null;
   rework_iteration: number;
+  /** Assigned reviewer/approver id — maps to MOCK_REVIEWERS */
+  reviewer_id?: string;
 }
 
 // TODO: Backend integration required — GET /api/approvals/tasks
-const ALL_TASKS: ApprovalTask[] = [
-  { id:"t1",  task_reference:"AT-2026-0041", subject_type:"contract_record",   subject_label:"Office Tower — 350 Fifth Ave",         approval_stage:"review",          status:"pending",           submitted_by:"J. Martinez", submitted_at:"2026-05-16T08:00:00Z", opened_at:null,                      recall_available:true,  priority:"high",      sla_deadline_at:"2026-05-18T17:00:00Z", rework_iteration:0 },
-  { id:"t2",  task_reference:"AT-2026-0040", subject_type:"contract_record",   subject_label:"Retail HQ — 1200 Market St",            approval_stage:"review",          status:"opened",            submitted_by:"S. Patel",    submitted_at:"2026-05-15T14:20:00Z", opened_at:"2026-05-15T15:00:00Z",    recall_available:false, priority:"standard",  sla_deadline_at:"2026-05-20T17:00:00Z", rework_iteration:0 },
-  { id:"t3",  task_reference:"AT-2026-0039", subject_type:"reassessment_case", subject_label:"Warehouse Lease — Scope Increase",      approval_stage:"final_approval",  status:"pending",           submitted_by:"A. Chen",     submitted_at:"2026-05-14T09:30:00Z", opened_at:null,                      recall_available:true,  priority:"escalated", sla_deadline_at:"2026-05-17T17:00:00Z", rework_iteration:0 },
-  { id:"t4",  task_reference:"AT-2026-0038", subject_type:"contract_record",   subject_label:"Ground Lease — Civic Center",           approval_stage:"review",          status:"rework_in_progress",submitted_by:"J. Martinez", submitted_at:"2026-05-12T11:00:00Z", opened_at:"2026-05-12T11:30:00Z",    recall_available:false, priority:"high",      sla_deadline_at:"2026-05-16T17:00:00Z", rework_iteration:1 },
-  { id:"t5",  task_reference:"AT-2026-0037", subject_type:"contract_record",   subject_label:"Industrial Park — Unit 7",              approval_stage:"final_approval",  status:"pending",           submitted_by:"S. Patel",    submitted_at:"2026-05-16T07:00:00Z", opened_at:null,                      recall_available:true,  priority:"standard",  sla_deadline_at:"2026-05-21T17:00:00Z", rework_iteration:0 },
-  { id:"t6",  task_reference:"AT-2026-0036", subject_type:"reassessment_case", subject_label:"Tech Campus — Rent Modification",       approval_stage:"review",          status:"pending",           submitted_by:"A. Chen",     submitted_at:"2026-05-15T16:00:00Z", opened_at:null,                      recall_available:true,  priority:"standard",  sla_deadline_at:"2026-05-22T17:00:00Z", rework_iteration:0 },
-  { id:"t7",  task_reference:"AT-2026-0035", subject_type:"contract_record",   subject_label:"Suburban Office — Suite 400",           approval_stage:"review",          status:"resubmitted",       submitted_by:"J. Martinez", submitted_at:"2026-05-16T06:00:00Z", opened_at:null,                      recall_available:true,  priority:"high",      sla_deadline_at:"2026-05-19T17:00:00Z", rework_iteration:2 },
-  { id:"t8",  task_reference:"AT-2026-0034", subject_type:"contract_record",   subject_label:"Downtown Retail — Corner Unit",         approval_stage:"final_approval",  status:"approved",          submitted_by:"S. Patel",    submitted_at:"2026-05-10T09:00:00Z", opened_at:"2026-05-10T10:00:00Z",    recall_available:false, priority:"standard",  sla_deadline_at:null,                   rework_iteration:0 },
+const INITIAL_TASKS: ApprovalTask[] = [
+  { id:"t1",  task_reference:"AT-2026-0041", subject_type:"contract_record",   subject_label:"Office Tower — 350 Fifth Ave",         approval_stage:"review",          status:"pending",           submitted_by:"J. Martinez", submitted_at:"2026-05-16T08:00:00Z", opened_at:null,                      recall_available:true,  priority:"high",      sla_deadline_at:"2026-05-18T17:00:00Z", rework_iteration:0, reviewer_id:"user-rev-001" },
+  { id:"t2",  task_reference:"AT-2026-0040", subject_type:"contract_record",   subject_label:"Retail HQ — 1200 Market St",            approval_stage:"review",          status:"opened",            submitted_by:"S. Patel",    submitted_at:"2026-05-15T14:20:00Z", opened_at:"2026-05-15T15:00:00Z",    recall_available:false, priority:"standard",  sla_deadline_at:"2026-05-20T17:00:00Z", rework_iteration:0, reviewer_id:"user-rev-002" },
+  { id:"t3",  task_reference:"AT-2026-0039", subject_type:"reassessment_case", subject_label:"Warehouse Lease — Scope Increase",      approval_stage:"final_approval",  status:"pending",           submitted_by:"A. Chen",     submitted_at:"2026-05-14T09:30:00Z", opened_at:null,                      recall_available:true,  priority:"escalated", sla_deadline_at:"2026-05-17T17:00:00Z", rework_iteration:0, reviewer_id:"user-apr-001" },
+  { id:"t4",  task_reference:"AT-2026-0038", subject_type:"contract_record",   subject_label:"Ground Lease — Civic Center",           approval_stage:"review",          status:"rework_in_progress",submitted_by:"J. Martinez", submitted_at:"2026-05-12T11:00:00Z", opened_at:"2026-05-12T11:30:00Z",    recall_available:false, priority:"high",      sla_deadline_at:"2026-05-16T17:00:00Z", rework_iteration:1, reviewer_id:"user-rev-003" },
+  { id:"t5",  task_reference:"AT-2026-0037", subject_type:"contract_record",   subject_label:"Industrial Park — Unit 7",              approval_stage:"final_approval",  status:"pending",           submitted_by:"S. Patel",    submitted_at:"2026-05-16T07:00:00Z", opened_at:null,                      recall_available:true,  priority:"standard",  sla_deadline_at:"2026-05-21T17:00:00Z", rework_iteration:0, reviewer_id:"user-apr-002" },
+  { id:"t6",  task_reference:"AT-2026-0036", subject_type:"reassessment_case", subject_label:"Tech Campus — Rent Modification",       approval_stage:"review",          status:"pending",           submitted_by:"A. Chen",     submitted_at:"2026-05-15T16:00:00Z", opened_at:null,                      recall_available:true,  priority:"standard",  sla_deadline_at:"2026-05-22T17:00:00Z", rework_iteration:0, reviewer_id:"user-rev-004" },
+  { id:"t7",  task_reference:"AT-2026-0035", subject_type:"contract_record",   subject_label:"Suburban Office — Suite 400",           approval_stage:"review",          status:"resubmitted",       submitted_by:"J. Martinez", submitted_at:"2026-05-16T06:00:00Z", opened_at:null,                      recall_available:true,  priority:"high",      sla_deadline_at:"2026-05-19T17:00:00Z", rework_iteration:2, reviewer_id:"user-rev-001" },
+  { id:"t8",  task_reference:"AT-2026-0034", subject_type:"contract_record",   subject_label:"Downtown Retail — Corner Unit",         approval_stage:"final_approval",  status:"approved",          submitted_by:"S. Patel",    submitted_at:"2026-05-10T09:00:00Z", opened_at:"2026-05-10T10:00:00Z",    recall_available:false, priority:"standard",  sla_deadline_at:null,                   rework_iteration:0, reviewer_id:"user-apr-003" },
 ];
 
 const CURRENT_USER = "Current User";
@@ -105,6 +118,30 @@ function StageBadge({ stage }: { stage: ApprovalStage }) {
   return <span className="text-[11px] font-semibold" style={{ color:"var(--color-lg-primary)" }}>Final Approval</span>;
 }
 
+/** Avatar badge for a reviewer */
+function ReviewerAvatar({ reviewerId }: { reviewerId?: string }) {
+  const reviewer = reviewerId ? MOCK_REVIEWERS.find(r => r.id === reviewerId) : null;
+  if (!reviewer) return <span className="text-[12px] text-muted-foreground">—</span>;
+  const initials = reviewer.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2);
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span
+          className="w-6 h-6 rounded-full inline-flex items-center justify-center text-[10px] font-bold text-white cursor-default shrink-0"
+          style={{ background: reviewer.avatarColor }}
+        >
+          {initials}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent className="text-[12px] space-y-0.5 p-2.5">
+        <p className="font-semibold">{reviewer.name}</p>
+        <p className="text-muted-foreground">{reviewer.email}</p>
+        <p className="text-muted-foreground capitalize">{reviewer.role}</p>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
 function filterByTab(tasks: ApprovalTask[], tab: TabId): ApprovalTask[] {
   switch (tab) {
     case "all":            return tasks.filter(t => !["approved"].includes(t.status));
@@ -116,12 +153,71 @@ function filterByTab(tasks: ApprovalTask[], tab: TabId): ApprovalTask[] {
   }
 }
 
+/** Whether a task can be reassigned (not yet opened, not approved/rejected) */
+function canReassign(task: ApprovalTask): boolean {
+  return ["pending", "resubmitted"].includes(task.status);
+}
+
 export default function ApprovalsQueue() {
   const _screenKey = SCREEN_KEYS.APPROVALS_QUEUE;
   const [, navigate] = useLocation();
   const [activeTab, setActiveTab] = useState<TabId>("my_reviews");
+  const [tasks, setTasks] = useState<ApprovalTask[]>(INITIAL_TASKS);
+  const { addNotification } = useNotifications();
 
-  const visibleTasks = filterByTab(ALL_TASKS, activeTab);
+  // Reassign dialog state
+  const [reassignTask, setReassignTask] = useState<ApprovalTask | null>(null);
+  const [reassignTargetId, setReassignTargetId] = useState<string>('');
+
+  const visibleTasks = filterByTab(tasks, activeTab);
+
+  // Reviewers for the same stage as the task being reassigned
+  const eligibleReviewers = reassignTask
+    ? MOCK_REVIEWERS.filter(r =>
+        reassignTask.approval_stage === "review"
+          ? r.role === "Reviewer"
+          : r.role === "Approver"
+      )
+    : MOCK_REVIEWERS;
+
+  function handleConfirmReassign() {
+    if (!reassignTask || !reassignTargetId) return;
+    const prevReviewer = reassignTask.reviewer_id
+      ? MOCK_REVIEWERS.find(r => r.id === reassignTask.reviewer_id)
+      : null;
+    const newReviewer = MOCK_REVIEWERS.find(r => r.id === reassignTargetId);
+
+    setTasks(prev => prev.map(t =>
+      t.id === reassignTask.id ? { ...t, reviewer_id: reassignTargetId } : t
+    ));
+
+    // Notify original reviewer
+    if (prevReviewer) {
+      addNotification({
+        title: `${reassignTask.task_reference} reassigned`,
+        body: `Task reassigned from ${prevReviewer.name} to ${newReviewer?.name ?? 'another reviewer'}.`,
+        severity: 'info',
+        href: '/approvals/queue',
+      });
+    }
+    // Notify document submitter
+    addNotification({
+      title: `${reassignTask.task_reference} reviewer changed`,
+      body: `Your submission is now assigned to ${newReviewer?.name ?? 'a new reviewer'} for ${reassignTask.approval_stage === 'review' ? 'review' : 'final approval'}.`,
+      severity: 'info',
+      href: '/approvals/queue',
+    });
+
+    toast.success(`${reassignTask.task_reference} reassigned to ${newReviewer?.name ?? 'new reviewer'}`, {
+      description: prevReviewer
+        ? `Original reviewer ${prevReviewer.name} and document submitter have been notified.`
+        : 'Document submitter has been notified.',
+      duration: 5000,
+    });
+
+    setReassignTask(null);
+    setReassignTargetId('');
+  }
 
   return (
     <div className="flex flex-col min-h-full min-w-0 bg-[var(--color-lg-page-bg)]">
@@ -171,6 +267,7 @@ export default function ApprovalsQueue() {
                 <th className="text-left">Name</th>
                 <th className="text-left">Stage</th>
                 <th className="text-left">Submitted By</th>
+                <th className="text-left">Assigned To</th>
                 <th className="text-left">Date</th>
                 <th className="text-left">Age</th>
                 <th className="text-left">Priority</th>
@@ -181,7 +278,7 @@ export default function ApprovalsQueue() {
             <tbody>
               {visibleTasks.length === 0 && (
                 <tr>
-                  <td colSpan={activeTab === "my_submissions" ? 10 : 9} className="text-center py-12 text-muted-foreground text-[13px]">
+                  <td colSpan={activeTab === "my_submissions" ? 11 : 10} className="text-center py-12 text-muted-foreground text-[13px]">
                     No tasks in this queue
                   </td>
                 </tr>
@@ -202,6 +299,9 @@ export default function ApprovalsQueue() {
                   </td>
                   <td><StageBadge stage={task.approval_stage} /></td>
                   <td className="text-muted-foreground">{task.submitted_by}</td>
+                  <td>
+                    <ReviewerAvatar reviewerId={task.reviewer_id} />
+                  </td>
                   <td className="text-muted-foreground text-[12px]">{new Date(task.submitted_at).toLocaleDateString("en-US", { month:"short", day:"numeric" })}</td>
                   <td><AgeBadge submitted_at={task.submitted_at} /></td>
                   <td><PriorityBadge priority={task.priority} /></td>
@@ -236,13 +336,36 @@ export default function ApprovalsQueue() {
                     </td>
                   )}
                   <td className="text-right">
-                    <Button
-                      size="sm"
-                      className="h-7 gap-1 text-[12px]"
-                      onClick={() => navigate(task.approval_stage === "final_approval" ? "/approvals/final" : "/approvals/review")}
-                    >
-                      Open <ChevronRight className="w-3.5 h-3.5" />
-                    </Button>
+                    <div className="flex items-center justify-end gap-1.5">
+                      {/* Reassign — only for pending/resubmitted tasks */}
+                      {canReassign(task) && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 gap-1 text-[12px]"
+                              onClick={() => {
+                                setReassignTargetId(task.reviewer_id ?? '');
+                                setReassignTask(task);
+                              }}
+                            >
+                              <UserCog className="w-3 h-3" /> Reassign
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent className="text-[12px]">
+                            Redirect to a different {task.approval_stage === "review" ? "Reviewer" : "Approver"}
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                      <Button
+                        size="sm"
+                        className="h-7 gap-1 text-[12px]"
+                        onClick={() => navigate(task.approval_stage === "final_approval" ? "/approvals/final" : "/approvals/review")}
+                      >
+                        Open <ChevronRight className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -250,6 +373,73 @@ export default function ApprovalsQueue() {
           </table>
         </div>
       </div>
+
+      {/* ── Reassign Dialog ────────────────────────────────────────────────── */}
+      <Dialog
+        open={!!reassignTask}
+        onOpenChange={open => { if (!open) { setReassignTask(null); setReassignTargetId(''); } }}
+      >
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Reassign Task</DialogTitle>
+            <p className="text-[13px] text-muted-foreground mt-1">
+              Redirect <strong>{reassignTask?.task_reference}</strong> to a different{' '}
+              {reassignTask?.approval_stage === 'review' ? 'Reviewer' : 'Approver'}.
+              The original assignee and document submitter will be notified.
+            </p>
+          </DialogHeader>
+          <div className="py-2">
+            <label className="text-[12px] font-semibold text-foreground block mb-1.5">
+              New {reassignTask?.approval_stage === 'review' ? 'Reviewer' : 'Approver'}
+            </label>
+            <Select value={reassignTargetId} onValueChange={setReassignTargetId}>
+              <SelectTrigger className="text-[13px]">
+                <SelectValue placeholder="Select a reviewer…" />
+              </SelectTrigger>
+              <SelectContent>
+                {eligibleReviewers.map(r => (
+                  <SelectItem key={r.id} value={r.id}>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="w-5 h-5 rounded-full inline-flex items-center justify-center text-[9px] font-bold text-white shrink-0"
+                        style={{ background: r.avatarColor }}
+                      >
+                        {r.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
+                      </span>
+                      <span>{r.name}</span>
+                      <span className="text-[11px] text-muted-foreground">· {r.role}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {/* Current assignee info */}
+            {reassignTask?.reviewer_id && (
+              <p className="text-[11px] text-muted-foreground mt-2">
+                Currently assigned to:{' '}
+                <strong>{MOCK_REVIEWERS.find(r => r.id === reassignTask.reviewer_id)?.name ?? '—'}</strong>
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => { setReassignTask(null); setReassignTargetId(''); }}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              disabled={!reassignTargetId || reassignTargetId === reassignTask?.reviewer_id}
+              onClick={handleConfirmReassign}
+            >
+              <UserCog className="w-3.5 h-3.5 mr-1.5" />
+              Confirm Reassignment
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
