@@ -51,7 +51,8 @@ export default function OnboardingCompletePage() {
     });
   }, []);
 
-  const MOCK_TENANT_ID = 't-new-001';
+  // t3 = Apex Corporate Holdings (status: 'onboarding') — matches the tenant just created in the mock flow
+  const MOCK_TENANT_ID = 't3';
   const MOCK_SUBDOMAIN = 'apex';
 
   return (

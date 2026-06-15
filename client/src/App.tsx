@@ -351,6 +351,9 @@ function Router() {
           <PlatformNotAuthorized />
         </ScreenGate>
       </Route>
+      <Route path="/onboarding">
+        <Redirect to="/onboarding/organization" />
+      </Route>
       <Route path="/onboarding/organization">
         <ScreenGate screenKey={SCREEN_KEYS.PLATFORM_ONBOARDING} fallback={<NotFound />}>
           <OrganizationSetupPage />

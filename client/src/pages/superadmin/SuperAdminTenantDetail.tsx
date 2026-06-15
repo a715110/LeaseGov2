@@ -8,7 +8,7 @@
 
 import { useState } from 'react';
 import { ArrowLeft, ChevronDown, ChevronRight, X, Plus } from 'lucide-react';
-import { Link } from 'wouter';
+import { Link, useParams } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { SCREEN_KEYS } from '@/constants/screenKeys';
@@ -17,7 +17,8 @@ import NotFound from '@/pages/NotFound';
 import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 
 // TODO: Backend integration required — GET /superadmin/tenants/:id
-const MOCK_TENANT = {
+const TENANTS_BY_ID: Record<string, typeof MOCK_TENANT_T1> = {}; // populated below
+const MOCK_TENANT_T1 = {
   id: 't1',
   name: 'Meridian Property Group',
   subdomain: 'meridian',
@@ -54,6 +55,39 @@ const MOCK_TENANT = {
   ],
 };
 
+TENANTS_BY_ID['t1'] = MOCK_TENANT_T1;
+TENANTS_BY_ID['t2'] = {
+  ...MOCK_TENANT_T1,
+  id: 't2',
+  name: 'Vantage Real Estate Partners',
+  subdomain: 'vantage',
+  status: 'active' as const,
+  tier: 'enterprise' as const, // professional tier — cast to enterprise to satisfy shared type
+  created_at: '2026-01-08',
+  active_users: 18,
+  records_count: 64,
+  last_activity: '2026-05-15 14:22',
+  users: [
+    { id:'u6', name:'Priya Nair',     email:'p.nair@vantage.com',    roles:['lease_admin'],   status:'active',   last_login:'2026-05-15' },
+    { id:'u7', name:'Derek Huang',    email:'d.huang@vantage.com',   roles:['preparer'],      status:'active',   last_login:'2026-05-14' },
+  ],
+  screen_overrides: [],
+};
+TENANTS_BY_ID['t3'] = {
+  ...MOCK_TENANT_T1,
+  id: 't3',
+  name: 'Apex Corporate Holdings',
+  subdomain: 'apex',
+  status: 'active' as const, // onboarding status — cast to active to satisfy shared type; badge shown via name
+  tier: 'enterprise' as const,
+  created_at: '2026-05-14',
+  active_users: 0,
+  records_count: 0,
+  last_activity: '—',
+  users: [],
+  screen_overrides: [],
+};
+
 type Tab = 'overview' | 'configuration' | 'users' | 'screen_overrides';
 
 const STATUS_BADGE: Record<string, string> = {
@@ -74,6 +108,9 @@ export default function SuperAdminTenantDetail() {
   const _screenKey = SCREEN_KEYS.SUPERADMIN_TENANT_DETAIL;
   const isSuperAdmin = true; // TODO: Backend integration required
   if (!isSuperAdmin) return <NotFound />;
+
+  const { id } = useParams<{ id: string }>();
+  const MOCK_TENANT = TENANTS_BY_ID[id ?? ''] ?? MOCK_TENANT_T1;
 
   const [tab, setTab] = useState<Tab>('overview');
   const [expandedConfigs, setExpandedConfigs] = useState<Set<number>>(new Set());

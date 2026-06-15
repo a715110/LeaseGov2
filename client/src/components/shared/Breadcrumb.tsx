@@ -67,6 +67,13 @@ const ROUTE_LABELS: Array<{ prefix: string; label: string }> = [
   { prefix: '/reassessment/survey',      label: 'Survey' },
   { prefix: '/reassessment/projects',    label: 'Projects' },
   { prefix: '/reassessment',             label: 'Reassessment' },
+  // Onboarding
+  { prefix: '/onboarding/organization',  label: 'Organization Setup' },
+  { prefix: '/onboarding/admin-user',    label: 'Admin User Setup' },
+  { prefix: '/onboarding/theme-automation', label: 'Theme & Automation' },
+  { prefix: '/onboarding/workflow-templates', label: 'Workflow Templates' },
+  { prefix: '/onboarding/complete',      label: 'Complete' },
+  { prefix: '/onboarding',               label: 'Onboarding' },
   // Agents
   { prefix: '/approvals/checkpoints',    label: 'Checkpoint Queue' },
   { prefix: '/agents/monitor',           label: 'Activity Monitor' },
@@ -233,6 +240,7 @@ const SECTION_ROOTS: Record<string, string> = {
   '/approvals':    '/approvals',
   '/export':       '/export/templates',
   '/reassessment': '/reassessment',
+  '/onboarding':   '/onboarding/organization',
   '/agents':       '/approvals/checkpoints',
   '/admin':        '/admin',
 };
