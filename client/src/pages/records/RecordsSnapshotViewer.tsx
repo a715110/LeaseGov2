@@ -24,6 +24,7 @@ import {
   AlertTriangle, CheckCircle2, ArrowRight, ArrowLeftRight,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   Select,
   SelectContent,
@@ -343,23 +344,29 @@ export default function RecordsSnapshotViewer() {
           </Select>
         </div>
 
-        <button
-          title="Swap left and right panels"
-          className="flex items-center justify-center w-8 h-8 rounded-md border border-border bg-background hover:bg-muted/40 text-muted-foreground hover:text-foreground transition-colors shrink-0 group"
-          onClick={() => {
-            const prevLeft = leftId;
-            const prevRight = rightId;
-            // When right is 'current', swap: left becomes 'current' (not valid for left panel),
-            // so fall back to the first snapshot for the left side instead.
-            const newLeft = prevRight === 'current'
-              ? (MOCK_SNAPSHOTS.find(s => s.id !== prevLeft)?.id ?? MOCK_SNAPSHOTS[0].id)
-              : prevRight;
-            setLeftId(newLeft);
-            setRightId(prevLeft);
-          }}
-        >
-          <ArrowLeftRight className="h-3.5 w-3.5 group-hover:scale-110 transition-transform" />
-        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              className="flex items-center justify-center w-8 h-8 rounded-md border border-border bg-background hover:bg-muted/40 text-muted-foreground hover:text-foreground transition-colors shrink-0 group"
+              onClick={() => {
+                const prevLeft = leftId;
+                const prevRight = rightId;
+                // When right is 'current', swap: left becomes 'current' (not valid for left panel),
+                // so fall back to the first snapshot for the left side instead.
+                const newLeft = prevRight === 'current'
+                  ? (MOCK_SNAPSHOTS.find(s => s.id !== prevLeft)?.id ?? MOCK_SNAPSHOTS[0].id)
+                  : prevRight;
+                setLeftId(newLeft);
+                setRightId(prevLeft);
+              }}
+            >
+              <ArrowLeftRight className="h-3.5 w-3.5 group-hover:scale-110 transition-transform" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-[12px]">
+            Swap comparison direction
+          </TooltipContent>
+        </Tooltip>
 
         <div className="flex items-center gap-2">
           <span className="text-[12px] font-medium text-muted-foreground w-10">Right</span>

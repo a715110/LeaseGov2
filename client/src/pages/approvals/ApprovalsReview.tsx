@@ -22,6 +22,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { useLocation, useParams } from "wouter";
+import { getApprovalTaskData } from "@/lib/mockApprovalsData";
 import { MOCK_REVIEWERS, ROLE_PERSONAS } from "@/lib/mockData";
 import { useRole } from "@/contexts/RoleContext";
 import { useNotifications } from "@/contexts/NotificationContext";
@@ -128,7 +129,8 @@ export default function ApprovalsReview() {
   const currentPersona = ROLE_PERSONAS[activeRole] ?? { name: 'Current User', initials: '?', email: '' };
 
   const routeParams = useParams<{ id: string }>();
-  const contractRecordId = routeParams.id || 'r1'; // read task ID from URL param
+  const contractRecordId = routeParams.id || 't1'; // read task ID from URL param
+  const { summary: taskSummary, fields: taskFields } = getApprovalTaskData(contractRecordId);
   const [automationLevel] = useState<AutomationLevel>('collaborative'); // TODO: from contractRecord?.automation_level
 
   const { activeCheckpoint } = useCheckpoints(contractRecordId, {
@@ -155,12 +157,12 @@ export default function ApprovalsReview() {
     ],
     progress: { current: 4, total: 4, label: 'Complete' },
   }), [contractRecordId]);
-  const sodViolation = false;
-  const reworkIteration = 0;
+  const sodViolation = taskSummary.sod_violation;
+  const reworkIteration = taskSummary.rework_iteration;
 
-  // Mock task context — in production derived from route params / API
+  // Task context derived from route param via getApprovalTaskData()
   const MOCK_TASK_REVIEWER_ID = 'user-rev-001';
-  const MOCK_TASK_SLA = '2026-05-18T17:00:00Z'; // ~2 days from now for demo
+  const MOCK_TASK_SLA = taskSummary.sla_deadline_at ?? '2026-05-30T17:00:00Z';
 
   // Reassign state
   const { addNotification } = useNotifications();
@@ -173,18 +175,18 @@ export default function ApprovalsReview() {
     const prev = MOCK_REVIEWERS.find(r => r.id === MOCK_TASK_REVIEWER_ID);
     const next = MOCK_REVIEWERS.find(r => r.id === reassignTargetId);
     addNotification({
-      title: 'CR-2026-0088 reassigned',
+      title: `${taskSummary.record_id} reassigned`,
       body: `Review task redirected from ${prev?.name ?? 'current reviewer'} to ${next?.name ?? 'new reviewer'}.`,
       severity: 'info',
       href: '/approvals',
     });
     addNotification({
       title: 'Your review task has been reassigned',
-      body: `CR-2026-0088 has been redirected to ${next?.name ?? 'another reviewer'}.`,
+      body: `${taskSummary.record_id} has been redirected to ${next?.name ?? 'another reviewer'}.`,
       severity: 'warning',
       href: '/approvals',
     });
-    toast.success(`CR-2026-0088 reassigned to ${next?.name ?? 'new reviewer'}`, { duration: 4000 });
+    toast.success(`${taskSummary.record_id} reassigned to ${next?.name ?? 'new reviewer'}`, { duration: 4000 });
     setShowReassignDialog(false);
     setReassignTargetId('');
     navigate('/approvals');
@@ -212,11 +214,18 @@ export default function ApprovalsReview() {
     return () => clearInterval(id);
   }, []);
 
-  const [fields, setFields] = useState<ReviewField[]>(MOCK_FIELDS);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const [fields, setFields] = useState<ReviewField[]>(() => taskFields as ReviewField[]);
   const [expandedCategories, setExpandedCategories] = useState<Set<FieldCategory>>(new Set<FieldCategory>(["core_metadata","financial"]));
   const [editingFieldId, setEditingFieldId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
-  const [comments, setComments] = useState<Comment[]>(MOCK_COMMENTS);
+  const [comments, setComments] = useState<Comment[]>([{
+    id: "c1",
+    author: `${taskSummary.submitted_by} (Preparer)`,
+    text: taskSummary.reviewer_comments,
+    created_at: taskSummary.submitted_at,
+    is_current_user: false,
+  }]);
   const [newComment, setNewComment] = useState("");
   const [showRejectForm, setShowRejectForm] = useState(false);
   const [rejectionReasons, setRejectionReasons] = useState<string[]>([]);
@@ -313,7 +322,7 @@ export default function ApprovalsReview() {
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-3.5 bg-card border-b border-border shrink-0">
         <div className="flex items-center gap-3">
-          <span className="font-mono text-[15px] font-bold text-foreground">CR-2026-0088</span>
+          <span className="font-mono text-[15px] font-bold text-foreground">{taskSummary.record_id}</span>
           <span className="badge-processing inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold">
             Under Review
           </span>
@@ -322,7 +331,7 @@ export default function ApprovalsReview() {
               Rework #{reworkIteration}
             </span>
           )}
-          <span className="text-[13px] text-muted-foreground">Submitted by J. Martinez · May 16, 2026</span>
+          <span className="text-[13px] text-muted-foreground">Submitted by {taskSummary.submitted_by} · {new Date(taskSummary.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
         </div>
         <div className="flex items-center gap-2">
           {/* SLA countdown chip */}
@@ -689,7 +698,7 @@ export default function ApprovalsReview() {
           </DialogHeader>
           <div className="px-1 py-2 flex flex-col gap-4">
             <p className="text-[13px] text-muted-foreground">
-              Redirect <strong>CR-2026-0088</strong> to a different Reviewer. The current reviewer and document submitter will be notified.
+              Redirect <strong>{taskSummary.record_id}</strong> to a different Reviewer. The current reviewer and document submitter will be notified.
             </p>
             <div>
               <p className="text-[12px] font-semibold text-foreground mb-1.5">New Reviewer <span className="text-[var(--color-lg-error)]">*</span></p>

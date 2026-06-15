@@ -20,6 +20,7 @@
 
 import { useState } from "react";
 import { useLocation, useParams } from "wouter";
+import { getApprovalTaskData } from "@/lib/mockApprovalsData";
 import { ContractCheckpointCard } from '@/components/checkpoints/ContractCheckpointCard';
 import { AutomationPolicyBadge } from '@/components/automation/AutomationPolicyBadge';
 import { useCheckpoints } from '@/hooks/useCheckpoints';
@@ -33,38 +34,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { SCREEN_KEYS } from "@/constants/screenKeys";
 import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 
-// TODO: Backend integration required — GET /api/approvals/tasks/:id/summary
-const MOCK_SUMMARY = {
-  task_reference: "AT-2026-0041",
-  record_id: "CR-2026-0088",
-  record_title: "Office Tower — 350 Fifth Ave",
-  sod_violation: false,
-  has_deferred: true,
-  deferred_count: 1,
-  reviewer_name: "Current Reviewer",
-  reviewer_comments: "Base rent corrected per Amendment 3 ($42,500/month). All critical fields verified. One deferred field: Security Deposit — pending landlord confirmation.",
-  key_terms: {
-    landlord: "Fifth Ave Properties LLC",
-    tenant: "Acme Corporation",
-    commencement: "2022-01-01",
-    expiration: "2032-12-31",
-    term_months: 132,
-    base_rent: "$42,500/month",
-    rent_frequency: "Monthly",
-    escalation: "3.00% fixed annual",
-    property: "350 Fifth Avenue, New York, NY 10001",
-    area_sqft: "24,500 sqft",
-    classification: "Operating Lease",
-    accounting_standard: "ASC 842",
-  },
-  financial_impact: {
-    before_rou: "$4,120,000",
-    after_rou: "$4,580,000",
-    before_liability: "$4,050,000",
-    after_liability: "$4,510,000",
-    delta: "+$460,000",
-  },
-};
+// MOCK_SUMMARY is resolved dynamically from the task ID in the URL via getApprovalTaskData().
 
 const CRITICAL_FIELDS_22 = [
   "Landlord Name", "Tenant Name", "Commencement Date", "Expiration Date",
@@ -82,12 +52,11 @@ export default function ApprovalsApprover() {
   const [deferredAcknowledged, setDeferredAcknowledged] = useState(false);
   const [reviewerCommentsExpanded, setReviewerCommentsExpanded] = useState(false);
 
-  const s = MOCK_SUMMARY;
-  const canApprove = !s.sod_violation && (!s.has_deferred || deferredAcknowledged);
-
-  // FC-9: Checkpoint wiring — read task ID from route param, fall back to 'r1'
+  // FC-9: Checkpoint wiring — read task ID from route param, fall back to 't1'
   const params = useParams<{ id: string }>();
-  const contractRecordId = params.id || 'r1';
+  const contractRecordId = params.id || 't1';
+  const { summary: s } = getApprovalTaskData(contractRecordId);
+  const canApprove = !s.sod_violation && (!s.has_deferred || deferredAcknowledged);
   const automationLevel: 'full_autonomous' | 'collaborative' | 'full_manual' = 'collaborative'; // TODO: from contractRecord
   const { activeCheckpoint } = useCheckpoints(contractRecordId, {
     checkpointType: 'onboarding_approval',

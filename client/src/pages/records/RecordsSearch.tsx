@@ -12,11 +12,11 @@
  *   Counterparty (legal_name), Property (address_street)
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import {
   Search, Filter, ChevronDown, ChevronUp, ChevronRight,
-  Star, StarOff, Eye, SortAsc, SortDesc, Plus
+  Star, StarOff, Eye, SortAsc, SortDesc, Plus, BookmarkCheck, AlertTriangle, Clock
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
@@ -84,9 +84,78 @@ function fmtRent(cents: number) {
   return `$${(cents / 100).toLocaleString("en-US", { maximumFractionDigits:0 })}/mo`;
 }
 
+// ─── Record metadata lookup (mirrors MOCK_RECORDS, used for cross-record watchlist) ─
+const RECORD_META: Record<string, { contract_number: string; title: string; counterparty_name: string; status: string }> = {
+  r1: { contract_number: "CR-2026-0088", title: "Office Tower — 350 Fifth Ave",       counterparty_name: "Fifth Ave Properties LLC",  status: "approved" },
+  r2: { contract_number: "CR-2026-0087", title: "Retail HQ — 1200 Market St",         counterparty_name: "Market Street Partners",    status: "pending_approval" },
+  r3: { contract_number: "CR-2026-0086", title: "Warehouse Lease — Industrial Park",  counterparty_name: "Industrial Realty Group",   status: "under_review" },
+  r4: { contract_number: "CR-2026-0085", title: "Ground Lease — Civic Center",        counterparty_name: "City of Boston",            status: "correction_in_progress" },
+  r5: { contract_number: "CR-2026-0084", title: "Tech Campus — Building A",           counterparty_name: "Silicon Valley Realty",     status: "approved" },
+  r6: { contract_number: "CR-2026-0083", title: "Suburban Office — Suite 400",        counterparty_name: "Westfield Properties",      status: "draft" },
+  r7: { contract_number: "CR-2026-0082", title: "Downtown Retail — Corner Unit",      counterparty_name: "Urban Retail LLC",          status: "approved" },
+  r8: { contract_number: "CR-2026-0081", title: "Distribution Center — Zone 3",       counterparty_name: "Logistics Park Holdings",   status: "approved" },
+};
+const REASON_LABEL: Record<string, string> = {
+  option_assessment:  "Option Assessment Due",
+  rent_escalation:    "Rent Escalation Upcoming",
+  expiry_approaching: "Lease Expiry Approaching",
+  modification:       "Pending Modification",
+  audit_flag:         "Audit Flag",
+  manual:             "Manual — see notes",
+};
+const PRIORITY_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+  high:   { label: "High",   color: "var(--color-lg-error)",   bg: "var(--color-lg-error-subtle)" },
+  medium: { label: "Medium", color: "var(--color-lg-warning)", bg: "var(--color-lg-warning-subtle)" },
+  low:    { label: "Low",    color: "var(--color-lg-info)",    bg: "var(--color-lg-info-subtle)" },
+};
+interface WatchlistSummaryRow {
+  recordId: string;
+  contract_number: string;
+  title: string;
+  counterparty_name: string;
+  status: string;
+  topPriority: string;
+  topReason: string;
+  entryCount: number;
+  addedAt: string;
+}
+function buildWatchlistRows(): WatchlistSummaryRow[] {
+  const rows: WatchlistSummaryRow[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (!key?.startsWith("leasegov_watchlist_")) continue;
+    const recordId = key.replace("leasegov_watchlist_", "");
+    try {
+      const parsed = JSON.parse(localStorage.getItem(key) ?? "{}");
+      if (!parsed.isWatchlisted) continue;
+      const entries: Array<{ priority: string; reason: string; added_at: string }> = parsed.entries ?? [];
+      if (entries.length === 0) continue;
+      const pOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
+      const sortedE = [...entries].sort((a, b) => (pOrder[a.priority] ?? 3) - (pOrder[b.priority] ?? 3));
+      const top = sortedE[0];
+      const meta = RECORD_META[recordId] ?? { contract_number: recordId, title: recordId, counterparty_name: "—", status: "—" };
+      rows.push({ recordId, contract_number: meta.contract_number, title: meta.title, counterparty_name: meta.counterparty_name, status: meta.status, topPriority: top.priority, topReason: REASON_LABEL[top.reason] ?? top.reason, entryCount: entries.length, addedAt: top.added_at });
+    } catch { /* skip malformed */ }
+  }
+  // Seed from MOCK_RECORDS is_watchlisted=true if no localStorage entry exists
+  for (const [rid, meta] of Object.entries(RECORD_META)) {
+    const mockWatchlisted = ["r2", "r4", "r7"];
+    if (mockWatchlisted.includes(rid) && !rows.find(r => r.recordId === rid)) {
+      rows.push({ recordId: rid, contract_number: meta.contract_number, title: meta.title, counterparty_name: meta.counterparty_name, status: meta.status, topPriority: "medium", topReason: "Option Assessment Due", entryCount: 1, addedAt: new Date().toISOString() });
+    }
+  }
+  rows.sort((a, b) => { const p: Record<string, number> = { high: 0, medium: 1, low: 2 }; return (p[a.topPriority] ?? 3) - (p[b.topPriority] ?? 3); });
+  return rows;
+}
+
 export default function RecordsSearch() {
   const _screenKey = SCREEN_KEYS.RECORDS_SEARCH;
   const [, navigate] = useLocation();
+  const [activeView, setActiveView] = useState<"all" | "watchlist">("all");
+  const [watchlistRows, setWatchlistRows] = useState<WatchlistSummaryRow[]>([]);
+  useEffect(() => {
+    if (activeView === "watchlist") setWatchlistRows(buildWatchlistRows());
+  }, [activeView]);
   const [query, setQuery] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
@@ -137,14 +206,105 @@ export default function RecordsSearch() {
             <h1 className="page-title">Contract Records</h1>
             <ScreenNumberBadge screenKey="records-search" />
           </div>
-          <p className="page-subtitle">{filtered.length} records found</p>
+          <p className="page-subtitle">
+            {activeView === "all" ? `${filtered.length} records found` : `${watchlistRows.length} watchlisted records`}
+          </p>
         </div>
-        <Button size="sm" className="gap-1.5" onClick={() => navigate("/pipeline/new-record")}>
-          <Plus className="w-3.5 h-3.5" /> New Record
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* View toggle tabs */}
+          <div className="flex items-center border border-border rounded-lg overflow-hidden bg-card">
+            <button
+              className={`px-3 py-1.5 text-[13px] font-medium transition-colors ${
+                activeView === "all"
+                  ? "bg-[var(--color-lg-primary)] text-white"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
+              }`}
+              onClick={() => setActiveView("all")}
+            >
+              All Records
+            </button>
+            <button
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium transition-colors border-l border-border ${
+                activeView === "watchlist"
+                  ? "bg-[var(--color-lg-primary)] text-white"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
+              }`}
+              onClick={() => setActiveView("watchlist")}
+            >
+              <BookmarkCheck className="w-3.5 h-3.5" />
+              My Watchlist
+              {watchlistRows.length > 0 && activeView === "watchlist" && (
+                <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-white/20 text-[10px] font-bold">{watchlistRows.length}</span>
+              )}
+            </button>
+          </div>
+          <Button size="sm" className="gap-1.5" onClick={() => navigate("/pipeline/new-record")}>
+            <Plus className="w-3.5 h-3.5" /> New Record
+          </Button>
+        </div>
       </div>
 
       <div className="flex-1 px-6 py-5 flex flex-col gap-4">
+        {/* ─── My Watchlist view ───────────────────────────────────────────────────────── */}
+        {activeView === "watchlist" && (
+          <div className="flex flex-col gap-3">
+            {watchlistRows.length === 0 ? (
+              <div className="bg-card border border-border rounded-lg px-6 py-12 flex flex-col items-center gap-3 text-center">
+                <BookmarkCheck className="w-10 h-10 text-muted-foreground opacity-30" />
+                <p className="text-[14px] font-medium text-foreground">No watchlisted records</p>
+                <p className="text-[13px] text-muted-foreground max-w-xs">Open any contract record and use the Watchlist tab to add it to your watchlist. Entries will appear here.</p>
+              </div>
+            ) : (
+              <div className="bg-card border border-border rounded-lg overflow-hidden">
+                <div className="px-5 py-3 border-b border-border flex items-center justify-between">
+                  <span className="text-[13px] font-semibold text-foreground">Watchlisted Leases</span>
+                  <span className="text-[12px] text-muted-foreground">{watchlistRows.length} record{watchlistRows.length !== 1 ? "s" : ""} — sorted by priority</span>
+                </div>
+                <div className="divide-y divide-border">
+                  {watchlistRows.map(row => {
+                    const pc = PRIORITY_CONFIG[row.topPriority] ?? PRIORITY_CONFIG.low;
+                    return (
+                      <div
+                        key={row.recordId}
+                        className="flex items-center gap-4 px-5 py-3.5 hover:bg-muted/20 transition-colors cursor-pointer"
+                        onClick={() => navigate(`/records/${row.recordId}?tab=watchlist`)}
+                      >
+                        {/* Priority indicator */}
+                        <div className="w-1.5 h-10 rounded-full shrink-0" style={{ backgroundColor: pc.color }} />
+                        {/* Record info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <span className="font-mono text-[12px] text-muted-foreground">{row.contract_number}</span>
+                            <span className="text-[11px] px-1.5 py-0.5 rounded font-semibold" style={{ color: pc.color, backgroundColor: pc.bg }}>{pc.label}</span>
+                            {row.entryCount > 1 && (
+                              <span className="text-[11px] text-muted-foreground">{row.entryCount} entries</span>
+                            )}
+                          </div>
+                          <p className="text-[13px] font-semibold text-foreground truncate">{row.title}</p>
+                          <p className="text-[12px] text-muted-foreground truncate">{row.counterparty_name}</p>
+                        </div>
+                        {/* Top reason */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <AlertTriangle className="w-3.5 h-3.5" style={{ color: pc.color }} />
+                          <span className="text-[12px] text-muted-foreground">{row.topReason}</span>
+                        </div>
+                        {/* Added at */}
+                        <div className="flex items-center gap-1 shrink-0 text-[11px] text-muted-foreground">
+                          <Clock className="w-3 h-3" />
+                          {new Date(row.addedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                        </div>
+                        {/* Open button */}
+                        <Button variant="outline" size="sm" className="h-7 text-[12px] shrink-0" onClick={e => { e.stopPropagation(); navigate(`/records/${row.recordId}`); }}>
+                          Open
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
         {/* Search bar + filter toggle */}
         <div className="flex items-center gap-3">
           <div className="flex-1 relative">
