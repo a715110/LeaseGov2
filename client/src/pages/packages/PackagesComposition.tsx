@@ -58,25 +58,82 @@ interface PackageDoc {
   file_size: string;
 }
 
-// TODO: Backend integration required
-const INITIAL_PACKAGE = {
-  id: "PKG-2026-0041",
-  record_id: "mock-record-004",   // FC-3 BR1: maps to CR-2026-0041 in MOCK_CONTRACT_RECORDS
-  record_label: "Office Tower — 350 Fifth Ave",
-  status: "validated",
-  document_count: 4,
-  auto_promoted: true,
-  promotion_triggered_at: "2026-05-14T09:22:00Z",
-  open_blocking_flags: 0,
-  open_warning_flags: 1,
+// TODO: Backend integration required — replace with GET /api/packages/:id
+// ── Mock package data keyed by package ID ─────────────────────────────────
+type PackageMeta = {
+  id: string;
+  record_id: string;
+  record_label: string;
+  status: string;
+  document_count: number;
+  auto_promoted: boolean;
+  promotion_triggered_at: string;
+  open_blocking_flags: number;
+  open_warning_flags: number;
 };
 
-const INITIAL_DOCUMENTS: PackageDoc[] = [
-  { id:"doc1", chronological_order:1, name:"Office-Tower-Base-Lease-2022.pdf",       document_role:"base_contract", effective_date:"2022-01-01", extraction_status:"complete",    file_size:"9.4 MB" },
-  { id:"doc2", chronological_order:2, name:"Office-Tower-Amendment-1-2023.pdf",       document_role:"amendment",     effective_date:"2023-06-01", extraction_status:"complete",    file_size:"2.1 MB" },
-  { id:"doc3", chronological_order:3, name:"Office-Tower-Amendment-3-2026.pdf",       document_role:"amendment",     effective_date:"2026-04-01", extraction_status:"in_progress", file_size:"1.8 MB" },
-  { id:"doc4", chronological_order:4, name:"Office-Tower-Exhibit-A-FloorPlan.pdf",    document_role:"exhibit",       effective_date:"2022-01-01", extraction_status:"complete",    file_size:"4.2 MB" },
-];
+const PACKAGES_BY_ID: Record<string, { pkg: PackageMeta; docs: PackageDoc[] }> = {
+  "PKG-2026-0041": {
+    pkg: {
+      id: "PKG-2026-0041",
+      record_id: "mock-record-004",
+      record_label: "Office Tower — 350 Fifth Ave",
+      status: "validated",
+      document_count: 4,
+      auto_promoted: true,
+      promotion_triggered_at: "2026-05-14T09:22:00Z",
+      open_blocking_flags: 0,
+      open_warning_flags: 1,
+    },
+    docs: [
+      { id:"doc1", chronological_order:1, name:"Office-Tower-Base-Lease-2022.pdf",       document_role:"base_contract", effective_date:"2022-01-01", extraction_status:"complete",    file_size:"9.4 MB" },
+      { id:"doc2", chronological_order:2, name:"Office-Tower-Amendment-1-2023.pdf",       document_role:"amendment",     effective_date:"2023-06-01", extraction_status:"complete",    file_size:"2.1 MB" },
+      { id:"doc3", chronological_order:3, name:"Office-Tower-Amendment-3-2026.pdf",       document_role:"amendment",     effective_date:"2026-04-01", extraction_status:"in_progress", file_size:"1.8 MB" },
+      { id:"doc4", chronological_order:4, name:"Office-Tower-Exhibit-A-FloorPlan.pdf",    document_role:"exhibit",       effective_date:"2022-01-01", extraction_status:"complete",    file_size:"4.2 MB" },
+    ],
+  },
+  "PKG-2026-002": {
+    pkg: {
+      id: "PKG-2026-002",
+      record_id: "mock-record-002",
+      record_label: "Globex Ground Lease Package",
+      status: "assembling",
+      document_count: 2,
+      auto_promoted: false,
+      promotion_triggered_at: "2026-06-11T14:22:00Z",
+      open_blocking_flags: 0,
+      open_warning_flags: 0,
+    },
+    docs: [
+      { id:"g1", chronological_order:1, name:"Globex-Ground-Lease-2021.pdf",    document_role:"base_contract", effective_date:"2021-03-01", extraction_status:"complete",    file_size:"7.2 MB" },
+      { id:"g2", chronological_order:2, name:"Globex-Ground-Amendment-2024.pdf", document_role:"amendment",     effective_date:"2024-01-15", extraction_status:"not_started", file_size:"1.3 MB" },
+    ],
+  },
+  "PKG-2026-001": {
+    pkg: {
+      id: "PKG-2026-001",
+      record_id: "mock-record-001",
+      record_label: "Acme Corp Retail Package",
+      status: "pending",
+      document_count: 3,
+      auto_promoted: true,
+      promotion_triggered_at: "2026-06-10T11:05:00Z",
+      open_blocking_flags: 1,
+      open_warning_flags: 0,
+    },
+    docs: [
+      { id:"a1", chronological_order:1, name:"Acme-Retail-Lease-2020.pdf",       document_role:"base_contract", effective_date:"2020-07-01", extraction_status:"complete",    file_size:"5.6 MB" },
+      { id:"a2", chronological_order:2, name:"Acme-Retail-Amendment-2022.pdf",   document_role:"amendment",     effective_date:"2022-11-01", extraction_status:"complete",    file_size:"0.9 MB" },
+      { id:"a3", chronological_order:3, name:"Acme-Retail-Exhibit-B-Parking.pdf",document_role:"exhibit",       effective_date:"2020-07-01", extraction_status:"failed",      file_size:"2.1 MB" },
+    ],
+  },
+};
+
+/** Fallback for unknown package IDs (e.g. direct navigation to /packages) */
+const FALLBACK_PACKAGE_ID = "PKG-2026-0041";
+
+const INITIAL_PACKAGE = PACKAGES_BY_ID[FALLBACK_PACKAGE_ID].pkg;
+const INITIAL_DOCUMENTS = PACKAGES_BY_ID[FALLBACK_PACKAGE_ID].docs;
 
 const ROLE_LABELS: Record<DocumentRole, string> = {
   base_contract:"Base Contract", amendment:"Amendment", addendum:"Addendum",
@@ -129,11 +186,12 @@ export default function PackagesComposition() {
   const _screenKey = SCREEN_KEYS.PACKAGES_COMPOSITION;
   const [, navigate] = useLocation();
   const params = useParams<{ contractId: string }>();
-  // contractId from route param — falls back to the mock package ID for direct navigation
-  const _contractId = params.contractId ?? INITIAL_PACKAGE.id;
+  // Resolve the package from the route param; fall back to the default mock if unknown
+  const contractId = params.contractId ?? FALLBACK_PACKAGE_ID;
+  const resolved = PACKAGES_BY_ID[contractId] ?? PACKAGES_BY_ID[FALLBACK_PACKAGE_ID];
   // ── State ──────────────────────────────────────────────────────────────────
-  const [pkg, setPkg] = useState(INITIAL_PACKAGE);
-  const [docs, setDocs] = useState<PackageDoc[]>(INITIAL_DOCUMENTS);
+  const [pkg, setPkg] = useState(resolved.pkg);
+  const [docs, setDocs] = useState<PackageDoc[]>(resolved.docs);
 
   // Change Role dialog
   const [changeRoleDoc, setChangeRoleDoc] = useState<PackageDoc | null>(null);

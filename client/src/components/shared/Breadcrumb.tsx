@@ -5,6 +5,10 @@
  * Derives crumbs from the current Wouter location by matching
  * against a static route-to-label map.
  *
+ * Parameterised routes (e.g. /packages/:id/flags) are matched via
+ * PARAM_ROUTE_PATTERNS — a list of regex patterns with named capture
+ * groups that produce a { section, child } label pair.
+ *
  * Design: LeaseGov V4 — xs text, muted separators, current page
  * rendered in foreground weight.
  */
@@ -18,7 +22,7 @@ interface Crumb {
 /** Map of route prefixes → human-readable section labels.
  *  Ordered from most-specific to least-specific. */
 const ROUTE_LABELS: Array<{ prefix: string; label: string }> = [
-  // Packages
+  // Packages (bare root only — sub-routes handled by PARAM_ROUTE_PATTERNS)
   { prefix: '/packages',                 label: 'Packages' },
   // Pipeline
   { prefix: '/pipeline/upload',          label: 'Upload' },
@@ -78,7 +82,46 @@ const ROUTE_LABELS: Array<{ prefix: string; label: string }> = [
   { prefix: '/',                         label: 'Home' },
 ];
 
-/** Section roots — used to build the parent crumb */
+/**
+ * Parameterised route patterns — for routes whose path segments contain
+ * dynamic IDs that cannot be matched by a static prefix.
+ *
+ * Each entry provides:
+ *   pattern  — regex that matches the full pathname
+ *   section  — label for the parent (root) crumb
+ *   sectionHref — href for the parent crumb link
+ *   child    — label for the current (leaf) crumb
+ */
+const PARAM_ROUTE_PATTERNS: Array<{
+  pattern: RegExp;
+  section: string;
+  sectionHref: string;
+  child: string;
+}> = [
+  // /packages/:id/flags  →  Packages / Flags
+  {
+    pattern: /^\/packages\/[^/]+\/flags$/,
+    section: 'Packages',
+    sectionHref: '/packages',
+    child: 'Flags',
+  },
+  // /packages/:id/reassembly  →  Packages / Re-Assembly
+  {
+    pattern: /^\/packages\/[^/]+\/reassembly$/,
+    section: 'Packages',
+    sectionHref: '/packages',
+    child: 'Re-Assembly',
+  },
+  // /packages/:id  →  Packages / Composition
+  {
+    pattern: /^\/packages\/[^/]+$/,
+    section: 'Packages',
+    sectionHref: '/packages',
+    child: 'Composition',
+  },
+];
+
+/** Section roots — used to build the parent crumb for static sub-routes */
 const SECTION_ROOTS: Record<string, string> = {
   '/packages':     '/packages',
   '/pipeline':     '/pipeline',
@@ -102,6 +145,19 @@ function getLabelForPath(path: string): string {
 
 function buildCrumbs(location: string): Crumb[] {
   if (location === '/') return [{ label: 'Home' }];
+
+  // Strip query string for matching, but keep original for display
+  const pathname = location.split('?')[0];
+
+  // Try parameterised patterns first (more specific than prefix matching)
+  for (const { pattern, section, sectionHref, child } of PARAM_ROUTE_PATTERNS) {
+    if (pattern.test(pathname)) {
+      return [
+        { label: section, href: sectionHref },
+        { label: child },
+      ];
+    }
+  }
 
   const crumbs: Crumb[] = [];
 
