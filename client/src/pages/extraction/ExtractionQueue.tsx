@@ -35,6 +35,8 @@ import { subscribeToEvents, publishEvent } from '@/lib/eventBus';
 import { WorkspaceBadge, getWorkspaceColour } from '@/components/pipeline/UploadDialog';
 import { MOCK_ASSIGNEES } from '@/lib/mockData';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { useNotifications } from '@/contexts/NotificationContext';
+import { UserCog } from 'lucide-react';
 
 import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -811,6 +813,10 @@ export default function ExtractionQueue() {
 
   // Inline assignee reassignment — tracks which job row has its dropdown open
   const [editingAssigneeJobId, setEditingAssigneeJobId] = useState<string | null>(null);
+  // Batch-level reassign dialog
+  const [reassignBatch, setReassignBatch] = useState<{ batchRef: string; jobs: ProcessingJob[] } | null>(null);
+  const [reassignBatchTargetId, setReassignBatchTargetId] = useState<string>('');
+  const { addNotification } = useNotifications();
 
   // S4: inline dialog states
   const [classificationItem, setClassificationItem] = useState<ProcessingJob | null>(null);
@@ -1080,6 +1086,20 @@ export default function ExtractionQueue() {
                       <td className="text-muted-foreground hidden xl:table-cell">{group.jobs[0]?.duration ?? '—'}</td>
                       <td className="text-muted-foreground hidden xl:table-cell">{group.jobs[0]?.assigned ?? '—'}</td>
                       <td onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center gap-1.5">
+                        {/* Reassign batch to a different preparer */}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-[11px] gap-1"
+                          onClick={e => {
+                            e.stopPropagation();
+                            setReassignBatchTargetId(group.jobs[0]?.assignee_id ?? '');
+                            setReassignBatch({ batchRef: group.batchRef, jobs: group.jobs });
+                          }}
+                        >
+                          <UserCog className="w-3 h-3" /> Reassign
+                        </Button>
                         {/* Decline is package-level only — no per-file decline */}
                         {group.jobs.some(j => j.status !== 'declined') && (
                           <Button
@@ -1091,6 +1111,7 @@ export default function ExtractionQueue() {
                             <XCircle className="w-3 h-3" /> Decline Package
                           </Button>
                         )}
+                        </div>
                       </td>
                     </tr>
                     {/* Expanded: individual job rows */}
@@ -1517,6 +1538,98 @@ export default function ExtractionQueue() {
                 }}
               >
                 Confirm Decline Package
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* ── Batch Reassign Dialog ──────────────────────────────────────────── */}
+        <Dialog
+          open={!!reassignBatch}
+          onOpenChange={open => { if (!open) { setReassignBatch(null); setReassignBatchTargetId(''); } }}
+        >
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Reassign Batch</DialogTitle>
+              <p className="text-[13px] text-muted-foreground mt-1">
+                Reassign <strong>{reassignBatch?.batchRef}</strong> ({reassignBatch?.jobs.length} file{reassignBatch?.jobs.length !== 1 ? 's' : ''}) to a different preparer.
+                The original assignee and document submitter will be notified.
+              </p>
+            </DialogHeader>
+            <div className="py-2">
+              <label className="text-[12px] font-semibold text-foreground block mb-1.5">New Preparer</label>
+              <Select value={reassignBatchTargetId} onValueChange={setReassignBatchTargetId}>
+                <SelectTrigger className="text-[13px]">
+                  <SelectValue placeholder="Select a preparer…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {MOCK_ASSIGNEES.map(a => (
+                    <SelectItem key={a.id} value={a.id}>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="w-5 h-5 rounded-full inline-flex items-center justify-center text-[9px] font-bold text-white shrink-0"
+                          style={{ background: a.avatarColor ?? '#6366f1' }}
+                        >
+                          {a.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
+                        </span>
+                        <span>{a.name}</span>
+                        <span className="text-[11px] text-muted-foreground">· {a.role}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => { setReassignBatch(null); setReassignBatchTargetId(''); }}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                disabled={!reassignBatchTargetId}
+                onClick={() => {
+                  if (!reassignBatchTargetId || !reassignBatch) return;
+                  const prevAssigneeId = reassignBatch.jobs[0]?.assignee_id;
+                  const prevAssignee = prevAssigneeId ? MOCK_ASSIGNEES.find(a => a.id === prevAssigneeId) : null;
+                  const newAssignee = MOCK_ASSIGNEES.find(a => a.id === reassignBatchTargetId);
+                  // Update all jobs in this batch
+                  setJobs(prev => prev.map(j =>
+                    j.batch_ref === reassignBatch.batchRef
+                      ? { ...j, assignee_id: reassignBatchTargetId, assigned: newAssignee?.name ?? j.assigned }
+                      : j
+                  ));
+                  // Notify original assignee
+                  if (prevAssignee) {
+                    addNotification({
+                      title: `${reassignBatch.batchRef} reassigned`,
+                      body: `Batch reassigned from ${prevAssignee.name} to ${newAssignee?.name ?? 'another preparer'}.`,
+                      severity: 'info',
+                      href: '/extraction/queue',
+                    });
+                  }
+                  // Notify document submitter
+                  addNotification({
+                    title: `${reassignBatch.batchRef} preparer changed`,
+                    body: `Your batch is now assigned to ${newAssignee?.name ?? 'a new preparer'}.`,
+                    severity: 'info',
+                    href: '/pipeline/dashboard',
+                  });
+                  toast.success(`${reassignBatch.batchRef} reassigned to ${newAssignee?.name ?? 'new preparer'}`, {
+                    description: prevAssignee
+                      ? `Original assignee ${prevAssignee.name} and document submitter have been notified.`
+                      : 'Document submitter has been notified.',
+                    duration: 5000,
+                  });
+                  setReassignBatch(null);
+                  setReassignBatchTargetId('');
+                }}
+              >
+                <UserCog className="w-3.5 h-3.5 mr-1.5" />
+                Confirm Reassignment
               </Button>
             </DialogFooter>
           </DialogContent>

@@ -24,7 +24,7 @@ import {
   Clock, Send, RefreshCw, Search, MoreHorizontal, Edit2, Layers,
   Eye, Trash2, ArrowRight, FileUp, CheckSquare, Square,
   Package, X, ChevronDown, ChevronUp, ChevronsUpDown, ChevronRight, Unlink,
-  Archive, ExternalLink, RotateCcw
+  Archive, ExternalLink, RotateCcw, UserCog
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -37,6 +37,9 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle
+} from '@/components/ui/dialog';
 import { FlagSlidingPanel } from '@/components/shared/FlagSlidingPanel';
 import { DocumentIntelligencePanel } from '@/components/pipeline/DocumentIntelligencePanel';
 import type { DocForPanel } from '@/components/pipeline/DocumentIntelligencePanel';
@@ -1449,6 +1452,14 @@ export default function PipelineDashboard() {
   const [colFilters, setColFilters] = useState({ name: '', uploader: '', workspace: '' });
   // Workspace quick-filter pill ('' = All)
   const [workspacePill, setWorkspacePill] = useState<string>('');
+  // Assignee quick-filter pill ('' = All)
+  const [assigneePill, setAssigneePill] = useState<string>('');
+  // Bulk reassign dialog state for Stage Documents
+  const [bulkReassignOpen, setBulkReassignOpen] = useState(false);
+  const [bulkReassignTargetId, setBulkReassignTargetId] = useState<string>('');
+  // Reassign dialog state for Contract Packages
+  const [reassignPkgId, setReassignPkgId] = useState<string | null>(null);
+  const [reassignPkgTargetId, setReassignPkgTargetId] = useState<string>('');
   // Tab: 'active' = staging pipeline, 'committed' = audit view
   // stageView removed — committed docs now have their own standalone table (Table 4)
 
@@ -1684,7 +1695,9 @@ export default function PipelineDashboard() {
       doc.uploader.toLowerCase().includes(colFilters.uploader.toLowerCase()) &&
       doc.workspace_tag.toLowerCase().includes(colFilters.workspace.toLowerCase());
     const matchesPill = !workspacePill || doc.workspace_tag === workspacePill;
-    return matchesSearch && matchesCol && matchesPill;
+    const matchesAssigneePill = !assigneePill ||
+      (assigneePill === '__unassigned__' ? !doc.assignee_id : doc.assignee_id === assigneePill);
+    return matchesSearch && matchesCol && matchesPill && matchesAssigneePill;
   });
 
   const filteredPkgs = (() => {
@@ -2303,7 +2316,75 @@ export default function PipelineDashboard() {
             </div>
           );
         })()}
-
+        {/* Assignee quick-filter pills */}
+        {(() => {
+          // Collect distinct assignees present in the current workspace-filtered docs
+          const presentAssignees = MOCK_ASSIGNEES.filter(a =>
+            activeStagedDocs.some(d => d.assignee_id === a.id &&
+              (!workspacePill || d.workspace_tag === workspacePill)
+            )
+          );
+          const hasUnassigned = activeStagedDocs.some(d =>
+            !d.assignee_id && (!workspacePill || d.workspace_tag === workspacePill)
+          );
+          if (presentAssignees.length === 0 && !hasUnassigned) return null;
+          return (
+            <div className="flex items-center gap-1.5 px-5 py-2 border-b border-border bg-muted/10 flex-wrap">
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mr-1">Preparer:</span>
+              <button
+                onClick={() => setAssigneePill('')}
+                className={`px-3 py-0.5 rounded-full text-[11px] font-semibold transition-all duration-150 ${
+                  assigneePill === ''
+                    ? 'bg-foreground text-background shadow-sm'
+                    : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground'
+                }`}
+              >
+                All
+              </button>
+              {presentAssignees.map(a => {
+                const active = assigneePill === a.id;
+                const count = activeStagedDocs.filter(d => d.assignee_id === a.id &&
+                  (!workspacePill || d.workspace_tag === workspacePill)).length;
+                return (
+                  <button
+                    key={a.id}
+                    onClick={() => setAssigneePill(active ? '' : a.id)}
+                    className={`inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[11px] font-semibold ring-1 transition-all duration-150 ${
+                      active
+                        ? 'bg-foreground text-background ring-foreground shadow-sm scale-[1.04]'
+                        : 'bg-muted text-muted-foreground ring-border hover:bg-accent hover:text-foreground'
+                    }`}
+                  >
+                    <span
+                      className="w-3.5 h-3.5 rounded-full inline-flex items-center justify-center text-[8px] font-bold text-white shrink-0"
+                      style={{ background: a.avatarColor ?? '#6366f1' }}
+                    >
+                      {a.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
+                    </span>
+                    {a.name}
+                    <span className="ml-0.5 opacity-60">({count})</span>
+                  </button>
+                );
+              })}
+              {hasUnassigned && (
+                <button
+                  onClick={() => setAssigneePill(assigneePill === '__unassigned__' ? '' : '__unassigned__')}
+                  className={`inline-flex items-center gap-1 px-3 py-0.5 rounded-full text-[11px] font-semibold ring-1 transition-all duration-150 ${
+                    assigneePill === '__unassigned__'
+                      ? 'bg-foreground text-background ring-foreground shadow-sm scale-[1.04]'
+                      : 'bg-muted text-muted-foreground ring-border hover:bg-accent hover:text-foreground'
+                  }`}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground" />
+                  Unassigned
+                  <span className="ml-0.5 opacity-60">
+                    ({activeStagedDocs.filter(d => !d.assignee_id && (!workspacePill || d.workspace_tag === workspacePill)).length})
+                  </span>
+                </button>
+              )}
+            </div>
+          );
+        })()}
         {/* Active staging view */}
 
         {activeStagedDocs.length === 0 ? (
@@ -2542,6 +2623,22 @@ export default function PipelineDashboard() {
               Showing {filteredDocs.length} of {activeStagedDocs.length} documents
               {selectedIds.size > 0 && ` · ${selectedIds.size} selected`}
             </p>
+            <div className="flex items-center gap-2">
+            {/* Bulk Reassign Selected */}
+            {selectedIds.size > 0 && !isReadOnly && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-[13px]"
+                onClick={() => {
+                  setBulkReassignTargetId('');
+                  setBulkReassignOpen(true);
+                }}
+              >
+                <UserCog className="w-3.5 h-3.5" />
+                Reassign Selected ({selectedIds.size})
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"
@@ -2581,6 +2678,7 @@ export default function PipelineDashboard() {
             >
               Review &amp; Group{selectedIds.size > 0 ? ` (${selectedIds.size})` : ''} <ArrowRight className="w-3.5 h-3.5" />
             </Button>
+            </div>{/* end flex gap-2 */}
           </div>
         )}
       </div>
@@ -2792,6 +2890,14 @@ export default function PipelineDashboard() {
                               Open
                             </button>
                             {!isReadOnly && (
+                              <>
+                              <button
+                                onClick={() => { setReassignPkgId(pkg.id); setReassignPkgTargetId(pkg.assignee_id ?? ''); }}
+                                className="px-2.5 py-1 rounded text-[11px] font-medium border border-border bg-background text-foreground hover:bg-muted transition-colors inline-flex items-center gap-1"
+                                title="Reassign to a different preparer"
+                              >
+                                <UserCog className="w-3 h-3" /> Reassign
+                              </button>
                               <button
                                 onClick={() => submitPackage(pkg)}
                                 disabled={!ready}
@@ -2804,6 +2910,7 @@ export default function PipelineDashboard() {
                               >
                                 Submit for Extraction
                               </button>
+                              </>
                             )}
                           </div>
                         </td>
@@ -3484,6 +3591,145 @@ export default function PipelineDashboard() {
           onCancel={() => setGroupingDocs(null)}
         />
       )}
+
+      {/* ── Bulk Reassign Selected (Stage Documents) ─────────────────────── */}
+      <Dialog open={bulkReassignOpen} onOpenChange={open => { if (!open) setBulkReassignOpen(false); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Reassign {selectedIds.size} File{selectedIds.size !== 1 ? 's' : ''}</DialogTitle>
+            <DialogDescription>
+              Select a new preparer for all {selectedIds.size} selected file{selectedIds.size !== 1 ? 's' : ''}.
+              This will overwrite any existing assignments.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <label className="text-[12px] font-semibold text-foreground block mb-1.5">New Preparer</label>
+            <Select value={bulkReassignTargetId} onValueChange={setBulkReassignTargetId}>
+              <SelectTrigger className="text-[13px]">
+                <SelectValue placeholder="Select a preparer…" />
+              </SelectTrigger>
+              <SelectContent>
+                {MOCK_ASSIGNEES.map(a => (
+                  <SelectItem key={a.id} value={a.id}>
+                    <div className="flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-full inline-flex items-center justify-center text-[9px] font-bold text-white shrink-0" style={{ background: a.avatarColor ?? '#6366f1' }}>
+                        {a.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
+                      </span>
+                      <span>{a.name}</span>
+                      <span className="text-[11px] text-muted-foreground">· {a.role}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setBulkReassignOpen(false)}>Cancel</Button>
+            <Button
+              size="sm"
+              disabled={!bulkReassignTargetId}
+              onClick={() => {
+                if (!bulkReassignTargetId) return;
+                const newAssignee = MOCK_ASSIGNEES.find(a => a.id === bulkReassignTargetId);
+                const count = selectedIds.size;
+                setStagedDocs(prev => prev.map(d =>
+                  selectedIds.has(d.id) ? { ...d, assignee_id: bulkReassignTargetId } : d
+                ));
+                setSelectedIds(new Set());
+                setBulkReassignOpen(false);
+                setBulkReassignTargetId('');
+                toast.success(`${count} file${count !== 1 ? 's' : ''} reassigned to ${newAssignee?.name ?? 'new preparer'}`, {
+                  description: 'Assignee updated. Files can now be packaged together.',
+                  duration: 4000,
+                });
+              }}
+            >
+              <UserCog className="w-3.5 h-3.5 mr-1.5" />
+              Confirm Reassignment
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Reassign Package (Contract Packages) ─────────────────────────── */}
+      {(() => {
+        const pkg = reassignPkgId ? contractPackages.find(p => p.id === reassignPkgId) : null;
+        if (!pkg) return null;
+        return (
+          <Dialog open={!!reassignPkgId} onOpenChange={open => { if (!open) { setReassignPkgId(null); setReassignPkgTargetId(''); } }}>
+            <DialogContent className="max-w-sm">
+              <DialogHeader>
+                <DialogTitle>Reassign Package</DialogTitle>
+                <DialogDescription>
+                  Reassign <strong>{pkg.packageNum}</strong> to a different preparer.
+                  The current assignee will be notified.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="py-2">
+                <label className="text-[12px] font-semibold text-foreground block mb-1.5">New Preparer</label>
+                <Select value={reassignPkgTargetId} onValueChange={setReassignPkgTargetId}>
+                  <SelectTrigger className="text-[13px]">
+                    <SelectValue placeholder="Select a preparer…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MOCK_ASSIGNEES.map(a => (
+                      <SelectItem key={a.id} value={a.id}>
+                        <div className="flex items-center gap-2">
+                          <span className="w-5 h-5 rounded-full inline-flex items-center justify-center text-[9px] font-bold text-white shrink-0" style={{ background: a.avatarColor ?? '#6366f1' }}>
+                            {a.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
+                          </span>
+                          <span>{a.name}</span>
+                          <span className="text-[11px] text-muted-foreground">· {a.role}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" size="sm" onClick={() => { setReassignPkgId(null); setReassignPkgTargetId(''); }}>Cancel</Button>
+                <Button
+                  size="sm"
+                  disabled={!reassignPkgTargetId}
+                  onClick={() => {
+                    if (!reassignPkgTargetId || !reassignPkgId) return;
+                    const prevAssignee = pkg.assignee_id ? MOCK_ASSIGNEES.find(a => a.id === pkg.assignee_id) : null;
+                    const newAssignee = MOCK_ASSIGNEES.find(a => a.id === reassignPkgTargetId);
+                    setContractPackages(prev => prev.map(p =>
+                      p.id === reassignPkgId ? { ...p, assignee_id: reassignPkgTargetId } : p
+                    ));
+                    // Notify original assignee
+                    if (prevAssignee) {
+                      addNotification({
+                        title: `${pkg.packageNum} reassigned`,
+                        body: `Package reassigned from ${prevAssignee.name} to ${newAssignee?.name ?? 'another preparer'}.`,
+                        severity: 'info',
+                        href: '/pipeline/dashboard',
+                      });
+                    }
+                    // Notify document submitter
+                    addNotification({
+                      title: `${pkg.packageNum} preparer changed`,
+                      body: `Your package is now assigned to ${newAssignee?.name ?? 'a new preparer'}.`,
+                      severity: 'info',
+                      href: '/pipeline/dashboard',
+                    });
+                    toast.success(`${pkg.packageNum} reassigned to ${newAssignee?.name ?? 'new preparer'}`, {
+                      description: prevAssignee ? `Previous assignee ${prevAssignee.name} has been notified.` : undefined,
+                      duration: 5000,
+                    });
+                    setReassignPkgId(null);
+                    setReassignPkgTargetId('');
+                  }}
+                >
+                  <UserCog className="w-3.5 h-3.5 mr-1.5" />
+                  Confirm Reassignment
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
       {/* Upload dialog — initialRecord pre-populated when navigating from PackagesComposition */}
       <UploadDialog
         open={showUpload}
