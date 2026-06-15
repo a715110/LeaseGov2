@@ -189,7 +189,7 @@ export default function ApprovalsReview() {
     toast.success(`${taskSummary.record_id} reassigned to ${next?.name ?? 'new reviewer'}`, { duration: 4000 });
     setShowReassignDialog(false);
     setReassignTargetId('');
-    navigate('/approvals');
+    navigate('/approvals/queue');
   }
 
   // SLA countdown
@@ -234,7 +234,8 @@ export default function ApprovalsReview() {
 
   const criticalFields = fields.filter(f => f.is_critical);
   const criticalVerified = criticalFields.filter(f => f.disposition && f.disposition !== "deferred").length;
-  const canApprove = criticalVerified >= 22 && !sodViolation;
+  const criticalFieldCount = criticalFields.length;
+  const canApprove = criticalVerified >= criticalFieldCount && !sodViolation;
   const deferredCount = fields.filter(f => f.disposition === "deferred").length;
 
   const categories = Array.from(new Set(fields.map(f => f.field_category))) as FieldCategory[];
@@ -403,7 +404,7 @@ export default function ApprovalsReview() {
             </TooltipTrigger>
             {!canApprove && (
               <TooltipContent className="text-[12px]">
-                {sodViolation ? "SoD Violation — cannot approve" : `${22 - criticalVerified} critical fields must be verified`}
+                {sodViolation ? "SoD Violation — cannot approve" : `${criticalFieldCount - criticalVerified} critical fields must be verified`}
               </TooltipContent>
             )}
           </Tooltip>
@@ -447,12 +448,12 @@ export default function ApprovalsReview() {
           <div className="flex items-center justify-between px-5 py-3 border-b border-border bg-muted/20 shrink-0">
             <div className="flex items-center gap-3">
               <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-[12px] font-semibold border ${
-                criticalVerified >= 22
+                criticalVerified >= criticalFieldCount
                   ? "border-[var(--color-lg-success)] bg-[var(--color-lg-success-subtle)] text-[var(--color-lg-success)]"
                   : "border-[var(--color-lg-warning)] bg-[var(--color-lg-warning-subtle)] text-[var(--color-lg-warning)]"
               }`}>
                 <Shield className="w-3.5 h-3.5" />
-                {criticalVerified}/22 Critical Fields Verified
+                {criticalVerified}/{criticalFieldCount} Critical Fields Verified
               </div>
               {deferredCount > 0 && (
                 <span className="badge-warning inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold">
@@ -747,7 +748,7 @@ export default function ApprovalsReview() {
               </p>
               <div className="flex justify-end gap-2 mt-4">
                 <Button variant="outline" onClick={() => setShowApproverModal(false)}>Cancel</Button>
-                <Button onClick={() => { setShowApproverModal(false); navigate("/approvals/final"); }}>
+                <Button onClick={() => { setShowApproverModal(false); navigate(`/approvals/final/${contractRecordId}`); }}>
                   Open Approver Screen
                 </Button>
               </div>

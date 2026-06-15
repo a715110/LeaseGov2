@@ -135,20 +135,28 @@ export default function RecordsDetail() {
   const lockBanner = LOCK_BANNER[record.lock_status];
   const automationStyle = AUTOMATION_BADGE[record.automation_level] || AUTOMATION_BADGE.full_manual;
 
-  // Listen for export task events to drive the lock banner
+  // Listen for task lifecycle events to drive the lock banner
   useEffect(() => {
     return subscribeToEvents((event) => {
-      if (event.type === 'UPLOAD_TASK_STARTED') {
-        const p = event.payload as { record_id?: string };
-        if (!p.record_id || p.record_id === recordId || p.record_id === 'r1') {
-          setRecord(r => ({ ...r, lock_status: 'upload_task_active' as LockStatus }));
-        }
-      }
-      if (event.type === 'UPLOAD_TASK_COMPLETED') {
-        const p = event.payload as { record_id?: string };
-        if (!p.record_id || p.record_id === recordId || p.record_id === 'r1') {
-          setRecord(r => ({ ...r, lock_status: 'unlocked' as LockStatus }));
-        }
+      const p = event.payload as { record_id?: string };
+      const matches = !p.record_id || p.record_id === recordId || p.record_id === 'r1';
+      if (!matches) return;
+      if (event.type === 'SUBMIT_FOR_REVIEW') {
+        setRecord(r => ({ ...r, lock_status: 'pending_review' as LockStatus }));
+      } else if (event.type === 'REVIEW_OPENED') {
+        setRecord(r => ({ ...r, lock_status: 'pending_review' as LockStatus }));
+      } else if (event.type === 'REVIEW_COMPLETED') {
+        setRecord(r => ({ ...r, lock_status: 'pending_approval' as LockStatus }));
+      } else if (event.type === 'APPROVE_FOR_FINAL') {
+        setRecord(r => ({ ...r, lock_status: 'pending_approval' as LockStatus }));
+      } else if (event.type === 'RECORD_APPROVED') {
+        setRecord(r => ({ ...r, lock_status: 'unlocked' as LockStatus }));
+      } else if (event.type === 'DECLINE_SUBMITTED') {
+        setRecord(r => ({ ...r, lock_status: 'unlocked' as LockStatus }));
+      } else if (event.type === 'UPLOAD_TASK_STARTED') {
+        setRecord(r => ({ ...r, lock_status: 'upload_task_active' as LockStatus }));
+      } else if (event.type === 'UPLOAD_TASK_COMPLETED') {
+        setRecord(r => ({ ...r, lock_status: 'unlocked' as LockStatus }));
       }
     });
   }, [recordId]);

@@ -47,7 +47,11 @@ const ROUTE_LABELS: Array<{ prefix: string; label: string }> = [
   // Approvals
   { prefix: '/approvals/checkpoints',    label: 'Checkpoints' },
   { prefix: '/approvals/review',         label: 'Review' },
+  { prefix: '/approvals/final',          label: 'Final Approval' },
   { prefix: '/approvals/approver',       label: 'Approver' },
+  { prefix: '/approvals/queue',          label: 'Queue' },
+  { prefix: '/approvals/recall',         label: 'Recall' },
+  { prefix: '/approvals/rework',         label: 'Rework' },
   { prefix: '/approvals/history',        label: 'History' },
   { prefix: '/approvals',               label: 'Approvals' },
   // Export
@@ -118,6 +122,20 @@ const PARAM_ROUTE_PATTERNS: Array<{
     section: 'Packages',
     sectionHref: '/packages',
     child: 'Composition',
+  },
+  // /approvals/review/:id  →  Approvals / Review
+  {
+    pattern: /^\/approvals\/review\/[^/]+$/,
+    section: 'Approvals',
+    sectionHref: '/approvals/queue',
+    child: 'Review',
+  },
+  // /approvals/final/:id  →  Approvals / Final Approval
+  {
+    pattern: /^\/approvals\/final\/[^/]+$/,
+    section: 'Approvals',
+    sectionHref: '/approvals/queue',
+    child: 'Final Approval',
   },
 ];
 

@@ -227,7 +227,7 @@ export default function ApprovalsApprover() {
 
         {/* Action bar */}
         <div className="flex items-center justify-between px-6 py-4 border-t border-border sticky bottom-0 bg-card">
-          <Button variant="outline" onClick={() => navigate("/approvals/review")}>
+          <Button variant="outline" onClick={() => navigate(`/approvals/review/${contractRecordId}`)}>
             View Full Detail
           </Button>
           <div className="flex items-center gap-2">
