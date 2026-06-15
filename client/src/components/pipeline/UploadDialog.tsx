@@ -51,6 +51,9 @@ export type RecordDestination = 'new_record' | 'existing_record' | 'unknown' | n
 export interface UploadDialogProps {
   open: boolean;
   onClose: () => void;
+  /** FC-3 BR1: pre-selected record from PackagesComposition "Add Document" flow.
+   * When provided, the dialog opens with 'existing_record' pre-selected and the record pre-populated. */
+  initialRecord?: ContractRecord | null;
   /** V4 callback — passes all context fields for StagedDocument creation, including optional assignee override */
   onConfirm: (
     files: StagedFile[],
@@ -328,7 +331,7 @@ function RecordSearchPanel({ selected, onSelect }: RecordSearchPanelProps) {
 
 const WORKSPACE_STORAGE_KEY = 'leasegov_user_workspace';
 
-export function UploadDialog({ open, onClose, onConfirm }: UploadDialogProps) {
+export function UploadDialog({ open, onClose, onConfirm, initialRecord }: UploadDialogProps) {
   // ── File state ──
   const [files, setFiles] = useState<StagedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -401,8 +404,14 @@ export function UploadDialog({ open, onClose, onConfirm }: UploadDialogProps) {
       setConfirmed(false);
       setConfirmedCount(0);
       setConfirmedBatchId('');
-      setRecordDest(null);
-      setSelectedRecord(null);
+      // FC-3 BR1: pre-populate with initialRecord if provided
+      if (initialRecord) {
+        setRecordDest('existing_record');
+        setSelectedRecord(initialRecord);
+      } else {
+        setRecordDest(null);
+        setSelectedRecord(null);
+      }
       setContextNotes('');
       setAssigneeId('');
       setNewRecordName('');

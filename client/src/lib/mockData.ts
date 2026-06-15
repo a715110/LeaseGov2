@@ -5,7 +5,7 @@
  * Reference: IMPLEMENTATION_PROMPT_INTAKE_GOVERNANCE_V3.md
  *
  * Exports:
- *   MOCK_CONTRACT_RECORDS — 3 seed ContractRecords (Acme Corp, Globex LLC, Initech)
+ *   MOCK_CONTRACT_RECORDS — 4 seed ContractRecords (Acme Corp, Globex LLC, Initech, Office Tower Partners)
  *   MOCK_PACKAGES         — 2 seed ContractPackages (PKG-2026-001 submitted, PKG-2026-002 assembly)
  *   MOCK_WORKSPACES       — workspace list for upload modal dropdown
  *   MOCK_ASSIGNEES        — users with Preparer / Lease Admin role for routing context
@@ -63,6 +63,15 @@ export const MOCK_CONTRACT_RECORDS: ContractRecord[] = [
     counterparty: 'Initech',
     address: '789 Pine Rd, Austin TX 78701',
     status: 'draft',
+    classification: 'operating_lease',
+  },
+  {
+    // FC-3 BR1: Office Tower — 350 Fifth Ave (maps to PKG-2026-0041 in PackagesComposition)
+    id: 'mock-record-004',
+    contractNumber: 'CR-2026-0041',
+    counterparty: 'Office Tower Partners LLC',
+    address: '350 Fifth Ave, New York NY 10118',
+    status: 'under_review',
     classification: 'operating_lease',
   },
 ];

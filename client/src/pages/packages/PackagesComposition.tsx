@@ -27,7 +27,7 @@
 import React, { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import {
-  FileText, Plus, Flag, ChevronRight, Info,
+  FileText, Plus, Flag, ChevronRight, Info, Tag,
   CheckCircle2, AlertTriangle, Clock, MoreHorizontal, ArrowRight, AlertCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -61,6 +61,7 @@ interface PackageDoc {
 // TODO: Backend integration required
 const INITIAL_PACKAGE = {
   id: "PKG-2026-0041",
+  record_id: "mock-record-004",   // FC-3 BR1: maps to CR-2026-0041 in MOCK_CONTRACT_RECORDS
   record_label: "Office Tower — 350 Fifth Ave",
   status: "validated",
   document_count: 4,
@@ -236,7 +237,19 @@ export default function PackagesComposition() {
           <p className="page-subtitle">{pkg.record_label} · {pkg.id} · {pkg.document_count} documents</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-1.5">
+          {/* BR1: Navigate to Pipeline with pre-selected record so the auto-creation flow is demonstrable */}
+          <Button
+            variant="outline" size="sm" className="gap-1.5"
+            onClick={() => {
+              // TODO: Backend integration — replace with navigation state when using React Router
+              sessionStorage.setItem('leasegov_add_doc_for', JSON.stringify({
+                packageId: pkg.id,
+                recordId: pkg.record_id,
+                recordLabel: pkg.record_label,
+              }));
+              navigate('/pipeline/dashboard');
+            }}
+          >
             <Plus className="w-3.5 h-3.5" /> Add Document
           </Button>
           <Button
@@ -275,11 +288,32 @@ export default function PackagesComposition() {
             style={{ background: "var(--color-lg-error-subtle)", borderColor: "var(--color-lg-error)", borderLeftWidth: "4px" }}
           >
             <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" style={{ color: "var(--color-lg-error)" }} />
-            <div>
+            <div className="flex-1">
               <span className="font-semibold" style={{ color: "var(--color-lg-error)" }}>Multiple Base Contracts detected — blocking flag raised.</span>
               <span className="text-muted-foreground ml-1">
-                Only one Base Contract is allowed per package. Found {baseContracts.length}: {baseContracts.map(d => d.name).join(", ")}. Reclassify or remove the duplicate before proceeding.
+                Only one Base Contract is allowed per package. Found {baseContracts.length}. Reclassify the duplicate to resolve this flag.
               </span>
+              {/* Quick-action: one reclassify button per duplicate Base Contract */}
+              <div className="flex flex-wrap gap-2 mt-2.5">
+                {baseContracts.map((dupeDoc, idx) => (
+                  <button
+                    key={dupeDoc.id}
+                    onClick={() => { setChangeRoleDoc(dupeDoc); setPendingRole(dupeDoc.document_role); }}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded border text-[11px] font-semibold transition-colors"
+                    style={{
+                      borderColor: "var(--color-lg-error)",
+                      color: "var(--color-lg-error)",
+                      background: "transparent",
+                    }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "var(--color-lg-error-subtle)"; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
+                    title={`Reclassify “${dupeDoc.name}”`}
+                  >
+                    <Tag className="w-3 h-3" />
+                    Reclassify {idx === 0 ? "first" : "duplicate"}: {dupeDoc.name.length > 28 ? dupeDoc.name.slice(0, 25) + "…" : dupeDoc.name}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )}

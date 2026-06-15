@@ -1412,6 +1412,9 @@ export default function PipelineDashboard() {
 
   // ── Upload dialog state ──
   const [showUpload, setShowUpload] = useState(false);
+  // FC-3 BR1: holds intent from PackagesComposition "Add Document" button
+  // { packageId, recordId, recordLabel } — pre-populates UploadDialog with the target record
+  const [addDocumentIntent, setAddDocumentIntent] = useState<{ packageId: string; recordId: string; recordLabel: string } | null>(null);
 
   // ── Table scroll-fade refs (right-edge gradient indicator) ──
   const scrollRef1 = useRef<HTMLDivElement>(null);
@@ -1636,6 +1639,26 @@ export default function PipelineDashboard() {
       setExpandedCommitted(new Set());
     });
     return () => unsub();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── FC-3 BR1: Add Document intent from PackagesComposition ───────────────────────────────────────────
+  // Reads sessionStorage on mount; if an add-document intent is present,
+  // opens the Upload dialog with the target record pre-selected.
+  // PRODUCTION: replace sessionStorage with React Router location.state.
+  useEffect(() => {
+    const raw = sessionStorage.getItem('leasegov_add_doc_for');
+    if (!raw) return;
+    sessionStorage.removeItem('leasegov_add_doc_for');
+    try {
+      const intent = JSON.parse(raw) as { packageId: string; recordId: string; recordLabel: string };
+      setAddDocumentIntent(intent);
+      setShowUpload(true);
+      toast.info(`Adding document to ${intent.recordLabel}`, {
+        description: 'Upload dialog pre-populated with the target record.',
+        duration: 5000,
+      });
+    } catch { /* ignore malformed intent */ }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -3461,11 +3484,15 @@ export default function PipelineDashboard() {
           onCancel={() => setGroupingDocs(null)}
         />
       )}
-      {/* Upload dialog */}
+      {/* Upload dialog — initialRecord pre-populated when navigating from PackagesComposition */}
       <UploadDialog
         open={showUpload}
-        onClose={() => setShowUpload(false)}
+        onClose={() => { setShowUpload(false); setAddDocumentIntent(null); }}
         onConfirm={handleUploadConfirm}
+        initialRecord={addDocumentIntent ? (() => {
+          const rec = findContractRecord(addDocumentIntent.recordId);
+          return rec ?? null;
+        })() : null}
       />
 
       {addToPackageDocs && (
