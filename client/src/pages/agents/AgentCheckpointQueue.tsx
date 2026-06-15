@@ -75,31 +75,31 @@ const TYPE_CONFIG: Record<Exclude<CheckpointType, 'all'>, {
   extraction_review: {
     label: 'Extraction Review',
     icon: FileText,
-    route: '/extraction/verification',
+    route: '/extraction/verify',
     description: 'Review agent-extracted fields before submission',
   },
   classification_confirm: {
     label: 'Classification',
     icon: Tag,
-    route: '/reassessment/classification',
+    route: '/reassessment/cases',
     description: 'Confirm agent lease classification',
   },
   assessment_confirm: {
     label: 'Assessment',
     icon: BarChart3,
-    route: '/reassessment/assessment',
+    route: '/reassessment/cases',
     description: 'Confirm option assessment determination',
   },
   analysis_confirm: {
     label: 'Analysis',
     icon: CheckCircle2,
-    route: '/reassessment/analysis',
+    route: '/reassessment/cases',
     description: 'Confirm reassessment analysis memo',
   },
   export_attest: {
     label: 'Export Attest',
     icon: Share2,
-    route: '/export/upload-task',
+    route: '/export/tasks',
     description: 'Attest governed export package',
   },
   onboarding_approval: {

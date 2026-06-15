@@ -88,6 +88,9 @@ const MOCK_SCREENS: ScreenDef[] = [
   { screen_key:'records-add-document',       display_name:'Add Document to Record',       route_path:'/records/:id/add-document',    phase:'mvp',     status:'active',      role_access:['preparer','lease_admin'],                                  feature_cluster:'FC-5',  dependency_screen_keys:['records-detail'],    is_system_screen:false, override_count:0 },
   { screen_key:'records-deferred-tracker',   display_name:'Deferred Fields Tracker',      route_path:'/records/:id/deferred',        phase:'mvp',     status:'active',      role_access:['preparer','reviewer','lease_admin'],                       feature_cluster:'FC-5',  dependency_screen_keys:['records-detail'],    is_system_screen:false, override_count:0 },
   { screen_key:'extraction-reprocessing',    display_name:'Reprocessing Modal',           route_path:'/extraction/reprocessing',     phase:'phase_2', status:'development', role_access:['preparer','lease_admin'],                                  feature_cluster:'FC-2',  dependency_screen_keys:['extraction-queue'],  is_system_screen:false, override_count:0 },
+  // FC-9: AI Agents and Automation
+  { screen_key:'agent-checkpoint-queue',     display_name:'Checkpoint Queue',             route_path:'/approvals/checkpoints',       phase:'phase_2', status:'development', role_access:['preparer','reviewer','approver','lease_admin','controller'], feature_cluster:'FC-9',  dependency_screen_keys:['approvals-queue'],   is_system_screen:false, override_count:0 },
+  { screen_key:'agent-activity-monitor',     display_name:'Agent Activity Monitor',       route_path:'/agents/monitor',              phase:'phase_2', status:'development', role_access:['preparer','lease_admin','controller'],                      feature_cluster:'FC-9',  dependency_screen_keys:['records-dashboard'], is_system_screen:false, override_count:0 },
 ];
 
 const PHASE_BADGE: Record<ScreenPhase, { cls: string; label: string }> = {

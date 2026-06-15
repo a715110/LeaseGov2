@@ -520,6 +520,9 @@ function Router() {
       </Route>
 
       {/* ── FC-9: AI Agents and Automation (Phase 2) ────────────────────── */}
+      <Route path="/agents">
+        <Redirect to="/approvals/checkpoints" />
+      </Route>
       <Route path="/approvals/checkpoints">
         <ScreenGate screenKey={SCREEN_KEYS.AGENT_CHECKPOINT_QUEUE} fallback={<NotFound />}>
           <AgentCheckpointQueue />

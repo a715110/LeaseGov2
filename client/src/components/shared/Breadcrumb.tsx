@@ -68,7 +68,7 @@ const ROUTE_LABELS: Array<{ prefix: string; label: string }> = [
   { prefix: '/reassessment/projects',    label: 'Projects' },
   { prefix: '/reassessment',             label: 'Reassessment' },
   // Agents
-  { prefix: '/agents/checkpoints',       label: 'Checkpoint Queue' },
+  { prefix: '/approvals/checkpoints',    label: 'Checkpoint Queue' },
   { prefix: '/agents/monitor',           label: 'Activity Monitor' },
   { prefix: '/agents',                   label: 'Agents' },
   // Admin
@@ -233,7 +233,7 @@ const SECTION_ROOTS: Record<string, string> = {
   '/approvals':    '/approvals',
   '/export':       '/export/templates',
   '/reassessment': '/reassessment',
-  '/agents':       '/agents',
+  '/agents':       '/approvals/checkpoints',
   '/admin':        '/admin',
 };
 
