@@ -20,8 +20,13 @@
  *   ContractRecord (automation_level, rework_iteration)
  */
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useLocation } from "wouter";
+import { MOCK_REVIEWERS } from "@/lib/mockData";
+import { useNotifications } from "@/contexts/NotificationContext";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
 import { ContractAgentProgressPanel } from '@/components/agents/ContractAgentProgressPanel';
 import { ContractCheckpointCard } from '@/components/checkpoints/ContractCheckpointCard';
 import { AutomationPolicyBadge } from '@/components/automation/AutomationPolicyBadge';
@@ -30,7 +35,8 @@ import { useCheckpoints } from '@/hooks/useCheckpoints';
 import {
   X, ChevronDown, ChevronUp, Shield, ShieldAlert,
   CheckCircle2, AlertTriangle, Edit3, MessageSquare,
-  Bot, Zap, User, Send, FileText, Eye, ZoomIn, ZoomOut
+  Bot, Zap, User, Send, FileText, Eye, ZoomIn, ZoomOut,
+  UserCog, Clock
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -147,6 +153,60 @@ export default function ApprovalsReview() {
   const sodViolation = false;
   const reworkIteration = 0;
 
+  // Mock task context — in production derived from route params / API
+  const MOCK_TASK_REVIEWER_ID = 'user-rev-001';
+  const MOCK_TASK_SLA = '2026-05-18T17:00:00Z'; // ~2 days from now for demo
+
+  // Reassign state
+  const { addNotification } = useNotifications();
+  const [showReassignDialog, setShowReassignDialog] = useState(false);
+  const [reassignTargetId, setReassignTargetId] = useState('');
+  const eligibleReviewers = MOCK_REVIEWERS.filter(r => r.role === 'Reviewer');
+
+  function handleConfirmReassign() {
+    if (!reassignTargetId) return;
+    const prev = MOCK_REVIEWERS.find(r => r.id === MOCK_TASK_REVIEWER_ID);
+    const next = MOCK_REVIEWERS.find(r => r.id === reassignTargetId);
+    addNotification({
+      title: 'CR-2026-0088 reassigned',
+      body: `Review task redirected from ${prev?.name ?? 'current reviewer'} to ${next?.name ?? 'new reviewer'}.`,
+      severity: 'info',
+      href: '/approvals',
+    });
+    addNotification({
+      title: 'Your review task has been reassigned',
+      body: `CR-2026-0088 has been redirected to ${next?.name ?? 'another reviewer'}.`,
+      severity: 'warning',
+      href: '/approvals',
+    });
+    toast.success(`CR-2026-0088 reassigned to ${next?.name ?? 'new reviewer'}`, { duration: 4000 });
+    setShowReassignDialog(false);
+    setReassignTargetId('');
+    navigate('/approvals');
+  }
+
+  // SLA countdown
+  const [slaCountdown, setSlaCountdown] = useState('');
+  const [slaUrgent, setSlaUrgent] = useState(false);
+  useEffect(() => {
+    function update() {
+      const deadline = new Date(MOCK_TASK_SLA).getTime();
+      const now = Date.now();
+      const diff = deadline - now;
+      if (diff <= 0) { setSlaCountdown('Overdue'); setSlaUrgent(true); return; }
+      const hours = Math.floor(diff / 3_600_000);
+      const mins = Math.floor((diff % 3_600_000) / 60_000);
+      setSlaUrgent(hours < 4);
+      setSlaCountdown(hours >= 24
+        ? `${Math.floor(hours / 24)}d ${hours % 24}h left`
+        : hours > 0 ? `${hours}h ${mins}m left`
+        : `${mins}m left`);
+    }
+    update();
+    const id = setInterval(update, 60_000);
+    return () => clearInterval(id);
+  }, []);
+
   const [fields, setFields] = useState<ReviewField[]>(MOCK_FIELDS);
   const [expandedCategories, setExpandedCategories] = useState<Set<FieldCategory>>(new Set<FieldCategory>(["core_metadata","financial"]));
   const [editingFieldId, setEditingFieldId] = useState<string | null>(null);
@@ -234,6 +294,16 @@ export default function ApprovalsReview() {
           <span className="text-[13px] text-muted-foreground">Submitted by J. Martinez · May 16, 2026</span>
         </div>
         <div className="flex items-center gap-2">
+          {/* SLA countdown chip */}
+          {slaCountdown && (
+            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-semibold border ${
+              slaUrgent
+                ? 'border-[var(--color-lg-error)] bg-[var(--color-lg-error-subtle)] text-[var(--color-lg-error)]'
+                : 'border-[var(--color-lg-warning)] bg-[var(--color-lg-warning-subtle)] text-[var(--color-lg-warning)]'
+            }`}>
+              <Clock className="w-3.5 h-3.5" /> {slaCountdown}
+            </span>
+          )}
           {/* SoD indicator */}
           {sodViolation ? (
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded border border-[var(--color-lg-error)] bg-[var(--color-lg-error-subtle)] text-[12px] font-semibold text-[var(--color-lg-error)]">
@@ -244,6 +314,14 @@ export default function ApprovalsReview() {
               <Shield className="w-4 h-4" /> SoD Verified
             </span>
           )}
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 text-[12px]"
+            onClick={() => { setReassignTargetId(''); setShowReassignDialog(true); }}
+          >
+            <UserCog className="w-3.5 h-3.5" /> Reassign
+          </Button>
           <Button
             variant="outline"
             className="border-[var(--color-lg-error)] text-[var(--color-lg-error)] hover:bg-[var(--color-lg-error-subtle)] gap-1.5"
@@ -534,6 +612,47 @@ export default function ApprovalsReview() {
           </div>
         </div>
       )}
+
+      {/* Reassign dialog */}
+      <Dialog open={showReassignDialog} onOpenChange={open => { if (!open) { setShowReassignDialog(false); setReassignTargetId(''); } }}>
+        <DialogContent className="w-[460px]">
+          <DialogHeader>
+            <DialogTitle className="text-[15px]">Reassign Review Task</DialogTitle>
+          </DialogHeader>
+          <div className="px-1 py-2 flex flex-col gap-4">
+            <p className="text-[13px] text-muted-foreground">
+              Redirect <strong>CR-2026-0088</strong> to a different Reviewer. The current reviewer and document submitter will be notified.
+            </p>
+            <div>
+              <p className="text-[12px] font-semibold text-foreground mb-1.5">New Reviewer <span className="text-[var(--color-lg-error)]">*</span></p>
+              <Select value={reassignTargetId} onValueChange={setReassignTargetId}>
+                <SelectTrigger className="text-[13px]">
+                  <SelectValue placeholder="Select a reviewer…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {eligibleReviewers.map(r => (
+                    <SelectItem key={r.id} value={r.id} disabled={r.id === MOCK_TASK_REVIEWER_ID}>
+                      <div className="flex items-center gap-2">
+                        <span className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0" style={{ backgroundColor: r.avatarColor }}>
+                          {r.name.charAt(0)}
+                        </span>
+                        <span>{r.name}</span>
+                        {r.id === MOCK_TASK_REVIEWER_ID && <span className="text-[10px] text-muted-foreground">(current)</span>}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowReassignDialog(false); setReassignTargetId(''); }}>Cancel</Button>
+            <Button disabled={!reassignTargetId || reassignTargetId === MOCK_TASK_REVIEWER_ID} onClick={handleConfirmReassign} className="gap-1.5">
+              <UserCog className="w-4 h-4" /> Confirm Reassignment
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Approver modal trigger — opens ApprovalsApprover as nested dialog */}
       {showApproverModal && (

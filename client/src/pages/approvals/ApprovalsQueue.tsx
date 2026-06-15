@@ -15,7 +15,7 @@
  *   sla_deadline_at, rejection_reason_codes)
  */
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useLocation } from "wouter";
 import {
   Clock, AlertTriangle, CheckCircle2, XCircle,
@@ -96,6 +96,31 @@ function AgeBadge({ submitted_at }: { submitted_at: string }) {
   return <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold ${cls}`}>{label}</span>;
 }
 
+function SlaBadge({ sla_deadline_at }: { sla_deadline_at: string | null }) {
+  if (!sla_deadline_at) return <span className="text-[11px] text-muted-foreground">—</span>;
+  const diff = new Date(sla_deadline_at).getTime() - Date.now();
+  if (diff <= 0) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold badge-invalid">
+        <Clock className="w-3 h-3" /> Overdue
+      </span>
+    );
+  }
+  const hours = Math.floor(diff / 3_600_000);
+  const mins = Math.floor((diff % 3_600_000) / 60_000);
+  const label = hours >= 24
+    ? `${Math.floor(hours / 24)}d ${hours % 24}h`
+    : hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+  const urgent = hours < 4;
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold ${
+      urgent ? 'badge-invalid' : 'badge-warning'
+    }`}>
+      <Clock className="w-3 h-3" /> {label}
+    </span>
+  );
+}
+
 function TypeBadge({ subject_type }: { subject_type: SubjectType }) {
   if (subject_type === "contract_record") {
     return <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-[var(--color-lg-accent-subtle)] text-[var(--color-lg-info)] border border-blue-200">Record</span>;
@@ -170,6 +195,52 @@ export default function ApprovalsQueue() {
   const [reassignTargetId, setReassignTargetId] = useState<string>('');
 
   const visibleTasks = filterByTab(tasks, activeTab);
+
+  // Bulk-select state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showBulkReassign, setShowBulkReassign] = useState(false);
+  const [bulkReassignTargetId, setBulkReassignTargetId] = useState('');
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    const reassignable = visibleTasks.filter(canReassign);
+    if (selectedIds.size === reassignable.length && reassignable.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(reassignable.map(t => t.id)));
+    }
+  }, [visibleTasks, selectedIds]);
+
+  const selectedTasks = visibleTasks.filter(t => selectedIds.has(t.id));
+  const bulkStage = selectedTasks.length > 0 ? selectedTasks[0].approval_stage : null;
+  const bulkEligibleReviewers = bulkStage
+    ? MOCK_REVIEWERS.filter(r => bulkStage === 'review' ? r.role === 'Reviewer' : r.role === 'Approver')
+    : MOCK_REVIEWERS;
+
+  function handleBulkReassign() {
+    if (!bulkReassignTargetId || selectedTasks.length === 0) return;
+    const newReviewer = MOCK_REVIEWERS.find(r => r.id === bulkReassignTargetId);
+    setTasks(prev => prev.map(t =>
+      selectedIds.has(t.id) ? { ...t, reviewer_id: bulkReassignTargetId } : t
+    ));
+    addNotification({
+      title: `${selectedTasks.length} task${selectedTasks.length > 1 ? 's' : ''} bulk-reassigned`,
+      body: `Reassigned to ${newReviewer?.name ?? 'new reviewer'} by Team Lead.`,
+      severity: 'info',
+      href: '/approvals/queue',
+    });
+    toast.success(`${selectedTasks.length} task${selectedTasks.length > 1 ? 's' : ''} reassigned to ${newReviewer?.name ?? 'new reviewer'}`, { duration: 4000 });
+    setSelectedIds(new Set());
+    setBulkReassignTargetId('');
+    setShowBulkReassign(false);
+  }
 
   // Reviewers for the same stage as the task being reassigned
   const eligibleReviewers = reassignTask
@@ -257,11 +328,42 @@ export default function ApprovalsQueue() {
           ))}
         </div>
 
+        {/* Bulk reassign toolbar */}
+        {selectedIds.size > 0 && (
+          <div className="flex items-center gap-3 px-4 py-2.5 bg-[var(--color-lg-accent-subtle)] border border-[var(--color-lg-info)] rounded-lg text-[13px]">
+            <span className="font-semibold text-[var(--color-lg-info)]">{selectedIds.size} task{selectedIds.size > 1 ? 's' : ''} selected</span>
+            <Button
+              size="sm"
+              className="h-7 gap-1.5 text-[12px] ml-2"
+              onClick={() => { setBulkReassignTargetId(''); setShowBulkReassign(true); }}
+            >
+              <UserCog className="w-3.5 h-3.5" /> Reassign Selected ({selectedIds.size})
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-[12px]"
+              onClick={() => setSelectedIds(new Set())}
+            >
+              Clear
+            </Button>
+          </div>
+        )}
+
         {/* Table */}
         <div className="bg-card border border-border rounded-lg overflow-hidden">
           <table className="data-table w-full text-[13px]">
             <thead>
               <tr>
+                <th className="w-8 text-center">
+                  <input
+                    type="checkbox"
+                    className="w-3.5 h-3.5 accent-[var(--color-lg-primary)]"
+                    checked={selectedIds.size > 0 && selectedIds.size === visibleTasks.filter(canReassign).length}
+                    onChange={toggleSelectAll}
+                    title="Select all reassignable"
+                  />
+                </th>
                 <th className="text-left">Reference</th>
                 <th className="text-left">Type</th>
                 <th className="text-left">Name</th>
@@ -270,6 +372,7 @@ export default function ApprovalsQueue() {
                 <th className="text-left">Assigned To</th>
                 <th className="text-left">Date</th>
                 <th className="text-left">Age</th>
+                <th className="text-left">SLA</th>
                 <th className="text-left">Priority</th>
                 {activeTab === "my_submissions" && <th className="text-left">Recall</th>}
                 <th className="text-right">Action</th>
@@ -278,13 +381,25 @@ export default function ApprovalsQueue() {
             <tbody>
               {visibleTasks.length === 0 && (
                 <tr>
-                  <td colSpan={activeTab === "my_submissions" ? 11 : 10} className="text-center py-12 text-muted-foreground text-[13px]">
+                  <td colSpan={activeTab === "my_submissions" ? 13 : 12} className="text-center py-12 text-muted-foreground text-[13px]">
                     No tasks in this queue
                   </td>
                 </tr>
               )}
               {visibleTasks.map(task => (
-                <tr key={task.id}>
+                <tr key={task.id} className={selectedIds.has(task.id) ? 'bg-[var(--color-lg-accent-subtle)]' : ''}>
+                  <td className="text-center">
+                    {canReassign(task) ? (
+                      <input
+                        type="checkbox"
+                        className="w-3.5 h-3.5 accent-[var(--color-lg-primary)]"
+                        checked={selectedIds.has(task.id)}
+                        onChange={() => toggleSelect(task.id)}
+                      />
+                    ) : (
+                      <span className="w-3.5 h-3.5 inline-block" />
+                    )}
+                  </td>
                   <td className="font-mono text-[12px] text-muted-foreground">{task.task_reference}</td>
                   <td><TypeBadge subject_type={task.subject_type} /></td>
                   <td>
@@ -304,6 +419,7 @@ export default function ApprovalsQueue() {
                   </td>
                   <td className="text-muted-foreground text-[12px]">{new Date(task.submitted_at).toLocaleDateString("en-US", { month:"short", day:"numeric" })}</td>
                   <td><AgeBadge submitted_at={task.submitted_at} /></td>
+                  <td><SlaBadge sla_deadline_at={task.sla_deadline_at} /></td>
                   <td><PriorityBadge priority={task.priority} /></td>
                   {activeTab === "my_submissions" && (
                     <td>
@@ -373,6 +489,52 @@ export default function ApprovalsQueue() {
           </table>
         </div>
       </div>
+
+      {/* ── Bulk Reassign Dialog ─────────────────────────────────────────── */}
+      <Dialog open={showBulkReassign} onOpenChange={open => { if (!open) { setShowBulkReassign(false); setBulkReassignTargetId(''); } }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Bulk Reassign Tasks</DialogTitle>
+            <p className="text-[13px] text-muted-foreground mt-1">
+              Redirect <strong>{selectedIds.size} selected task{selectedIds.size > 1 ? 's' : ''}</strong> to a new{' '}
+              {bulkStage === 'review' ? 'Reviewer' : bulkStage === 'final_approval' ? 'Approver' : 'Reviewer/Approver'}.
+              All original assignees and document submitters will be notified.
+            </p>
+          </DialogHeader>
+          <div className="py-2">
+            <label className="text-[12px] font-semibold text-foreground block mb-1.5">
+              New {bulkStage === 'review' ? 'Reviewer' : 'Approver'}
+            </label>
+            <Select value={bulkReassignTargetId} onValueChange={setBulkReassignTargetId}>
+              <SelectTrigger className="text-[13px]">
+                <SelectValue placeholder="Select a reviewer…" />
+              </SelectTrigger>
+              <SelectContent>
+                {bulkEligibleReviewers.map(r => (
+                  <SelectItem key={r.id} value={r.id}>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="w-5 h-5 rounded-full inline-flex items-center justify-center text-[9px] font-bold text-white shrink-0"
+                        style={{ background: r.avatarColor }}
+                      >
+                        {r.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
+                      </span>
+                      <span>{r.name}</span>
+                      <span className="text-[11px] text-muted-foreground">· {r.role}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => { setShowBulkReassign(false); setBulkReassignTargetId(''); }}>Cancel</Button>
+            <Button size="sm" disabled={!bulkReassignTargetId} onClick={handleBulkReassign}>
+              <UserCog className="w-3.5 h-3.5 mr-1.5" /> Confirm Reassignment
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Reassign Dialog ────────────────────────────────────────────────── */}
       <Dialog
