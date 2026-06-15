@@ -91,6 +91,12 @@ interface StagedDocument {
   document_job_status: 'staged' | 'committed' | 'processing' | 'complete';
   /** Assignee override — null means system auto-routes */
   assignee_id: string | null;
+  /**
+   * FC-4 AC6/BR8 — true when this document's submission is Pending Review or
+   * Pending Approval. Prevents Preparer from editing or re-packaging the doc.
+   * Production: derived from the linked Submission/ApprovalTask status.
+   */
+  locked_for_review?: boolean;
 }
 
 interface IntakeBatch {
@@ -157,7 +163,7 @@ interface Submission {
 
 // ─── Mock data — V3 Change 1 §1a — 8-document seed distribution ─────────────
 // Docs 1–2: valid, unassigned (no target record)
-// Docs 3–4: valid, assigned to Acme Corp (CR-2026-0038)
+// Docs 3–4: valid, assigned to Acme Corp (CR-2026-0038), LOCKED (pending review)
 // Docs 5–6: valid, committed to Globex LLC (CR-2026-0039), in-progress
 // Doc  7:   invalid (file integrity check failed)
 // Doc  8:   valid, target record unknown (submission_path = 'unknown')
@@ -216,6 +222,7 @@ const MOCK_DOCUMENTS: StagedDocument[] = [
     submitter_context_notes: 'Renewal for Acme Corp main location. Please prioritise.',
     document_job_status: 'committed',
     assignee_id: 'user-prep-002', // L. Nguyen
+    locked_for_review: true, // FC-4 AC6: submission is Pending Review
   },
   {
     id: 'doc-4',
@@ -234,6 +241,7 @@ const MOCK_DOCUMENTS: StagedDocument[] = [
     submitter_context_notes: null,
     document_job_status: 'committed',
     assignee_id: null,
+    locked_for_review: true, // FC-4 AC6: submission is Pending Review
   },
   {
     id: 'doc-5',
@@ -314,7 +322,9 @@ const INITIAL_PACKAGES: ContractPackage[] = [
   },
 ];
 
-// V3 §1c — Table 3 seed: PKG-2026-001 as Pending submission
+// V3 §1c — Table 3 seed
+// sub-v3-001: PKG-2026-001 Pending (awaiting extraction)
+// sub-v3-002: PKG-2026-000 In Progress (under Reviewer review — docs 3+4 locked)
 const INITIAL_SUBMISSIONS: Submission[] = [
   {
     id: 'sub-v3-001-local',
@@ -332,6 +342,24 @@ const INITIAL_SUBMISSIONS: Submission[] = [
     submittedBy: 'A. Chen',
     submitDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
     status: 'Pending',
+  },
+  {
+    id: 'sub-v3-002-local',
+    batchRef: 'BATCH-2026-0039',
+    packageNum: 'PKG-2026-000',
+    packageName: 'Globex Retail Renewal',
+    mode: 'Package',
+    fileCount: 2,
+    fileNames: ['Retail-HQ-Lease-2026.pdf', 'Office-Tower-Amendment-3.pdf'],
+    files: [
+      { docId: 'doc-3', name: 'Retail-HQ-Lease-2026.pdf',    role: 'Base Contract' },
+      { docId: 'doc-4', name: 'Office-Tower-Amendment-3.pdf', role: 'Amendment' },
+    ],
+    workspace: 'Retail',
+    submittedBy: 'A. Chen',
+    submitDate: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
+    status: 'In Progress', // FC-4 AC6: under Reviewer review — docs 3+4 are locked
+    assignee_id: 'user-prep-002',
   },
 ];
 
@@ -2428,18 +2456,41 @@ export default function PipelineDashboard() {
               <tbody>
                 {filteredDocs.map(doc => {
                   const isSelected = selectedIds.has(doc.id);
+                  const isLocked = doc.locked_for_review === true;
                   return (
-                    <tr key={doc.id} className={isSelected ? 'bg-primary/5' : ''}>
+                    <tr key={doc.id} className={isLocked ? 'bg-amber-50/40 opacity-80' : isSelected ? 'bg-primary/5' : ''}>
                       <td className="px-3">
-                        <button onClick={() => toggleOne(doc.id)} className="flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
-                          {isSelected ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4" />}
-                        </button>
+                        {isLocked ? (
+                          <TooltipProvider delayDuration={200}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="flex items-center justify-center text-amber-500 cursor-not-allowed">
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="right" className="text-[12px] max-w-[220px]">
+                                <p className="font-semibold mb-0.5">Locked for Review</p>
+                                <p>This document is under active Reviewer review. It cannot be edited, reassigned, or re-packaged until the review is complete.</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        ) : (
+                          <button onClick={() => toggleOne(doc.id)} className="flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
+                            {isSelected ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4" />}
+                          </button>
+                        )}
                       </td>
                       {/* Filename */}
                       <td>
                         <div className="flex items-center gap-2">
                           <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                           <span className="font-medium text-foreground truncate max-w-[180px]" title={doc.display_name}>{doc.display_name}</span>
+                          {isLocked && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-200 shrink-0">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                              Under Review
+                            </span>
+                          )}
                         </div>
                       </td>
                       {/* Type */}
@@ -2543,8 +2594,8 @@ export default function PipelineDashboard() {
                                 <TooltipTrigger asChild>
                                   <button
                                     className="flex items-center gap-1.5 rounded px-1 py-0.5 hover:bg-muted transition-colors"
-                                    onClick={e => { e.stopPropagation(); if (!isReadOnly) setEditingAssigneeDocId(doc.id); }}
-                                    title={isReadOnly ? undefined : 'Click to reassign'}
+                                    onClick={e => { e.stopPropagation(); if (!isReadOnly && !isLocked) setEditingAssigneeDocId(doc.id); }}
+                                    title={isLocked ? 'Locked for review — reassignment not available' : isReadOnly ? undefined : 'Click to reassign'}
                                   >
                                     {assignee ? (
                                       <>
@@ -2594,8 +2645,8 @@ export default function PipelineDashboard() {
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </button>
-                          {/* Trash — shown for all non-committed docs */}
-                          {doc.document_job_status !== 'committed' && !isReadOnly && (
+                          {/* Trash — shown for all non-committed docs, hidden when locked */}
+                          {doc.document_job_status !== 'committed' && !isReadOnly && !isLocked && (
                             <button
                               onClick={() => setStagedDocs(prev => prev.filter(d => d.id !== doc.id))}
                               className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
@@ -3072,7 +3123,7 @@ export default function PipelineDashboard() {
                   <React.Fragment key={sub.id}>
                     <tr
                       className={`cursor-pointer hover:bg-muted/30 transition-colors ${
-                        subExpanded ? 'bg-muted/20' : ''
+                        sub.status === 'In Progress' ? 'bg-amber-50/30' : subExpanded ? 'bg-muted/20' : ''
                       }`}
                       onClick={() => toggleExpand(expandedSubs, setExpandedSubs, sub.id)}
                     >
@@ -3146,6 +3197,22 @@ export default function PipelineDashboard() {
                               )}
                               {sub.status}
                             </span>
+                            {sub.status === 'In Progress' && (
+                              <TooltipProvider delayDuration={200}>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-200 cursor-help">
+                                      <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                      Under Review
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" className="text-[12px] max-w-[220px]">
+                                    <p className="font-semibold mb-0.5">Locked for Review</p>
+                                    <p>This submission is currently under active Reviewer review. Documents in this package cannot be edited or re-packaged until the review is complete.</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
                             {sub.isResubmit && (
                               <span
                                 className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold border border-violet-300 bg-violet-50 text-violet-700"

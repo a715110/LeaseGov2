@@ -22,7 +22,8 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { useLocation } from "wouter";
-import { MOCK_REVIEWERS } from "@/lib/mockData";
+import { MOCK_REVIEWERS, ROLE_PERSONAS } from "@/lib/mockData";
+import { useRole } from "@/contexts/RoleContext";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -92,7 +93,7 @@ const MOCK_FIELDS: ReviewField[] = [
 
 const MOCK_COMMENTS: Comment[] = [
   { id:"c1", author:"J. Martinez (Preparer)", text:"Base rent corrected per Amendment 3 — original lease shows $38,500 but Amendment 3 supersedes to $42,500.", created_at:"2026-05-16T08:30:00Z", is_current_user:false },
-  { id:"c2", author:"Current User (Reviewer)", text:"Confirmed. Amendment 3 Section 2.1 explicitly states the new rent. Proceeding with corrected value.", created_at:"2026-05-16T09:15:00Z", is_current_user:true },
+  { id:"c2", author:"M. Rodriguez (Reviewer)", text:"Confirmed. Amendment 3 Section 2.1 explicitly states the new rent. Proceeding with corrected value.", created_at:"2026-05-16T09:15:00Z", is_current_user:true },
 ];
 
 const CATEGORY_LABELS: Record<FieldCategory, string> = {
@@ -123,6 +124,8 @@ function ConfidenceBar({ value }: { value: number }) {
 export default function ApprovalsReview() {
   const _screenKey = SCREEN_KEYS.APPROVALS_REVIEW;
   const [, navigate] = useLocation();
+  const { activeRole } = useRole();
+  const currentPersona = ROLE_PERSONAS[activeRole] ?? { name: 'Current User', initials: '?', email: '' };
 
   const contractRecordId = 'r1'; // TODO: derive from route params
   const [automationLevel] = useState<AutomationLevel>('collaborative'); // TODO: from contractRecord?.automation_level
@@ -264,7 +267,7 @@ export default function ApprovalsReview() {
     if (!newComment.trim()) return;
     setComments(prev => [...prev, {
       id: `c${Date.now()}`,
-      author: "Current User (Reviewer)",
+      author: `${currentPersona.name} (Reviewer)`,
       text: newComment,
       created_at: new Date().toISOString(),
       is_current_user: true,

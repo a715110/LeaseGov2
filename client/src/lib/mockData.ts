@@ -247,6 +247,26 @@ export const MOCK_REVIEWERS: Reviewer[] = [
   { id: 'user-apr-003', name: 'N. Obi',       role: 'Approver', avatarColor: '#f97316', email: 'n.obi@leasegov.internal' },
 ];
 
+// ─── Role Personas ───────────────────────────────────────────────────────────
+
+/**
+ * ROLE_PERSONAS — maps each UserRole to a demo persona name.
+ * Used wherever the UI must show the current user's name dynamically
+ * (e.g. tracked corrections, comment authors, reassignment dialogs).
+ * Production: replace with JWT token claims (given_name + family_name).
+ */
+export const ROLE_PERSONAS: Record<string, { name: string; initials: string; email: string }> = {
+  document_submitter: { name: 'J. Martinez',   initials: 'JM', email: 'j.martinez@leasegov.com' },
+  preparer:           { name: 'L. Nguyen',      initials: 'LN', email: 'l.nguyen@leasegov.com' },
+  reviewer:           { name: 'M. Rodriguez',   initials: 'MR', email: 'm.rodriguez@leasegov.com' },
+  approver:           { name: 'D. Chen',         initials: 'DC', email: 'd.chen@leasegov.com' },
+  accountant:         { name: 'P. Okonkwo',     initials: 'PO', email: 'p.okonkwo@leasegov.com' },
+  controller:         { name: 'S. Patel',        initials: 'SP', email: 's.patel@leasegov.com' },
+  business_submitter: { name: 'A. Kim',          initials: 'AK', email: 'a.kim@leasegov.com' },
+  auditor:            { name: 'R. Thompson',     initials: 'RT', email: 'r.thompson@leasegov.com' },
+  lease_admin:        { name: 'C. Williams',     initials: 'CW', email: 'c.williams@leasegov.com' },
+};
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /** Look up a ContractRecord by its id */
