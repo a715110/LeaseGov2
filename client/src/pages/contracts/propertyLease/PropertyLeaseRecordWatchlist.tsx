@@ -174,6 +174,8 @@ export default function RecordTabWatchlist({ recordId, isWatchlisted: parentIsWa
       entries: removing ? [] : prev.entries,
     }));
     onWatchlistToggle();
+    // Notify AppShell to refresh the sidebar badge count immediately
+    window.dispatchEvent(new Event('leasegov:watchlist-changed'));
     toast.success(removing ? "Removed from watchlist" : "Added to watchlist");
   }
 
@@ -195,6 +197,8 @@ export default function RecordTabWatchlist({ recordId, isWatchlisted: parentIsWa
       entries: [entry, ...prev.entries],
     }));
     if (!isWatchlisted) onWatchlistToggle();
+    // Notify AppShell to refresh the sidebar badge count immediately
+    window.dispatchEvent(new Event('leasegov:watchlist-changed'));
     setShowDialog(false);
     setNewReason("option_assessment");
     setNewPriority("medium");
@@ -208,6 +212,8 @@ export default function RecordTabWatchlist({ recordId, isWatchlisted: parentIsWa
       const next = prev.entries.filter(e => e.id !== id);
       if (next.length === 0 && prev.isWatchlisted) {
         onWatchlistToggle();
+        // Notify AppShell to refresh the sidebar badge count immediately
+        window.dispatchEvent(new Event('leasegov:watchlist-changed'));
         toast.info("All entries removed — record unwatchlisted");
         return { isWatchlisted: false, entries: [] };
       }

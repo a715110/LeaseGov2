@@ -427,7 +427,14 @@ export default function AppShell({
     // Re-read on tab focus so badge stays current after visiting the Watchlist tab
     const onFocus = () => refreshWatchlistCount()
     window.addEventListener('focus', onFocus)
-    return () => window.removeEventListener('focus', onFocus)
+    // Re-read immediately when the Watchlist tab dispatches a star-toggle event
+    // (avoids waiting for a focus event when the user unstars from within the same tab)
+    const onWatchlistChanged = () => refreshWatchlistCount()
+    window.addEventListener('leasegov:watchlist-changed', onWatchlistChanged)
+    return () => {
+      window.removeEventListener('focus', onFocus)
+      window.removeEventListener('leasegov:watchlist-changed', onWatchlistChanged)
+    }
   }, [refreshWatchlistCount])
 
   // ── Seed demo notifications once on mount ──

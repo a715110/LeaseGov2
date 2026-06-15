@@ -298,6 +298,11 @@ function Router() {
           <ExportUploadTask />
         </ScreenGate>
       </Route>
+      <Route path="/export/tasks">
+        <ScreenGate screenKey={SCREEN_KEYS.EXPORT_UPLOAD_TASK} fallback={<NotFound />}>
+          <ExportUploadTask />
+        </ScreenGate>
+      </Route>
 
       {/* ── FC-8: Administration (MVP) ──────────────────────────────────── */}
       <Route path="/admin/users">

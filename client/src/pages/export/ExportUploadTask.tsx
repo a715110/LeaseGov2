@@ -19,7 +19,7 @@
  */
 
 import { useState, useRef, useEffect } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useParams } from "wouter";
 import { publishEvent } from "@/lib/eventBus";
 import { Download, CheckCircle2, Lock, AlertTriangle, Upload, Eye, ToggleLeft, ToggleRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,60 @@ import { Textarea } from "@/components/ui/textarea";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
 
 import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
+
+// ── Mock task data lookup ─────────────────────────────────────────────────────
+interface UploadTaskData {
+  task_ref: string;       // e.g. UT-2026-0041
+  record_id: string;      // e.g. r1
+  record_ref: string;     // e.g. CR-2026-0041
+  template: string;       // e.g. New Lease Onboarding v3.2
+  file_name: string;
+  generated_at: string;
+  sealed_by: string;
+  packet_hash: string;
+  ext_id_placeholder: string;
+  conf_ref_placeholder: string;
+}
+const MOCK_UPLOAD_TASKS: Record<string, UploadTaskData> = {
+  ut1: {
+    task_ref: 'UT-2026-0041',
+    record_id: 'r1',
+    record_ref: 'CR-2026-0041',
+    template: 'New Lease Onboarding v3.2',
+    file_name: 'CR-2026-0041_NewLeaseOnboarding_v3.2.xlsx',
+    generated_at: '2026-05-16 14:00:00 UTC',
+    sealed_by: 'J. Martinez',
+    packet_hash: 'a3f8c2d1e9b4…7f2a1c3d (truncated)',
+    ext_id_placeholder: 'EXT-2026-0041',
+    conf_ref_placeholder: 'CONF-20260516-0041',
+  },
+  ut2: {
+    task_ref: 'UT-2026-0038',
+    record_id: 'r3',
+    record_ref: 'CR-2026-0038',
+    template: 'Lease Modification v2.1',
+    file_name: 'CR-2026-0038_LeaseModification_v2.1.xlsx',
+    generated_at: '2026-05-14 09:15:00 UTC',
+    sealed_by: 'A. Chen',
+    packet_hash: 'b7e2f4a0c1d3…8a3b2e1f (truncated)',
+    ext_id_placeholder: 'EXT-2026-0038',
+    conf_ref_placeholder: 'CONF-20260514-0038',
+  },
+  ut3: {
+    task_ref: 'UT-2026-0035',
+    record_id: 'r5',
+    record_ref: 'CR-2026-0035',
+    template: 'Lease Termination v1.0',
+    file_name: 'CR-2026-0035_LeaseTermination_v1.0.xlsx',
+    generated_at: '2026-05-12 16:45:00 UTC',
+    sealed_by: 'M. Okonkwo',
+    packet_hash: 'c9d1e3f5a7b2…4c5d6e7f (truncated)',
+    ext_id_placeholder: 'EXT-2026-0035',
+    conf_ref_placeholder: 'CONF-20260512-0035',
+  },
+};
+const DEFAULT_TASK = MOCK_UPLOAD_TASKS.ut1;
+
 type TaskStatus = "initialized" | "in_progress" | "evidence_submitted" | "anchors_entered" | "evidence_verified" | "completed" | "failed";
 
 const STATUS_STEPS: { status: TaskStatus; label: string }[] = [
@@ -72,6 +126,9 @@ I understand that this attestation creates an immutable record in the compliance
 export default function ExportUploadTask() {
   const _screenKey = SCREEN_KEYS.EXPORT_UPLOAD_TASK;
   const [, navigate] = useLocation();
+  const params = useParams<{ id: string }>();
+  // Resolve task data from URL param — falls back to ut1 for bare /export/tasks route
+  const task = MOCK_UPLOAD_TASKS[params.id ?? ''] ?? DEFAULT_TASK;
 
   const [taskStatus, setTaskStatus] = useState<TaskStatus>("initialized");
   const [downloaded, setDownloaded] = useState(false);
@@ -107,7 +164,7 @@ export default function ExportUploadTask() {
   useEffect(() => {
     publishEvent({
       type: 'UPLOAD_TASK_STARTED',
-      payload: { task_id: 'UT-2026-0041', record_id: 'r1', lock_status: 'upload_task_active' },
+      payload: { task_id: task.task_ref, record_id: task.record_id, lock_status: 'upload_task_active' },
       sourceRole: 'accountant',
     });
     return () => {
@@ -125,7 +182,7 @@ export default function ExportUploadTask() {
       advanceStatus("completed");
       publishEvent({
         type: 'UPLOAD_TASK_COMPLETED',
-        payload: { task_id: 'UT-2026-0041', record_id: 'r1', lock_status: 'unlocked' },
+        payload: { task_id: task.task_ref, record_id: task.record_id, lock_status: 'unlocked' },
         sourceRole: 'accountant',
       });
     }
@@ -140,7 +197,7 @@ export default function ExportUploadTask() {
             <CheckCircle2 className="w-6 h-6" />
             <div>
               <p className="text-[16px] font-bold">Export Completed Successfully</p>
-              <p className="text-[13px] opacity-90">Upload Task UT-2026-0041 · CompliancePacket sealed</p>
+              <p className="text-[13px] opacity-90">Upload Task {task.task_ref} · CompliancePacket sealed</p>
             </div>
           </div>
         </div>
@@ -151,13 +208,13 @@ export default function ExportUploadTask() {
             <h2 className="text-[15px] font-bold text-foreground">Compliance Packet Summary</h2>
             <div className="grid grid-cols-2 gap-3 text-[12px]">
               <div><span className="text-muted-foreground">Sealed at:</span><br /><span className="font-semibold text-foreground">2026-05-16 14:32:07 UTC</span></div>
-              <div><span className="text-muted-foreground">Sealed by:</span><br /><span className="font-semibold text-foreground">J. Martinez</span></div>
+              <div><span className="text-muted-foreground">Sealed by:</span><br /><span className="font-semibold text-foreground">{task.sealed_by}</span></div>
               <div className="col-span-2">
                 <span className="text-muted-foreground">Packet Hash (SHA-256):</span><br />
-                <span className="font-mono text-[11px] text-foreground">a3f8c2d1e9b4…7f2a1c3d (truncated)</span>
+                <span className="font-mono text-[11px] text-foreground">{task.packet_hash}</span>
               </div>
-              <div><span className="text-muted-foreground">External System ID:</span><br /><span className="font-semibold text-foreground">{externalSystemId || "EXT-2026-0041"}</span></div>
-              <div><span className="text-muted-foreground">Confirmation Reference:</span><br /><span className="font-semibold text-foreground">{confirmRef || "CONF-20260516-0041"}</span></div>
+              <div><span className="text-muted-foreground">External System ID:</span><br /><span className="font-semibold text-foreground">{externalSystemId || task.ext_id_placeholder}</span></div>
+              <div><span className="text-muted-foreground">Confirmation Reference:</span><br /><span className="font-semibold text-foreground">{confirmRef || task.conf_ref_placeholder}</span></div>
               {deviationDetected && (
                 <div className="col-span-2">
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold badge-warning">
@@ -171,12 +228,12 @@ export default function ExportUploadTask() {
               <Button variant="outline" className="gap-1.5 text-[12px] h-8">
                 <Download className="w-3.5 h-3.5" /> Download Compliance Packet
               </Button>
-              <Button className="text-[12px] h-8" onClick={() => navigate("/records/r1")}>
+              <Button className="text-[12px] h-8" onClick={() => navigate(`/records/${task.record_id}`)}>
                 Back to Record
               </Button>
             </div>
             <p className="text-[11px] text-muted-foreground">
-              ContractRecord CR-2026-0041 lock released · Record status → completed
+              ContractRecord {task.record_ref} lock released · Record status → completed
             </p>
           </div>
         </div>
@@ -192,7 +249,7 @@ export default function ExportUploadTask() {
             <AlertTriangle className="w-6 h-6" />
             <div>
               <p className="text-[16px] font-bold">Upload Task Failed</p>
-              <p className="text-[13px] opacity-90">UT-2026-0041 · Reason: Evidence hash mismatch detected during verification</p>
+              <p className="text-[13px] opacity-90">{task.task_ref} · Reason: Evidence hash mismatch detected during verification</p>
             </div>
           </div>
         </div>
@@ -210,11 +267,11 @@ export default function ExportUploadTask() {
       <div className="page-header">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="font-mono text-[13px] font-bold text-foreground">UT-2026-0041</span>
+            <span className="font-mono text-[13px] font-bold text-foreground">{task.task_ref}</span>
             <span className="text-muted-foreground">·</span>
-            <span className="text-[12px] text-muted-foreground">CR-2026-0041</span>
+            <span className="text-[12px] text-muted-foreground">{task.record_ref}</span>
             <span className="text-muted-foreground">·</span>
-            <span className="text-[12px] text-muted-foreground">New Lease Onboarding v3.2</span>
+            <span className="text-[12px] text-muted-foreground">{task.template}</span>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
             <h1 className="page-title">Upload Task</h1>
@@ -244,11 +301,11 @@ export default function ExportUploadTask() {
             </div>
             <div className="text-[12px] flex flex-col gap-2 text-muted-foreground">
               <div className="flex items-center justify-between bg-muted/20 rounded-lg px-3 py-2">
-                <span>CR-2026-0041_NewLeaseOnboarding_v3.2.xlsx</span>
-                <span className="font-mono text-[11px]">SHA-256: a3f8c2d1…</span>
+                <span>{task.file_name}</span>
+                <span className="font-mono text-[11px]">SHA-256: {task.packet_hash.slice(0, 12)}…</span>
               </div>
               <div className="flex items-center justify-between">
-                <span>Generated: 2026-05-16 14:00:00 UTC · Format: Excel + PDF</span>
+                <span>Generated: {task.generated_at} · Format: Excel + PDF</span>
               </div>
             </div>
             {taskStatus === "initialized" && (
@@ -281,11 +338,11 @@ export default function ExportUploadTask() {
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-[12px] font-semibold text-foreground">External System ID <span style={{ color:"var(--color-lg-error)" }}>*</span></label>
-                  <input className="text-[13px] border border-border rounded-lg px-3 py-2 bg-background" placeholder="e.g. EXT-2026-0041" value={externalSystemId} onChange={e => setExternalSystemId(e.target.value)} />
+                  <input className="text-[13px] border border-border rounded-lg px-3 py-2 bg-background" placeholder={`e.g. ${task.ext_id_placeholder}`} value={externalSystemId} onChange={e => setExternalSystemId(e.target.value)} />
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-[12px] font-semibold text-foreground">Confirmation Reference <span style={{ color:"var(--color-lg-error)" }}>*</span></label>
-                  <input className="text-[13px] border border-border rounded-lg px-3 py-2 bg-background" placeholder="e.g. CONF-20260516-0041" value={confirmRef} onChange={e => setConfirmRef(e.target.value)} />
+                  <input className="text-[13px] border border-border rounded-lg px-3 py-2 bg-background" placeholder={`e.g. ${task.conf_ref_placeholder}`} value={confirmRef} onChange={e => setConfirmRef(e.target.value)} />
                 </div>
                 <Button disabled={!externalSystemId.trim() || !confirmRef.trim()} onClick={() => advanceStatus("evidence_submitted")} className="self-start gap-1.5">
                   <Upload className="w-4 h-4" /> Mark as Uploaded
@@ -416,7 +473,7 @@ export default function ExportUploadTask() {
                   {!pacSacScrolled && <p className="text-[11px] text-muted-foreground italic">Scroll to the bottom to enable attestation</p>}
                   <label className={`flex items-center gap-2.5 cursor-pointer ${!pacSacScrolled ? "opacity-40 pointer-events-none" : ""}`}>
                     <input type="checkbox" checked={pacSacChecked} onChange={e => setPacSacChecked(e.target.checked)} className="w-4 h-4" />
-                    <span className="text-[12px] font-medium text-foreground">I, J. Martinez, confirm the above PAC/SAC attestation</span>
+                    <span className="text-[12px] font-medium text-foreground">I, {task.sealed_by}, confirm the above PAC/SAC attestation</span>
                   </label>
                 </div>
 
@@ -433,7 +490,7 @@ export default function ExportUploadTask() {
                   {!daScrolled && <p className="text-[11px] text-muted-foreground italic">Scroll to the bottom to enable attestation</p>}
                   <label className={`flex items-center gap-2.5 cursor-pointer ${!daScrolled ? "opacity-40 pointer-events-none" : ""}`}>
                     <input type="checkbox" checked={daChecked} onChange={e => setDaChecked(e.target.checked)} className="w-4 h-4" />
-                    <span className="text-[12px] font-medium text-foreground">I, J. Martinez, confirm the above Data Accuracy Attestation</span>
+                    <span className="text-[12px] font-medium text-foreground">I, {task.sealed_by}, confirm the above Data Accuracy Attestation</span>
                   </label>
                 </div>
 
