@@ -397,7 +397,38 @@ export default function AppShell({
   const [location] = useLocation()
   const { activeRole } = useRole()
   const { addNotification, unreadCount } = useNotifications()
-  const { pipelineReadyCount, approvalsCount, extractionQueueCount } = usePipelineCounts()
+  const { pipelineReadyCount, approvalsCount, extractionQueueCount, watchlistCount, setWatchlistCount } = usePipelineCounts()
+
+  // ── Compute watchlist badge count from localStorage ──
+  const refreshWatchlistCount = useCallback(() => {
+    let count = 0
+    // Seed records: r2, r4, r7 are watchlisted by default in MOCK_RECORDS
+    const MOCK_WATCHLISTED = new Set(['r2', 'r4', 'r7'])
+    const seenFromStorage = new Set<string>()
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (!key?.startsWith('leasegov_watchlist_')) continue
+      const rid = key.replace('leasegov_watchlist_', '')
+      seenFromStorage.add(rid)
+      try {
+        const parsed = JSON.parse(localStorage.getItem(key) ?? '{}')
+        if (parsed.isWatchlisted) count++
+      } catch { /* skip */ }
+    }
+    // Add mock-watchlisted records not yet in localStorage
+    Array.from(MOCK_WATCHLISTED).forEach(rid => {
+      if (!seenFromStorage.has(rid)) count++
+    })
+    setWatchlistCount(count)
+  }, [setWatchlistCount])
+
+  useEffect(() => {
+    refreshWatchlistCount()
+    // Re-read on tab focus so badge stays current after visiting the Watchlist tab
+    const onFocus = () => refreshWatchlistCount()
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [refreshWatchlistCount])
 
   // ── Seed demo notifications once on mount ──
   const seededRef = useRef(false)
@@ -549,6 +580,7 @@ export default function AppShell({
               group.key === 'approvals' ? approvalsCount
               : group.key === 'document-pipeline' ? pipelineReadyCount
               : group.key === 'extraction' ? extractionQueueCount
+              : group.key === 'records' ? watchlistCount
               : 0
             )
 

@@ -8,6 +8,7 @@
  *   pipelineReadyCount   — Stage Documents with status 'ready' (Document Pipeline group)
  *   approvalsCount       — Packages/submissions pending approval (Approvals group)
  *   extractionQueueCount — Jobs in the extraction queue (Extraction group)
+ *   watchlistCount       — Records currently watchlisted (Records group)
  */
 import React, { createContext, useContext, useState } from 'react'
 
@@ -18,6 +19,8 @@ interface PipelineCountsValue {
   setApprovalsCount: (n: number) => void
   extractionQueueCount: number
   setExtractionQueueCount: (n: number) => void
+  watchlistCount: number
+  setWatchlistCount: (n: number) => void
 }
 
 const PipelineCountsContext = createContext<PipelineCountsValue | null>(null)
@@ -26,6 +29,7 @@ export function PipelineCountsProvider({ children }: { children: React.ReactNode
   const [pipelineReadyCount, setPipelineReadyCount] = useState(0)
   const [approvalsCount, setApprovalsCount] = useState(0)
   const [extractionQueueCount, setExtractionQueueCount] = useState(0)
+  const [watchlistCount, setWatchlistCount] = useState(0)
 
   return (
     <PipelineCountsContext.Provider
@@ -33,6 +37,7 @@ export function PipelineCountsProvider({ children }: { children: React.ReactNode
         pipelineReadyCount, setPipelineReadyCount,
         approvalsCount, setApprovalsCount,
         extractionQueueCount, setExtractionQueueCount,
+        watchlistCount, setWatchlistCount,
       }}
     >
       {children}

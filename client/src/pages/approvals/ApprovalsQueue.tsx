@@ -15,7 +15,7 @@
  *   sla_deadline_at, rejection_reason_codes)
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useLocation } from "wouter";
 import {
   Clock, AlertTriangle, CheckCircle2, XCircle,
@@ -33,7 +33,7 @@ import { toast } from "sonner";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
 import { MOCK_REVIEWERS } from "@/lib/mockData";
 import { useNotifications } from "@/contexts/NotificationContext";
-
+import { usePipelineCounts } from "@/contexts/PipelineCountsContext";
 import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 
 type SubjectType = "contract_record" | "reassessment_case";
@@ -75,12 +75,12 @@ const CURRENT_USER = "Current User";
 
 type TabId = "all" | "my_reviews" | "my_approvals" | "rework" | "my_submissions";
 
-const TABS: { id: TabId; label: string; badge?: number; badgeCls?: string }[] = [
-  { id:"all",            label:"All Pending",    badge:8 },
-  { id:"my_reviews",     label:"My Reviews",     badge:3 },
-  { id:"my_approvals",   label:"My Approvals",   badge:5 },
-  { id:"rework",         label:"Rework",         badge:1, badgeCls:"badge-warning" },
-  { id:"my_submissions", label:"My Submissions", badge:2 },
+const TAB_DEFS: { id: TabId; label: string; badgeCls?: string }[] = [
+  { id:"all",            label:"All Pending" },
+  { id:"my_reviews",     label:"My Reviews" },
+  { id:"my_approvals",   label:"My Approvals" },
+  { id:"rework",         label:"Rework",         badgeCls:"badge-warning" },
+  { id:"my_submissions", label:"My Submissions" },
 ];
 
 function getAgeMs(submitted_at: string) {
@@ -189,6 +189,19 @@ export default function ApprovalsQueue() {
   const [activeTab, setActiveTab] = useState<TabId>("my_reviews");
   const [tasks, setTasks] = useState<ApprovalTask[]>(INITIAL_TASKS);
   const { addNotification } = useNotifications();
+  const { setApprovalsCount } = usePipelineCounts();
+
+  // Compute live tab badges from tasks state
+  const TABS = TAB_DEFS.map(tab => ({
+    ...tab,
+    badge: filterByTab(tasks, tab.id).length,
+  }))
+
+  // Publish total actionable count to sidebar nav badge
+  useEffect(() => {
+    const actionable = tasks.filter(t => ['pending', 'resubmitted', 'opened'].includes(t.status)).length
+    setApprovalsCount(actionable)
+  }, [tasks, setApprovalsCount])
 
   // Reassign dialog state
   const [reassignTask, setReassignTask] = useState<ApprovalTask | null>(null);
