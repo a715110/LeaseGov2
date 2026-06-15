@@ -151,7 +151,9 @@ function buildWatchlistRows(): WatchlistSummaryRow[] {
 export default function RecordsSearch() {
   const _screenKey = SCREEN_KEYS.RECORDS_SEARCH;
   const [, navigate] = useLocation();
-  const [activeView, setActiveView] = useState<"all" | "watchlist">("all");
+  // Pre-select watchlist view when navigated from RecordsDashboard "View Watchlist" button
+  const _watchlistedParam = new URLSearchParams(window.location.search).get('watchlisted') === 'true';
+  const [activeView, setActiveView] = useState<"all" | "watchlist">(_watchlistedParam ? "watchlist" : "all");
   const [watchlistRows, setWatchlistRows] = useState<WatchlistSummaryRow[]>([]);
   useEffect(() => {
     if (activeView === "watchlist") setWatchlistRows(buildWatchlistRows());
@@ -167,7 +169,7 @@ export default function RecordsSearch() {
   // Filter state
   const [filterStatus, setFilterStatus] = useState<string>("");
   const [filterClassification, setFilterClassification] = useState<string>("");
-  const [filterWatchlisted, setFilterWatchlisted] = useState(false);
+  const [filterWatchlisted, setFilterWatchlisted] = useState(_watchlistedParam);
 
   const filtered = MOCK_RECORDS.filter(r => {
     const q = query.toLowerCase();

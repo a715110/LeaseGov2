@@ -56,12 +56,15 @@ function suggestRole(filename: string): DocumentRole {
 }
 
 // TODO: Backend integration required — GET /api/records/:id (context card)
-const MOCK_RECORD_CONTEXT = {
-  contract_number: "CR-2026-0088",
-  title: "Office Tower — 350 Fifth Ave",
-  status: "approved",
-  counterparty: "Fifth Ave Properties LLC",
-  workspace_tag: "Corporate HQ",
+const RECORDS_CONTEXT_BY_ID: Record<string, { contract_number: string; title: string; status: string; counterparty: string; workspace_tag: string }> = {
+  r1: { contract_number: "CR-2026-0088", title: "Office Tower — 350 Fifth Ave",         status: "approved",               counterparty: "Fifth Ave Properties LLC",  workspace_tag: "Corporate HQ" },
+  r2: { contract_number: "CR-2026-0087", title: "Retail HQ — 1200 Market St",           status: "pending_approval",       counterparty: "Market Street Partners",   workspace_tag: "Retail Portfolio" },
+  r3: { contract_number: "CR-2026-0086", title: "Warehouse Lease — Industrial Park",   status: "under_review",           counterparty: "Industrial Realty Group",  workspace_tag: "Logistics" },
+  r4: { contract_number: "CR-2026-0085", title: "Ground Lease — Civic Center",         status: "correction_in_progress", counterparty: "City of Boston",           workspace_tag: "Government" },
+  r5: { contract_number: "CR-2026-0084", title: "Tech Campus — Building A",            status: "approved",               counterparty: "Silicon Valley Realty",   workspace_tag: "Tech Campus" },
+  r6: { contract_number: "CR-2026-0083", title: "Suburban Office — Suite 400",         status: "draft",                  counterparty: "Westfield Properties",    workspace_tag: "Regional" },
+  r7: { contract_number: "CR-2026-0082", title: "Downtown Retail — Corner Unit",       status: "approved",               counterparty: "Urban Retail LLC",        workspace_tag: "Retail Portfolio" },
+  r8: { contract_number: "CR-2026-0081", title: "Distribution Center — Zone 3",        status: "approved",               counterparty: "Logistics Park Holdings", workspace_tag: "Logistics" },
 };
 
 export default function RecordsAddDocument() {
@@ -69,6 +72,7 @@ export default function RecordsAddDocument() {
   const [, navigate] = useLocation();
   const params = useParams<{ id: string }>();
   const recordId = params.id || "r1";
+  const MOCK_RECORD_CONTEXT = RECORDS_CONTEXT_BY_ID[recordId] ?? RECORDS_CONTEXT_BY_ID.r1;
 
   const [files, setFiles] = useState<StagedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);

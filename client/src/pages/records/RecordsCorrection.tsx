@@ -59,13 +59,15 @@ const CORRECTABLE_FIELDS = [
 ]
 
 // TODO: Backend integration required — GET /contracts/records/{id}
-const MOCK_RECORD = {
-  id: 'r1',
-  contract_number: 'CR-2026-0088',
-  title: 'Office Tower — 350 Fifth Ave',
-  status: 'approved',
-  rework_iteration: 1,
-  assigned_preparer: 'J. Martinez',
+const RECORDS_CORRECTION_BY_ID: Record<string, { id: string; contract_number: string; title: string; status: string; rework_iteration: number; assigned_preparer: string }> = {
+  r1: { id:'r1', contract_number:'CR-2026-0088', title:'Office Tower — 350 Fifth Ave',         status:'approved',               rework_iteration:1, assigned_preparer:'J. Martinez' },
+  r2: { id:'r2', contract_number:'CR-2026-0087', title:'Retail HQ — 1200 Market St',           status:'pending_approval',       rework_iteration:0, assigned_preparer:'S. Patel' },
+  r3: { id:'r3', contract_number:'CR-2026-0086', title:'Warehouse Lease — Industrial Park',   status:'under_review',           rework_iteration:0, assigned_preparer:'A. Chen' },
+  r4: { id:'r4', contract_number:'CR-2026-0085', title:'Ground Lease — Civic Center',         status:'correction_in_progress', rework_iteration:2, assigned_preparer:'J. Martinez' },
+  r5: { id:'r5', contract_number:'CR-2026-0084', title:'Tech Campus — Building A',            status:'approved',               rework_iteration:0, assigned_preparer:'S. Patel' },
+  r6: { id:'r6', contract_number:'CR-2026-0083', title:'Suburban Office — Suite 400',         status:'draft',                  rework_iteration:0, assigned_preparer:'A. Chen' },
+  r7: { id:'r7', contract_number:'CR-2026-0082', title:'Downtown Retail — Corner Unit',       status:'approved',               rework_iteration:0, assigned_preparer:'J. Martinez' },
+  r8: { id:'r8', contract_number:'CR-2026-0081', title:'Distribution Center — Zone 3',        status:'approved',               rework_iteration:0, assigned_preparer:'S. Patel' },
 }
 
 const CATEGORIES = Array.from(new Set(CORRECTABLE_FIELDS.map(f => f.category)))
@@ -75,6 +77,7 @@ export default function RecordsCorrection() {
   const [, navigate] = useLocation()
   const params = useParams<{ id: string }>()
   const recordId = params.id || 'r1'
+  const MOCK_RECORD = RECORDS_CORRECTION_BY_ID[recordId] ?? RECORDS_CORRECTION_BY_ID.r1
 
   const [reason, setReason] = useState('')
   const [selectedFields, setSelectedFields] = useState<string[]>([])

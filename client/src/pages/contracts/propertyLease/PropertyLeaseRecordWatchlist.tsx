@@ -59,7 +59,7 @@ const SEED_ENTRIES: WatchlistEntry[] = [
     added_at: "2026-04-10T09:30:00Z",
     expiry_date: "2026-09-30",
     notes: "Option exercise deadline approaching — confirm intent with business unit by Q3.",
-    rule_id: "r1",
+    rule_id: "wl-rule-001",
     rule_name: "Renewal Option — 12-Month Horizon",
   },
   {

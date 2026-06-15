@@ -35,23 +35,23 @@ const WATCHLIST_ITEMS = [
 
 // TODO: Backend integration required — GET /api/records/recent-activity
 const RECENT_ACTIVITY = [
-  { id:"a1",  record:"CR-2026-0088", action:"Approved",        actor:"M. Thompson",  time:"2 min ago",  status:"approved" },
-  { id:"a2",  record:"CR-2026-0087", action:"Submitted",       actor:"J. Martinez",  time:"18 min ago", status:"pending_approval" },
-  { id:"a3",  record:"CR-2026-0086", action:"Under Review",    actor:"S. Patel",     time:"1h ago",     status:"under_review" },
-  { id:"a4",  record:"CR-2026-0085", action:"Rework Required", actor:"M. Thompson",  time:"2h ago",     status:"correction_in_progress" },
-  { id:"a5",  record:"CR-2026-0084", action:"Approved",        actor:"A. Chen",      time:"3h ago",     status:"approved" },
-  { id:"a6",  record:"CR-2026-0083", action:"Draft Created",   actor:"J. Martinez",  time:"4h ago",     status:"draft" },
-  { id:"a7",  record:"CR-2026-0082", action:"Approved",        actor:"M. Thompson",  time:"5h ago",     status:"approved" },
-  { id:"a8",  record:"CR-2026-0081", action:"Submitted",       actor:"S. Patel",     time:"6h ago",     status:"pending_approval" },
-  { id:"a9",  record:"CR-2026-0080", action:"Under Review",    actor:"A. Chen",      time:"7h ago",     status:"under_review" },
-  { id:"a10", record:"CR-2026-0079", action:"Approved",        actor:"J. Martinez",  time:"8h ago",     status:"approved" },
+  { id:"a1",  recordId:"r1", record:"CR-2026-0088", action:"Approved",        actor:"M. Thompson",  time:"2 min ago",  status:"approved" },
+  { id:"a2",  recordId:"r2", record:"CR-2026-0087", action:"Submitted",       actor:"J. Martinez",  time:"18 min ago", status:"pending_approval" },
+  { id:"a3",  recordId:"r3", record:"CR-2026-0086", action:"Under Review",    actor:"S. Patel",     time:"1h ago",     status:"under_review" },
+  { id:"a4",  recordId:"r4", record:"CR-2026-0085", action:"Rework Required", actor:"M. Thompson",  time:"2h ago",     status:"correction_in_progress" },
+  { id:"a5",  recordId:"r5", record:"CR-2026-0084", action:"Approved",        actor:"A. Chen",      time:"3h ago",     status:"approved" },
+  { id:"a6",  recordId:"r6", record:"CR-2026-0083", action:"Draft Created",   actor:"J. Martinez",  time:"4h ago",     status:"draft" },
+  { id:"a7",  recordId:"r7", record:"CR-2026-0082", action:"Approved",        actor:"M. Thompson",  time:"5h ago",     status:"approved" },
+  { id:"a8",  recordId:"r8", record:"CR-2026-0081", action:"Submitted",       actor:"S. Patel",     time:"6h ago",     status:"pending_approval" },
+  { id:"a9",  recordId:"r1", record:"CR-2026-0080", action:"Under Review",    actor:"A. Chen",      time:"7h ago",     status:"under_review" },
+  { id:"a10", recordId:"r2", record:"CR-2026-0079", action:"Approved",        actor:"J. Martinez",  time:"8h ago",     status:"approved" },
 ];
 
 const EXCEPTION_QUEUE = [
-  { id:"e1", record:"CR-2026-0075", issue:"Overdue approval — 6 days",    severity:"error" },
-  { id:"e2", record:"CR-2026-0071", issue:"3 open flags unresolved",       severity:"warning" },
-  { id:"e3", record:"CR-2026-0068", issue:"Option exercise due in 14 days",severity:"warning" },
-  { id:"e4", record:"CR-2026-0062", issue:"Expiring in 45 days",           severity:"warning" },
+  { id:"e1", recordId:"r4", record:"CR-2026-0075", issue:"Overdue approval — 6 days",    severity:"error" },
+  { id:"e2", recordId:"r3", record:"CR-2026-0071", issue:"3 open flags unresolved",       severity:"warning" },
+  { id:"e3", recordId:"r1", record:"CR-2026-0068", issue:"Option exercise due in 14 days",severity:"warning" },
+  { id:"e4", recordId:"r2", record:"CR-2026-0062", issue:"Expiring in 45 days",           severity:"warning" },
 ];
 
 const STATUS_BADGE: Record<string, string> = {
@@ -131,7 +131,7 @@ export default function RecordsDashboard() {
                 <div
                   key={item.id}
                   className="flex items-center justify-between px-5 py-3 hover:bg-muted/20 cursor-pointer transition-colors"
-                  onClick={() => navigate(`/records/${item.id}`)}
+                  onClick={() => navigate(`/records/${item.recordId}`)}
                 >
                   <div className="flex items-center gap-3">
                     <span className="font-mono text-[12px] text-muted-foreground w-[110px]">{item.record}</span>
@@ -186,7 +186,7 @@ export default function RecordsDashboard() {
                   <div
                     key={item.id}
                     className="flex items-center justify-between px-4 py-3 hover:bg-muted/20 cursor-pointer transition-colors"
-                    onClick={() => navigate(`/records/${item.id}`)}
+                    onClick={() => navigate(`/records/${item.recordId}`)}
                   >
                     <div>
                       <p className="font-mono text-[12px] text-muted-foreground">{item.record}</p>

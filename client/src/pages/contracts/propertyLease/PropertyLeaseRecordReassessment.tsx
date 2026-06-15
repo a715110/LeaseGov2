@@ -72,7 +72,7 @@ export default function RecordTabReassessment({ recordId }: RecordTabReassessmen
                   <td className="text-muted-foreground">{c.assigned_to}</td>
                   <td className="text-muted-foreground">{c.created_at}</td>
                   <td className="text-right">
-                    <Button variant="ghost" size="sm" className="h-7 gap-1 text-[12px]" onClick={() => navigate("/reassessment/hub")}>
+                    <Button variant="ghost" size="sm" className="h-7 gap-1 text-[12px]" onClick={() => navigate(`/reassessment/cases/${c.id}`)}>
                       Open <ChevronRight className="w-3.5 h-3.5" />
                     </Button>
                   </td>

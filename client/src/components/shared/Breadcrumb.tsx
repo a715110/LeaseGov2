@@ -137,6 +137,41 @@ const PARAM_ROUTE_PATTERNS: Array<{
     sectionHref: '/approvals/queue',
     child: 'Final Approval',
   },
+  // /records/:id/add-document  →  Records / Add Document
+  {
+    pattern: /^\/records\/[^/]+\/add-document$/,
+    section: 'Records',
+    sectionHref: '/records',
+    child: 'Add Document',
+  },
+  // /records/:id/correction  →  Records / Correction
+  {
+    pattern: /^\/records\/[^/]+\/correction$/,
+    section: 'Records',
+    sectionHref: '/records',
+    child: 'Correction',
+  },
+  // /records/:id/snapshots  →  Records / Snapshots
+  {
+    pattern: /^\/records\/[^/]+\/snapshots$/,
+    section: 'Records',
+    sectionHref: '/records',
+    child: 'Snapshots',
+  },
+  // /records/:id/deferred  →  Records / Deferred Fields
+  {
+    pattern: /^\/records\/[^/]+\/deferred$/,
+    section: 'Records',
+    sectionHref: '/records',
+    child: 'Deferred Fields',
+  },
+  // /records/:id  →  Records / Detail
+  {
+    pattern: /^\/records\/[^/]+$/,
+    section: 'Records',
+    sectionHref: '/records',
+    child: 'Detail',
+  },
 ];
 
 /** Section roots — used to build the parent crumb for static sub-routes */

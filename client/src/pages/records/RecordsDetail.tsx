@@ -130,7 +130,8 @@ export default function RecordsDetail() {
   const recordId = params.id || "r1";
 
   const [record, setRecord] = useState({ ...MOCK_RECORD, id: recordId });
-  const [activeTab, setActiveTab] = useState("overview");
+  const initialTab = new URLSearchParams(window.location.search).get('tab') || 'overview';
+  const [activeTab, setActiveTab] = useState(initialTab);
 
   const lockBanner = LOCK_BANNER[record.lock_status];
   const automationStyle = AUTOMATION_BADGE[record.automation_level] || AUTOMATION_BADGE.full_manual;
