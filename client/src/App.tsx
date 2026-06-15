@@ -311,6 +311,9 @@ function Router() {
       </Route>
 
       {/* ── FC-8: Administration (MVP) ──────────────────────────────────── */}
+      <Route path="/admin">
+        <Redirect to="/admin/users" />
+      </Route>
       <Route path="/admin/users">
         <ScreenGate screenKey={SCREEN_KEYS.ADMIN_USERS} fallback={<NotFound />}>
           <AdminUsers />

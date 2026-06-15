@@ -110,7 +110,11 @@ const STATIC_NAV: StaticNavEntry[] = [
   // FC-8
   { label: 'Users',               path: ROUTE_PATHS.adminUsers,           navGroup: 'admin',             phase: 'mvp' },
   { label: 'Schema',              path: ROUTE_PATHS.adminSchema,          navGroup: 'admin',             phase: 'mvp' },
+  { label: 'Templates',           path: ROUTE_PATHS.adminTemplates,       navGroup: 'admin',             phase: 'mvp' },
+  { label: 'Thresholds',          path: ROUTE_PATHS.adminThresholds,      navGroup: 'admin',             phase: 'mvp' },
   { label: 'Audit Log',           path: ROUTE_PATHS.adminAudit,           navGroup: 'admin',             phase: 'mvp' },
+  { label: 'Notifications',       path: ROUTE_PATHS.adminNotifications,   navGroup: 'admin',             phase: 'mvp' },
+  { label: 'Automation',          path: ROUTE_PATHS.adminAutomation,      navGroup: 'admin',             phase: 'phase_2' },
   // FC-10
   { label: 'Tenants',             path: ROUTE_PATHS.superadminTenants,    navGroup: 'superadmin',        phase: 'mvp' },
   { label: 'System Health',       path: ROUTE_PATHS.superadminHealth,     navGroup: 'superadmin',        phase: 'mvp' },

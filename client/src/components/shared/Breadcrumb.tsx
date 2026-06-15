@@ -78,6 +78,7 @@ const ROUTE_LABELS: Array<{ prefix: string; label: string }> = [
   { prefix: '/admin/automation',         label: 'Automation' },
   { prefix: '/admin/thresholds',         label: 'Thresholds' },
   { prefix: '/admin/audit',              label: 'Audit Log' },
+  { prefix: '/admin/notifications',      label: 'Notifications' },
   { prefix: '/admin',                    label: 'Admin' },
   // Settings / Notifications
   { prefix: '/settings',                 label: 'Settings' },
