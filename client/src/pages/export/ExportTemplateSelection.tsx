@@ -97,9 +97,12 @@ export default function ExportTemplateSelection() {
   const selectedTemplate = MOCK_TEMPLATES.find(t => t.id === selected);
 
   // TODO: Backend integration required — POST /api/export/tasks (creates UploadTask, locks template version)
+  // Template-to-task mapping: in production this would be returned by the API
+  const TEMPLATE_TO_TASK: Record<string, string> = { t1: 'ut1', t2: 'ut2', t3: 'ut3' };
   function handleSelect() {
     if (!selected) return;
-    navigate("/export/staging");
+    const taskId = TEMPLATE_TO_TASK[selected] ?? 'ut1';
+    navigate(`/export/staging?task=${taskId}`);
   }
 
   return (

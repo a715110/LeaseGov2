@@ -480,3 +480,26 @@ export function getApprovalTaskData(taskId: string): ApprovalTaskData {
 }
 
 export { MOCK_TASKS_BY_ID };
+
+/**
+ * Minimal SLA deadline list used by AppShell to compute the overdue count
+ * for the notification bell badge without importing the full ApprovalsQueue.
+ */
+const MOCK_APPROVAL_SLA_DEADLINES: Array<{ id: string; sla_deadline_at: string | null; status: string }> = [
+  { id: 't1', sla_deadline_at: '2026-05-18T17:00:00Z', status: 'pending' },
+  { id: 't2', sla_deadline_at: '2026-05-20T17:00:00Z', status: 'opened' },
+  { id: 't3', sla_deadline_at: '2026-05-17T17:00:00Z', status: 'pending' },
+  { id: 't4', sla_deadline_at: '2026-05-16T17:00:00Z', status: 'rework_in_progress' },
+  { id: 't5', sla_deadline_at: '2026-05-21T17:00:00Z', status: 'pending' },
+  { id: 't6', sla_deadline_at: '2026-05-22T17:00:00Z', status: 'pending' },
+  { id: 't7', sla_deadline_at: '2026-05-19T17:00:00Z', status: 'resubmitted' },
+  { id: 't8', sla_deadline_at: null,                   status: 'approved' },
+];
+
+/** Returns the number of non-approved tasks whose SLA deadline has passed. */
+export function computeOverdueCount(): number {
+  const now = Date.now();
+  return MOCK_APPROVAL_SLA_DEADLINES.filter(
+    t => t.status !== 'approved' && t.sla_deadline_at !== null && new Date(t.sla_deadline_at!).getTime() < now
+  ).length;
+}

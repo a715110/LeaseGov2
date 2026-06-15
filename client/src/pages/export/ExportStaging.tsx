@@ -18,8 +18,8 @@
  * components/export/TripleViewStaging.tsx when FC-8 is built.
  */
 
-import { useState } from "react";
-import { useLocation } from "wouter";
+import { useState, useMemo } from "react";
+import { useLocation, useSearch } from "wouter";
 import { Shield, AlertTriangle, CheckCircle2, ChevronRight, FileText } from "lucide-react";
 import { AutomationPolicyBadge } from '@/components/automation/AutomationPolicyBadge';
 import { GracefulDegradationBanner } from '@/components/automation/GracefulDegradationBanner';
@@ -91,9 +91,18 @@ const EXCEL_CELLS: { ref: string; label: string; value: string; highlighted?: bo
   { ref:"B6", label:"",                    value:"[DEFERRED]",       warning:true },
 ];
 
+const STAGING_TASK_META: Record<string, { task_ref: string; record_id: string }> = {
+  ut1: { task_ref: 'UT-2026-0041', record_id: 'CR-2026-0041' },
+  ut2: { task_ref: 'UT-2026-0038', record_id: 'CR-2026-0038' },
+  ut3: { task_ref: 'UT-2026-0035', record_id: 'CR-2026-0035' },
+};
+
 export default function ExportStaging() {
   const _screenKey = SCREEN_KEYS.EXPORT_STAGING;
   const [, navigate] = useLocation();
+  const searchStr = useSearch();
+  const taskId = useMemo(() => new URLSearchParams(searchStr).get('task') ?? 'ut1', [searchStr]);
+  const taskMeta = STAGING_TASK_META[taskId] ?? STAGING_TASK_META.ut1;
 
   const [activeTab, setActiveTab] = useState("Cover Sheet");
   const [selectedRow, setSelectedRow] = useState<string | null>(null);
@@ -115,7 +124,7 @@ export default function ExportStaging() {
             <ScreenNumberBadge screenKey="export-staging" />
           </div>
           <div className="flex items-center gap-3 mt-1">
-            <span className="font-mono text-[12px] text-muted-foreground">UT-2026-0041</span>
+            <span className="font-mono text-[12px] text-muted-foreground">{taskMeta.task_ref}</span>
             <span className="text-muted-foreground">·</span>
             <span className="text-[12px] text-muted-foreground">New Lease Onboarding</span>
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold badge-muted">
@@ -143,7 +152,7 @@ export default function ExportStaging() {
           <div className="px-4 py-2.5 border-b border-border bg-muted/20 flex items-center gap-2">
             <FileText className="w-3.5 h-3.5 text-muted-foreground" />
             <span className="text-[12px] font-semibold text-foreground">Export Preview</span>
-            <span className="ml-auto text-[11px] text-muted-foreground">CR-2026-0041_Export.xlsx</span>
+            <span className="ml-auto text-[11px] text-muted-foreground">{taskMeta.record_id}_Export.xlsx</span>
           </div>
           {/* Tab selector */}
           <div className="flex overflow-x-auto border-b border-border">
@@ -290,7 +299,7 @@ export default function ExportStaging() {
           <Button variant="outline" onClick={() => navigate("/export/templates")}>Back</Button>
           <Button
             disabled={unmappedCritical > 0}
-            onClick={() => navigate("/export/preflight")}
+            onClick={() => navigate(`/export/preflight?task=${taskId}`)}
             className="gap-1.5"
           >
             Proceed to Pre-Flight <ChevronRight className="w-4 h-4" />

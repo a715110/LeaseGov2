@@ -17,8 +17,8 @@
  *   6. Record status = approved
  */
 
-import { useState } from "react";
-import { useLocation } from "wouter";
+import { useState, useMemo } from "react";
+import { useLocation, useSearch } from "wouter";
 import { CheckCircle2, XCircle, AlertTriangle, RefreshCw, ChevronRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
@@ -98,9 +98,24 @@ const STATUS_BG: Record<StepStatus, string> = {
   pending: "border-border",
 };
 
+// Task data for the context bar — mirrors MOCK_UPLOAD_TASKS in ExportUploadTask
+const PREFLIGHT_TASK_META: Record<string, { task_ref: string; record_id: string; template_name: string }> = {
+  ut1: { task_ref: 'UT-2026-0041', record_id: 'CR-2026-0041', template_name: 'New Lease Onboarding v3.2' },
+  ut2: { task_ref: 'UT-2026-0038', record_id: 'CR-2026-0038', template_name: 'Lease Renewal v2.1' },
+  ut3: { task_ref: 'UT-2026-0035', record_id: 'CR-2026-0035', template_name: 'Sublease Addendum v1.4' },
+};
+
 export default function ExportPreflight() {
   const _screenKey = SCREEN_KEYS.EXPORT_PREFLIGHT;
   const [, navigate] = useLocation();
+  const searchStr = useSearch();
+
+  // Read task ID from ?task= query param; fall back to ut1
+  const taskId = useMemo(() => {
+    const params = new URLSearchParams(searchStr);
+    return params.get('task') ?? 'ut1';
+  }, [searchStr]);
+  const taskMeta = PREFLIGHT_TASK_META[taskId] ?? PREFLIGHT_TASK_META.ut1;
 
   const [steps, setSteps] = useState<PreflightStep[]>(INITIAL_STEPS);
   const [running, setRunning] = useState(false);
@@ -138,9 +153,9 @@ export default function ExportPreflight() {
       <div className="px-6 pb-8 flex flex-col gap-4 max-w-3xl">
         {/* Task context */}
         <div className="bg-card border border-border rounded-lg px-5 py-3 flex items-center gap-6 text-[12px]">
-          <div><span className="text-muted-foreground">Task: </span><span className="font-mono font-semibold text-foreground">UT-2026-0041</span></div>
-          <div><span className="text-muted-foreground">Record: </span><span className="font-mono font-semibold text-foreground">CR-2026-0041</span></div>
-          <div><span className="text-muted-foreground">Template: </span><span className="font-medium text-foreground">New Lease Onboarding v3.2</span></div>
+          <div><span className="text-muted-foreground">Task: </span><span className="font-mono font-semibold text-foreground">{taskMeta.task_ref}</span></div>
+          <div><span className="text-muted-foreground">Record: </span><span className="font-mono font-semibold text-foreground">{taskMeta.record_id}</span></div>
+          <div><span className="text-muted-foreground">Template: </span><span className="font-medium text-foreground">{taskMeta.template_name}</span></div>
           <div className="ml-auto">
             {hasFailures
               ? <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold badge-error"><XCircle className="w-3 h-3" /> {steps.filter(s=>s.status==="fail").length} check{steps.filter(s=>s.status==="fail").length!==1?"s":""} failed</span>
@@ -195,10 +210,10 @@ export default function ExportPreflight() {
 
         {/* Action bar */}
         <div className="flex items-center justify-between pt-2">
-          <Button variant="outline" onClick={() => navigate("/export/staging")}>Back to Staging</Button>
+          <Button variant="outline" onClick={() => navigate(`/export/staging?task=${taskId}`)}>Back to Staging</Button>
           <Button
             disabled={!allPass || hasFailures}
-            onClick={() => navigate("/export/tasks/ut1")}
+            onClick={() => navigate(`/export/tasks/${taskId}`)}
             className="gap-1.5"
           >
             Begin Upload Task <ChevronRight className="w-4 h-4" />

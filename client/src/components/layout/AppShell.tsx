@@ -44,6 +44,7 @@ import { useNotifications } from '../../contexts/NotificationContext'
 import { usePipelineCounts } from '../../contexts/PipelineCountsContext'
 import { useDevMode } from '../../contexts/DevModeContext'
 import { LeaseGovThemeContext } from '../../contexts/LeaseGovThemeContext'
+import { computeOverdueCount } from '../../lib/mockApprovalsData'
 import type { UserRole } from '../../lib/types'
 import { ROLE_LABELS } from '../../lib/types'
 import type { ThemeKey, ColorMode } from '../../types/shared/ThemeMode'
@@ -270,16 +271,22 @@ function ThemePicker() {
 // ─── Notification Bell button ─────────────────────────────────────────────────
 interface NotificationBellProps {
   onClick: () => void
+  overdueCount: number
 }
-function NotificationBell({ onClick }: NotificationBellProps) {
+function NotificationBell({ onClick, overdueCount }: NotificationBellProps) {
   const { unreadCount } = useNotifications()
+  const ariaLabel = [
+    unreadCount > 0 ? `${unreadCount} unread` : '',
+    overdueCount > 0 ? `${overdueCount} overdue SLA` : '',
+  ].filter(Boolean).join(', ')
   return (
     <button
       onClick={onClick}
       className="relative flex h-8 w-8 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      aria-label={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications'}
+      aria-label={ariaLabel ? `Notifications (${ariaLabel})` : 'Notifications'}
     >
       <Bell className="h-4 w-4" />
+      {/* Red badge: unread notification count */}
       {unreadCount > 0 && (
         <span
           className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-destructive-foreground"
@@ -287,6 +294,24 @@ function NotificationBell({ onClick }: NotificationBellProps) {
         >
           {unreadCount > 9 ? '9+' : unreadCount}
         </span>
+      )}
+      {/* Amber badge: overdue SLA tasks — primary position when no unread badge */}
+      {overdueCount > 0 && unreadCount === 0 && (
+        <span
+          className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[9px] font-bold text-white"
+          aria-hidden="true"
+          title={`${overdueCount} approval task${overdueCount > 1 ? 's' : ''} with overdue SLA`}
+        >
+          {overdueCount > 9 ? '9+' : overdueCount}
+        </span>
+      )}
+      {/* Amber dot: overdue SLA indicator alongside red unread badge */}
+      {overdueCount > 0 && unreadCount > 0 && (
+        <span
+          className="absolute -left-0.5 -bottom-0.5 h-2.5 w-2.5 rounded-full bg-amber-500 ring-1 ring-background"
+          aria-hidden="true"
+          title={`${overdueCount} approval task${overdueCount > 1 ? 's' : ''} with overdue SLA`}
+        />
       )}
     </button>
   )
@@ -736,7 +761,7 @@ export default function AppShell({
           <div className="flex items-center gap-2 shrink-0">
             <RoleSwitcher />
             <ThemePicker />
-            <NotificationBell onClick={() => setNotifOpen(true)} />
+            <NotificationBell onClick={() => setNotifOpen(true)} overdueCount={computeOverdueCount()} />
           </div>
         </header>
 
