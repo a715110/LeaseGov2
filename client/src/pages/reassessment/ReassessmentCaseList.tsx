@@ -17,10 +17,18 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import {
   TrendingUp, Star, Search, Calendar, ChevronRight,
-  AlertTriangle, CheckCircle2, Filter
+  AlertTriangle, CheckCircle2, Filter, MoreHorizontal, CheckCheck
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
 
 import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
@@ -105,8 +113,20 @@ export default function ReassessmentCaseList() {
   const [activeTab, setActiveTab] = useState("all");
   const [search, setSearch] = useState("");
   const [mainTab, setMainTab] = useState("cases");
+  const [cases, setCases] = useState(MOCK_CASES);
+  const [noChangeTarget, setNoChangeTarget] = useState<string | null>(null);
 
-  const filtered = MOCK_CASES.filter(c => {
+  function confirmNoChange(caseId: string) {
+    setCases(prev => prev.map(c =>
+      c.id === caseId ? { ...c, status: "no_action_submitted", is_no_action: true } : c
+    ));
+    setNoChangeTarget(null);
+    toast.success("No-change confirmed — memo auto-generated", {
+      description: "Case moved to Pending Review. Memo available in the case record.",
+    });
+  }
+
+  const filtered = cases.filter(c => {
     const matchSearch = !search ||
       c.case_ref.toLowerCase().includes(search.toLowerCase()) ||
       c.contract.toLowerCase().includes(search.toLowerCase()) ||
@@ -121,6 +141,7 @@ export default function ReassessmentCaseList() {
   });
 
   return (
+    <>
     <div className="flex flex-col min-h-full min-w-0 bg-[var(--color-lg-page-bg)]">
       <div className="page-header">
         <div>
@@ -230,12 +251,32 @@ export default function ReassessmentCaseList() {
                     <td className="text-muted-foreground text-[12px]">{c.assigned}</td>
                     <td className="text-muted-foreground text-[12px]">{c.created}</td>
                     <td className="text-right">
-                      <Button
-                        variant="ghost" size="sm" className="h-7 gap-1 text-[12px]"
-                        onClick={() => navigate(`/reassessment/cases/${c.id}/classify`)}
-                      >
-                        Open <ChevronRight className="w-3.5 h-3.5" />
-                      </Button>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost" size="sm" className="h-7 gap-1 text-[12px]"
+                          onClick={() => navigate(`/reassessment/cases/${c.id}/classify`)}
+                        >
+                          Open <ChevronRight className="w-3.5 h-3.5" />
+                        </Button>
+                        {c.status === "initiated" && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                                <MoreHorizontal className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-52">
+                              <DropdownMenuItem
+                                className="gap-2 text-[12px] cursor-pointer"
+                                onClick={() => setNoChangeTarget(c.id)}
+                              >
+                                <CheckCheck className="w-3.5 h-3.5 text-[var(--color-lg-success)]" />
+                                Confirm No Change
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -319,5 +360,35 @@ export default function ReassessmentCaseList() {
         </div>
       )}
     </div>
+
+    {/* No-Change confirmation dialog */}
+
+    <AlertDialog open={noChangeTarget !== null} onOpenChange={open => { if (!open) setNoChangeTarget(null); }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2">
+            <CheckCheck className="w-5 h-5 text-[var(--color-lg-success)]" />
+            Confirm No Change
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            This will close the case as <strong>No Action Required</strong> and auto-generate a no-action memo.
+            The case will move to <strong>Pending Review</strong> for final sign-off.
+            <br /><br />
+            This action cannot be undone without reopening the case.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-[var(--color-lg-success)] hover:bg-[var(--color-lg-success)] text-white"
+            onClick={() => noChangeTarget && confirmNoChange(noChangeTarget)}
+          >
+            <CheckCheck className="w-4 h-4 mr-1.5" />
+            Confirm No Change
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }

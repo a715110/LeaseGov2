@@ -2655,6 +2655,23 @@ export default function PipelineDashboard() {
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           )}
+                          {/* Unlock (Demo) — visible only on locked docs for demo purposes */}
+                          {isLocked && (
+                            <button
+                              onClick={() => {
+                                setStagedDocs(prev => prev.map(d =>
+                                  d.id === doc.id ? { ...d, locked_for_review: false } : d
+                                ));
+                                toast.success('Document unlocked for demo', {
+                                  description: `${doc.display_name} is now editable.`,
+                                });
+                              }}
+                              className="px-1.5 py-0.5 rounded text-[10px] font-semibold border border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100 transition-colors"
+                              title="Unlock for demo — removes review lock"
+                            >
+                              Unlock
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

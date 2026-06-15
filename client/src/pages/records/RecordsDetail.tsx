@@ -30,6 +30,8 @@ import RecordTabWorkflow      from "@/pages/contracts/propertyLease/PropertyLeas
 import RecordTabReassessment  from "@/pages/contracts/propertyLease/PropertyLeaseRecordReassessment";
 import RecordTabHistory       from "@/pages/contracts/propertyLease/PropertyLeaseRecordHistory";
 import RecordTabAgent         from "@/pages/contracts/propertyLease/PropertyLeaseRecordAgent";
+import RecordTabFinancial     from "@/pages/contracts/propertyLease/PropertyLeaseRecordFinancial";
+import RecordTabOpenItems     from "@/pages/contracts/propertyLease/PropertyLeaseRecordOpenItems";
 import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 
 type RecordStatus = "draft" | "under_review" | "pending_approval" | "approved" | "correction_in_progress" | "completed" | "archived";
@@ -108,11 +110,13 @@ const LOCK_BANNER: Record<LockStatus, { text: string; color: string; bg: string;
 
 const TABS = [
   { id:"overview",     label:"Overview" },
-  { id:"terms",        label:"Terms" },
+  { id:"financial",    label:"Financial" },
   { id:"documents",    label:"Documents" },
-  { id:"workflow",     label:"Workflow" },
-  { id:"reassessment", label:"Reassessment" },
   { id:"history",      label:"History" },
+  { id:"reassessment", label:"Reassessment" },
+  { id:"open_items",   label:"Open Items" },
+  { id:"terms",        label:"Terms" },
+  { id:"workflow",     label:"Workflow" },
   { id:"agent",        label:"Agent" },
 ];
 
@@ -141,6 +145,8 @@ export default function RecordsDetail() {
       case "reassessment": return <RecordTabReassessment recordId={recordId} />;
       case "history":      return <RecordTabHistory recordId={recordId} />;
       case "agent":        return <RecordTabAgent recordId={recordId} />;
+      case "financial":    return <RecordTabFinancial recordId={recordId} />;
+      case "open_items":   return <RecordTabOpenItems recordId={recordId} />;
       default:             return null;
     }
   }
