@@ -230,7 +230,7 @@ const SECTION_ROOTS: Record<string, string> = {
   '/extraction':   '/extraction',
   '/records':      '/records',
   '/approvals':    '/approvals',
-  '/export':       '/export',
+  '/export':       '/export/templates',
   '/reassessment': '/reassessment',
   '/agents':       '/agents',
   '/admin':        '/admin',

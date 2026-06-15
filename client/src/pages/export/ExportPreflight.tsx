@@ -37,52 +37,55 @@ interface PreflightStep {
 }
 
 // TODO: Backend integration required — POST /api/export/tasks/:id/preflight
-const INITIAL_STEPS: PreflightStep[] = [
-  {
-    id:"s1",
-    title:"All fields have a final disposition",
-    description:"73 of 73 template fields must have a disposition (confirmed, deferred, or overridden)",
-    status:"pass",
-    detail:"73/73 fields dispositioned",
-  },
-  {
-    id:"s2",
-    title:"All critical fields confirmed",
-    description:"22 critical fields must be confirmed — deferred or pending critical fields block export",
-    status:"fail",
-    detail:"1 critical field deferred: Renewal Option Term (C5)",
-    fix_label:"Return to Staging",
-    fix_route:"/export/staging",
-  },
-  {
-    id:"s3",
-    title:"All critical evidence anchors present",
-    description:"Every critical field must have at least one EvidenceAnchor linking to a source document page",
-    status:"pass",
-    detail:"21/22 anchors present (deferred field excluded)",
-  },
-  {
-    id:"s4",
-    title:"No unresolved blocking package flags",
-    description:"ContractPackage must have zero blocking flags in unresolved state",
-    status:"pass",
-    detail:"0 blocking flags",
-  },
-  {
-    id:"s5",
-    title:"Export template version matches locked version",
-    description:"The template version locked at task creation must match the currently active version",
-    status:"warning",
-    detail:"Task locked to v3.2 — active template is v3.3. This task will proceed with v3.2.",
-  },
-  {
-    id:"s6",
-    title:"Record status is approved",
-    description:"ContractRecord.status must be 'approved' before export can proceed",
-    status:"pass",
-    detail:"CR-2026-0041 status: approved",
-  },
-];
+// Returns a task-aware step list so fix_route and s6 detail reflect the current task/record
+function buildInitialSteps(taskId: string, recordId: string): PreflightStep[] {
+  return [
+    {
+      id:"s1",
+      title:"All fields have a final disposition",
+      description:"73 of 73 template fields must have a disposition (confirmed, deferred, or overridden)",
+      status:"pass",
+      detail:"73/73 fields dispositioned",
+    },
+    {
+      id:"s2",
+      title:"All critical fields confirmed",
+      description:"22 critical fields must be confirmed — deferred or pending critical fields block export",
+      status:"fail",
+      detail:"1 critical field deferred: Renewal Option Term (C5)",
+      fix_label:"Return to Staging",
+      fix_route:`/export/staging?task=${taskId}&record=${recordId}`,
+    },
+    {
+      id:"s3",
+      title:"All critical evidence anchors present",
+      description:"Every critical field must have at least one EvidenceAnchor linking to a source document page",
+      status:"pass",
+      detail:"21/22 anchors present (deferred field excluded)",
+    },
+    {
+      id:"s4",
+      title:"No unresolved blocking package flags",
+      description:"ContractPackage must have zero blocking flags in unresolved state",
+      status:"pass",
+      detail:"0 blocking flags",
+    },
+    {
+      id:"s5",
+      title:"Export template version matches locked version",
+      description:"The template version locked at task creation must match the currently active version",
+      status:"warning",
+      detail:"Task locked to v3.2 — active template is v3.3. This task will proceed with v3.2.",
+    },
+    {
+      id:"s6",
+      title:"Record status is approved",
+      description:"ContractRecord.status must be 'approved' before export can proceed",
+      status:"pass",
+      detail:`${PREFLIGHT_TASK_META[taskId]?.record_id ?? 'CR-2026-0041'} status: approved`,
+    },
+  ];
+}
 
 const STATUS_ICON = {
   pass:    <CheckCircle2 className="w-5 h-5" style={{ color:"var(--color-lg-success)" }} />,
@@ -110,14 +113,12 @@ export default function ExportPreflight() {
   const [, navigate] = useLocation();
   const searchStr = useSearch();
 
-  // Read task ID from ?task= query param; fall back to ut1
-  const taskId = useMemo(() => {
-    const params = new URLSearchParams(searchStr);
-    return params.get('task') ?? 'ut1';
-  }, [searchStr]);
+  // Read task ID and record ID from query params; fall back to ut1/r1
+  const taskId = useMemo(() => new URLSearchParams(searchStr).get('task') ?? 'ut1', [searchStr]);
+  const recordId = useMemo(() => new URLSearchParams(searchStr).get('record') ?? 'r1', [searchStr]);
   const taskMeta = PREFLIGHT_TASK_META[taskId] ?? PREFLIGHT_TASK_META.ut1;
 
-  const [steps, setSteps] = useState<PreflightStep[]>(INITIAL_STEPS);
+  const [steps, setSteps] = useState<PreflightStep[]>(() => buildInitialSteps(taskId, recordId));
   const [running, setRunning] = useState(false);
 
   const allPass = steps.every(s => s.status === "pass" || s.status === "warning");
@@ -210,7 +211,7 @@ export default function ExportPreflight() {
 
         {/* Action bar */}
         <div className="flex items-center justify-between pt-2">
-          <Button variant="outline" onClick={() => navigate(`/export/staging?task=${taskId}`)}>Back to Staging</Button>
+          <Button variant="outline" onClick={() => navigate(`/export/staging?task=${taskId}&record=${recordId}`)}>Back to Staging</Button>
           <Button
             disabled={!allPass || hasFailures}
             onClick={() => navigate(`/export/tasks/${taskId}`)}

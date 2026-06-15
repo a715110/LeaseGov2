@@ -97,12 +97,23 @@ const STAGING_TASK_META: Record<string, { task_ref: string; record_id: string }>
   ut3: { task_ref: 'UT-2026-0035', record_id: 'CR-2026-0035' },
 };
 
+// Mirrors MOCK_RECORD_TITLES in ExportTemplateSelection — used to show record context in the staging bar
+const STAGING_RECORD_META: Record<string, { contract_number: string; title: string }> = {
+  r1: { contract_number: 'CR-2026-0088', title: 'Office Tower — 350 Fifth Ave' },
+  r2: { contract_number: 'CR-2026-0087', title: 'Retail HQ — 1200 Market St' },
+  r3: { contract_number: 'CR-2026-0086', title: 'Warehouse Lease — Industrial Park' },
+  r4: { contract_number: 'CR-2026-0085', title: 'Ground Lease — Civic Center' },
+  r5: { contract_number: 'CR-2026-0084', title: 'Tech Campus — Building A' },
+};
+
 export default function ExportStaging() {
   const _screenKey = SCREEN_KEYS.EXPORT_STAGING;
   const [, navigate] = useLocation();
   const searchStr = useSearch();
   const taskId = useMemo(() => new URLSearchParams(searchStr).get('task') ?? 'ut1', [searchStr]);
+  const recordId = useMemo(() => new URLSearchParams(searchStr).get('record') ?? 'r1', [searchStr]);
   const taskMeta = STAGING_TASK_META[taskId] ?? STAGING_TASK_META.ut1;
+  const recordMeta = STAGING_RECORD_META[recordId] ?? STAGING_RECORD_META.r1;
 
   const [activeTab, setActiveTab] = useState("Cover Sheet");
   const [selectedRow, setSelectedRow] = useState<string | null>(null);
@@ -126,7 +137,9 @@ export default function ExportStaging() {
           <div className="flex items-center gap-3 mt-1">
             <span className="font-mono text-[12px] text-muted-foreground">{taskMeta.task_ref}</span>
             <span className="text-muted-foreground">·</span>
-            <span className="text-[12px] text-muted-foreground">New Lease Onboarding</span>
+            <span className="font-mono text-[12px] text-muted-foreground">{recordMeta.contract_number}</span>
+            <span className="text-muted-foreground">·</span>
+            <span className="text-[12px] text-muted-foreground">{recordMeta.title}</span>
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold badge-muted">
               Template v{templateVersion} — locked at task creation
             </span>
@@ -296,10 +309,10 @@ export default function ExportStaging() {
           )}
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => navigate("/export/templates")}>Back</Button>
+          <Button variant="outline" onClick={() => navigate(`/export/templates?record=${recordId}`)}>Back</Button>
           <Button
             disabled={unmappedCritical > 0}
-            onClick={() => navigate(`/export/preflight?task=${taskId}`)}
+            onClick={() => navigate(`/export/preflight?task=${taskId}&record=${recordId}`)}
             className="gap-1.5"
           >
             Proceed to Pre-Flight <ChevronRight className="w-4 h-4" />
