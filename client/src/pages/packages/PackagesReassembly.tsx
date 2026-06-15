@@ -93,7 +93,10 @@ export default function PackagesReassembly() {
   const _screenKey = SCREEN_KEYS.PACKAGES_REASSEMBLY;
   const [, navigate] = useLocation();
 
-  const ev = REASSEMBLY_EVENT;
+  // BR5: Read live event from sessionStorage if available (set by PackagesComposition on Change Role / Remove)
+  // Falls back to REASSEMBLY_EVENT mock for direct navigation
+  const storedRaw = sessionStorage.getItem('leasegov_reassembly_event');
+  const ev = storedRaw ? (JSON.parse(storedRaw) as typeof REASSEMBLY_EVENT) : REASSEMBLY_EVENT;
   const beforeIds = new Set(ev.before_docs.map(d => d.name));
   const afterIds  = new Set(ev.after_docs.map(d => d.name));
   const addedDocs   = ev.after_docs.filter(d => !beforeIds.has(d.name));

@@ -13,24 +13,38 @@
  *   Completeness indicator green bar.
  *   Action bar: Add Document, View Flags (error badge), Proceed to Approval.
  *
+ * BR1: Package auto-created when second document associated with record.
+ * BR2: Only one Base Contract per package — multiple_base_contracts blocking flag auto-raised.
+ * BR3: Proceed to Approval disabled while any open blocking flag exists.
+ * BR4: Six flag types.
+ * BR5: Change Role / Remove from Package triggers re-assembly navigation.
+ *
  * Data model refs: ContractPackage (auto_promoted, status, document_count),
  *   PackageDocument (document_role, chronological_order, effective_date),
  *   PackageFlag (status, severity)
  */
 
+import React, { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import {
   FileText, Plus, Flag, ChevronRight, Info,
-  CheckCircle2, AlertTriangle, Clock, MoreHorizontal, ArrowRight
+  CheckCircle2, AlertTriangle, Clock, MoreHorizontal, ArrowRight, AlertCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription
+} from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
+} from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { toast } from "sonner";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
-
 import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
+
 type DocumentRole = "base_contract" | "amendment" | "addendum" | "exhibit" | "schedule" | "notice" | "supporting";
 type ExtractionStatus = "complete" | "in_progress" | "not_started" | "failed";
 
@@ -45,7 +59,7 @@ interface PackageDoc {
 }
 
 // TODO: Backend integration required
-const MOCK_PACKAGE = {
+const INITIAL_PACKAGE = {
   id: "PKG-2026-0041",
   record_label: "Office Tower — 350 Fifth Ave",
   status: "validated",
@@ -56,7 +70,7 @@ const MOCK_PACKAGE = {
   open_warning_flags: 1,
 };
 
-const MOCK_DOCUMENTS: PackageDoc[] = [
+const INITIAL_DOCUMENTS: PackageDoc[] = [
   { id:"doc1", chronological_order:1, name:"Office-Tower-Base-Lease-2022.pdf",       document_role:"base_contract", effective_date:"2022-01-01", extraction_status:"complete",    file_size:"9.4 MB" },
   { id:"doc2", chronological_order:2, name:"Office-Tower-Amendment-1-2023.pdf",       document_role:"amendment",     effective_date:"2023-06-01", extraction_status:"complete",    file_size:"2.1 MB" },
   { id:"doc3", chronological_order:3, name:"Office-Tower-Amendment-3-2026.pdf",       document_role:"amendment",     effective_date:"2026-04-01", extraction_status:"in_progress", file_size:"1.8 MB" },
@@ -67,6 +81,8 @@ const ROLE_LABELS: Record<DocumentRole, string> = {
   base_contract:"Base Contract", amendment:"Amendment", addendum:"Addendum",
   exhibit:"Exhibit", schedule:"Schedule", notice:"Notice", supporting:"Supporting",
 };
+
+const ALL_ROLES: DocumentRole[] = ["base_contract","amendment","addendum","exhibit","schedule","notice","supporting"];
 
 const ROLE_BADGE_CLASSES: Record<DocumentRole, string> = {
   base_contract: "bg-[var(--color-lg-primary)] text-white",
@@ -112,11 +128,97 @@ export default function PackagesComposition() {
   const _screenKey = SCREEN_KEYS.PACKAGES_COMPOSITION;
   const [, navigate] = useLocation();
 
-  const pkg = MOCK_PACKAGE;
-  const docs = [...MOCK_DOCUMENTS].sort((a, b) => a.chronological_order - b.chronological_order);
+  // ── State ──────────────────────────────────────────────────────────────────
+  const [pkg, setPkg] = useState(INITIAL_PACKAGE);
+  const [docs, setDocs] = useState<PackageDoc[]>(INITIAL_DOCUMENTS);
+
+  // Change Role dialog
+  const [changeRoleDoc, setChangeRoleDoc] = useState<PackageDoc | null>(null);
+  const [pendingRole, setPendingRole] = useState<DocumentRole | "">("");
+
+  // ── BR2: Auto-detect multiple base contracts → raise blocking flag ─────────
+  useEffect(() => {
+    const baseCount = docs.filter(d => d.document_role === "base_contract").length;
+    const hasMultipleBaseFlag = baseCount > 1;
+    // Sync open_blocking_flags to reflect the auto-detected condition
+    setPkg(prev => ({
+      ...prev,
+      open_blocking_flags: hasMultipleBaseFlag ? Math.max(prev.open_blocking_flags, 1) : 0,
+    }));
+  }, [docs]);
+
+  const sortedDocs = [...docs].sort((a, b) => a.chronological_order - b.chronological_order);
   const completeness = docs.length === 0 ? 0 : Math.round((docs.filter(d => d.extraction_status === "complete").length / docs.length) * 100);
   const totalOpenFlags = pkg.open_blocking_flags + pkg.open_warning_flags;
   const canProceed = pkg.open_blocking_flags === 0;
+
+  // ── Derived: multiple base contract warning ────────────────────────────────
+  const baseContracts = docs.filter(d => d.document_role === "base_contract");
+  const hasMultipleBase = baseContracts.length > 1;
+
+  // ── BR5 helpers ───────────────────────────────────────────────────────────
+  /** Navigate to the re-assembly screen, passing before/after snapshots via sessionStorage */
+  function triggerReassembly(
+    triggerType: "role_changed" | "document_removed",
+    triggerLabel: string,
+    beforeDocs: PackageDoc[],
+    afterDocs: PackageDoc[],
+  ) {
+    // TODO: Backend integration — POST /api/packages/:id/reassembly
+    const event = {
+      triggered_at: new Date().toISOString(),
+      trigger_type: triggerType,
+      trigger_label: triggerLabel,
+      triggered_by: "Current User", // TODO: replace with authenticated user
+      new_flags_raised: afterDocs.filter(d => d.document_role === "base_contract").length > 1 ? 1 : 0,
+      preserved_resolutions: 1,
+      before_docs: beforeDocs.map(d => ({ id: d.id, name: d.name, document_role: d.document_role, effective_date: d.effective_date })),
+      after_docs:  afterDocs.map(d => ({ id: d.id, name: d.name, document_role: d.document_role, effective_date: d.effective_date })),
+    };
+    sessionStorage.setItem("leasegov_reassembly_event", JSON.stringify(event));
+    navigate(`/packages/${pkg.id}/reassembly`);
+  }
+
+  function handleChangeRole() {
+    if (!changeRoleDoc || !pendingRole) return;
+    const oldRole = changeRoleDoc.document_role;
+    const newRole = pendingRole as DocumentRole;
+    if (oldRole === newRole) { setChangeRoleDoc(null); return; }
+
+    const beforeDocs = [...docs];
+    const updatedDocs = docs.map(d => d.id === changeRoleDoc.id ? { ...d, document_role: newRole } : d);
+    setDocs(updatedDocs);
+    setChangeRoleDoc(null);
+    setPendingRole("");
+
+    toast.success(`Role changed to ${ROLE_LABELS[newRole]}`, {
+      description: `"${changeRoleDoc.name}" was reclassified from ${ROLE_LABELS[oldRole]}.`,
+    });
+
+    // BR5: trigger re-assembly
+    triggerReassembly("role_changed", "Role Changed", beforeDocs, updatedDocs);
+  }
+
+  function handleRemove(doc: PackageDoc) {
+    const beforeDocs = [...docs];
+    const updatedDocs = docs.filter(d => d.id !== doc.id).map((d, i) => ({ ...d, chronological_order: i + 1 }));
+    setDocs(updatedDocs);
+
+    // Undo toast (15s per project convention)
+    toast.warning(`"${doc.name}" removed from package`, {
+      duration: 15000,
+      action: {
+        label: "Undo",
+        onClick: () => {
+          setDocs(beforeDocs);
+          toast.success("Removal undone");
+        },
+      },
+    });
+
+    // BR5: trigger re-assembly
+    triggerReassembly("document_removed", "Document Removed", beforeDocs, updatedDocs);
+  }
 
   return (
     <div className="flex flex-col min-h-full min-w-0 bg-[var(--color-lg-page-bg)]">
@@ -166,6 +268,22 @@ export default function PackagesComposition() {
 
       <div className="flex-1 px-6 py-5 flex flex-col gap-5">
 
+        {/* BR2: Multiple base contracts blocking alert */}
+        {hasMultipleBase && (
+          <div
+            className="flex items-start gap-3 px-4 py-3 rounded-lg border text-[13px]"
+            style={{ background: "var(--color-lg-error-subtle)", borderColor: "var(--color-lg-error)", borderLeftWidth: "4px" }}
+          >
+            <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" style={{ color: "var(--color-lg-error)" }} />
+            <div>
+              <span className="font-semibold" style={{ color: "var(--color-lg-error)" }}>Multiple Base Contracts detected — blocking flag raised.</span>
+              <span className="text-muted-foreground ml-1">
+                Only one Base Contract is allowed per package. Found {baseContracts.length}: {baseContracts.map(d => d.name).join(", ")}. Reclassify or remove the duplicate before proceeding.
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Auto-promotion badge */}
         {pkg.auto_promoted && (
           <div className="flex items-start gap-3 px-4 py-3 rounded-lg border border-blue-200 text-[13px]" style={{ background: "var(--color-lg-accent-subtle)" }}>
@@ -197,7 +315,7 @@ export default function PackagesComposition() {
         <div className="bg-card border border-border rounded-lg px-6 py-5">
           <h2 className="text-[13px] font-semibold text-foreground mb-4">Document Timeline</h2>
           <div className="flex items-start overflow-x-auto pb-2">
-            {docs.map((doc, i) => <TimelineNode key={doc.id} doc={doc} isLast={i === docs.length - 1} />)}
+            {sortedDocs.map((doc, i) => <TimelineNode key={doc.id} doc={doc} isLast={i === sortedDocs.length - 1} />)}
           </div>
         </div>
 
@@ -219,15 +337,26 @@ export default function PackagesComposition() {
               </tr>
             </thead>
             <tbody>
-              {docs.map(doc => {
+              {sortedDocs.map(doc => {
                 const extCfg = EXT_CONFIG[doc.extraction_status];
+                const isDuplicateBase = doc.document_role === "base_contract" && hasMultipleBase;
                 return (
-                  <tr key={doc.id}>
+                  <tr key={doc.id} className={isDuplicateBase ? "bg-[var(--color-lg-error-subtle)]/40" : ""}>
                     <td className="font-mono text-[12px] text-muted-foreground">{doc.chronological_order}</td>
                     <td>
                       <div className="flex items-center gap-2">
                         <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
                         <span className="font-medium text-foreground truncate max-w-[260px]">{doc.name}</span>
+                        {isDuplicateBase && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <AlertCircle className="w-3.5 h-3.5 shrink-0 cursor-help" style={{ color: "var(--color-lg-error)" }} />
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="text-[12px]">
+                              Duplicate Base Contract — reclassify or remove
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
                       </div>
                     </td>
                     <td>
@@ -251,8 +380,17 @@ export default function PackagesComposition() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="text-[13px]">
                           <DropdownMenuItem onClick={() => navigate("/extraction/verify")}>View Extraction</DropdownMenuItem>
-                          <DropdownMenuItem>Change Role</DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive">Remove from Package</DropdownMenuItem>
+                          {/* BR5: Change Role → triggers re-assembly */}
+                          <DropdownMenuItem onClick={() => { setChangeRoleDoc(doc); setPendingRole(doc.document_role); }}>
+                            Change Role
+                          </DropdownMenuItem>
+                          {/* BR5: Remove from Package → triggers re-assembly */}
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => handleRemove(doc)}
+                          >
+                            Remove from Package
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </td>
@@ -263,6 +401,58 @@ export default function PackagesComposition() {
           </table>
         </div>
       </div>
+
+      {/* Change Role Dialog */}
+      <Dialog open={!!changeRoleDoc} onOpenChange={open => { if (!open) { setChangeRoleDoc(null); setPendingRole(""); } }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Change Document Role</DialogTitle>
+            <DialogDescription className="text-[13px]">
+              Reclassifying this document will trigger package re-assembly and re-evaluate all flags.
+            </DialogDescription>
+          </DialogHeader>
+          {changeRoleDoc && (
+            <div className="flex flex-col gap-4 py-2">
+              <div className="flex items-center gap-2 px-3 py-2 rounded bg-muted text-[13px]">
+                <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
+                <span className="font-medium truncate">{changeRoleDoc.name}</span>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[12px] font-medium text-muted-foreground">New Role</label>
+                <Select value={pendingRole} onValueChange={v => setPendingRole(v as DocumentRole)}>
+                  <SelectTrigger className="text-[13px]">
+                    <SelectValue placeholder="Select a role…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ALL_ROLES.map(r => (
+                      <SelectItem key={r} value={r} className="text-[13px]">
+                        {ROLE_LABELS[r]}
+                        {r === changeRoleDoc.document_role && <span className="ml-2 text-muted-foreground">(current)</span>}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {pendingRole === "base_contract" && changeRoleDoc.document_role !== "base_contract" && hasMultipleBase && (
+                <div className="flex items-start gap-2 px-3 py-2 rounded text-[12px]" style={{ background: "var(--color-lg-error-subtle)", color: "var(--color-lg-error)" }}>
+                  <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                  A Base Contract already exists. Changing to Base Contract will raise a blocking flag.
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter className="gap-2">
+            <Button variant="outline" size="sm" onClick={() => { setChangeRoleDoc(null); setPendingRole(""); }}>Cancel</Button>
+            <Button
+              size="sm"
+              disabled={!pendingRole || pendingRole === changeRoleDoc?.document_role}
+              onClick={handleChangeRole}
+            >
+              Confirm &amp; Re-Assemble
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
