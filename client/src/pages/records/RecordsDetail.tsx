@@ -32,6 +32,7 @@ import RecordTabHistory       from "@/pages/contracts/propertyLease/PropertyLeas
 import RecordTabAgent         from "@/pages/contracts/propertyLease/PropertyLeaseRecordAgent";
 import RecordTabFinancial     from "@/pages/contracts/propertyLease/PropertyLeaseRecordFinancial";
 import RecordTabOpenItems     from "@/pages/contracts/propertyLease/PropertyLeaseRecordOpenItems";
+import RecordTabWatchlist    from "@/pages/contracts/propertyLease/PropertyLeaseRecordWatchlist";
 import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 
 type RecordStatus = "draft" | "under_review" | "pending_approval" | "approved" | "correction_in_progress" | "completed" | "archived";
@@ -115,6 +116,7 @@ const TABS = [
   { id:"history",      label:"History" },
   { id:"reassessment", label:"Reassessment" },
   { id:"open_items",   label:"Open Items" },
+  { id:"watchlist",    label:"Watchlist" },
   { id:"terms",        label:"Terms" },
   { id:"workflow",     label:"Workflow" },
   { id:"agent",        label:"Agent" },
@@ -147,6 +149,7 @@ export default function RecordsDetail() {
       case "agent":        return <RecordTabAgent recordId={recordId} />;
       case "financial":    return <RecordTabFinancial recordId={recordId} />;
       case "open_items":   return <RecordTabOpenItems recordId={recordId} />;
+      case "watchlist":    return <RecordTabWatchlist recordId={recordId} isWatchlisted={record.is_watchlisted} onWatchlistToggle={toggleWatchlist} />;
       default:             return null;
     }
   }

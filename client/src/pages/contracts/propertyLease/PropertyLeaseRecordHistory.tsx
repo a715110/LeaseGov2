@@ -1,17 +1,18 @@
 /**
  * RecordTabHistory — Tab component consumed by RecordsDetail
- * Converted from PropertyLeaseRecordHistory.tsx scaffold stub.
  *
  * Prompt 5.3 History tab: timeline of ContractRecordSnapshot entries.
  * Each snapshot: snapshot_number · trigger_type badge · created_by · date ·
- *   "Compare to Current" button (Phase 2).
+ *   "Compare to Current" button → navigates to RecordsSnapshotViewer with the
+ *   snapshot pre-selected on the left panel via ?snap=<id> query param.
  *
  * Data model refs: ContractRecordSnapshot (snapshot_number, trigger_type,
  *   created_by_user_id, created_at)
  */
 
-import { GitCommit, Clock } from "lucide-react";
+import { GitCommit, Clock, GitCompare } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useLocation } from "wouter";
 
 interface RecordTabHistoryProps {
   recordId: string;
@@ -19,9 +20,9 @@ interface RecordTabHistoryProps {
 
 // TODO: Backend integration required — GET /api/records/:id/snapshots
 const MOCK_SNAPSHOTS = [
-  { id:"s3", snapshot_number:3, trigger_type:"correction",       created_by:"J. Martinez", created_at:"2026-05-16T09:00:00Z", note:"Rent correction — Amendment 3 applied" },
-  { id:"s2", snapshot_number:2, trigger_type:"reassessment",     created_by:"M. Thompson", created_at:"2025-01-15T14:30:00Z", note:"Reassessment — lease extension approved" },
-  { id:"s1", snapshot_number:1, trigger_type:"initial_approval", created_by:"A. Chen",     created_at:"2022-01-05T10:00:00Z", note:"Initial approval — lease commencement" },
+  { id:"snap-003", snapshot_number:3, trigger_type:"correction",       created_by:"J. Martinez", created_at:"2026-05-16T09:00:00Z", note:"Rent correction — Amendment 3 applied" },
+  { id:"snap-002", snapshot_number:2, trigger_type:"reassessment",     created_by:"M. Thompson", created_at:"2025-01-15T14:30:00Z", note:"Reassessment — lease extension approved" },
+  { id:"snap-001", snapshot_number:1, trigger_type:"initial_approval", created_by:"A. Chen",     created_at:"2022-01-05T10:00:00Z", note:"Initial approval — lease commencement" },
 ];
 
 const TRIGGER_BADGE: Record<string, string> = {
@@ -39,15 +40,32 @@ const TRIGGER_LABEL: Record<string, string> = {
 };
 
 export default function RecordTabHistory({ recordId }: RecordTabHistoryProps) {
+  const [, navigate] = useLocation();
+
+  function openSnapshotViewer(snapId: string) {
+    navigate(`/records/${recordId}/snapshots?snap=${snapId}`);
+  }
+
   return (
     <div className="p-6 flex flex-col gap-4">
-      <h3 className="text-[14px] font-semibold text-foreground">Snapshot History ({MOCK_SNAPSHOTS.length})</h3>
+      <div className="flex items-center justify-between">
+        <h3 className="text-[14px] font-semibold text-foreground">Snapshot History ({MOCK_SNAPSHOTS.length})</h3>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 gap-1.5 text-[12px]"
+          onClick={() => navigate(`/records/${recordId}/snapshots`)}
+        >
+          <GitCompare className="w-3.5 h-3.5" />
+          Full Comparison View
+        </Button>
+      </div>
 
       <div className="relative flex flex-col gap-0">
         {/* Vertical timeline line */}
         <div className="absolute left-[19px] top-6 bottom-6 w-px bg-border" />
 
-        {MOCK_SNAPSHOTS.map((snap, i) => (
+        {MOCK_SNAPSHOTS.map((snap) => (
           <div key={snap.id} className="relative flex items-start gap-4 pb-6 last:pb-0">
             {/* Node */}
             <div className="relative z-10 w-10 h-10 rounded-full bg-card border-2 border-[var(--color-lg-primary)] flex items-center justify-center shrink-0">
@@ -64,8 +82,13 @@ export default function RecordTabHistory({ recordId }: RecordTabHistoryProps) {
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  {/* Phase 2: Compare to Current */}
-                  <Button variant="outline" size="sm" className="h-7 text-[12px] opacity-50 cursor-not-allowed" disabled title="Phase 2 — Snapshot Viewer">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 gap-1.5 text-[12px]"
+                    onClick={() => openSnapshotViewer(snap.id)}
+                  >
+                    <GitCompare className="w-3.5 h-3.5" />
                     Compare to Current
                   </Button>
                 </div>

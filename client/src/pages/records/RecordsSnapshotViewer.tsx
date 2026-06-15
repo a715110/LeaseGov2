@@ -273,8 +273,16 @@ export default function RecordsSnapshotViewer() {
   const params = useParams<{ id: string }>()
   const recordId = params.id || 'r1'
 
-  // Default: left = snapshot 1, right = current record
-  const [leftId, setLeftId] = useState<string>(MOCK_SNAPSHOTS[0].id)
+  // Read ?snap= query param to pre-select a snapshot navigated from the History tab
+  const snapParam = typeof window !== 'undefined'
+    ? new URLSearchParams(window.location.search).get('snap')
+    : null
+  const initialLeftId = snapParam && MOCK_SNAPSHOTS.some(s => s.id === snapParam)
+    ? snapParam
+    : MOCK_SNAPSHOTS[0].id
+
+  // Default: left = snapshot from URL param (or snapshot 1), right = current record
+  const [leftId, setLeftId] = useState<string>(initialLeftId)
   const [rightId, setRightId] = useState<string>('current')
 
   const leftSnapshot = MOCK_SNAPSHOTS.find(s => s.id === leftId) ?? null
