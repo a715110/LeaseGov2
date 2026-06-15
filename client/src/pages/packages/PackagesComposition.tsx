@@ -25,7 +25,7 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useParams } from "wouter";
 import {
   FileText, Plus, Flag, ChevronRight, Info, Tag,
   CheckCircle2, AlertTriangle, Clock, MoreHorizontal, ArrowRight, AlertCircle
@@ -128,7 +128,9 @@ function TimelineNode({ doc, isLast }: { doc: PackageDoc; isLast: boolean }) {
 export default function PackagesComposition() {
   const _screenKey = SCREEN_KEYS.PACKAGES_COMPOSITION;
   const [, navigate] = useLocation();
-
+  const params = useParams<{ contractId: string }>();
+  // contractId from route param — falls back to the mock package ID for direct navigation
+  const _contractId = params.contractId ?? INITIAL_PACKAGE.id;
   // ── State ──────────────────────────────────────────────────────────────────
   const [pkg, setPkg] = useState(INITIAL_PACKAGE);
   const [docs, setDocs] = useState<PackageDoc[]>(INITIAL_DOCUMENTS);

@@ -202,6 +202,12 @@ function Router() {
       </Route>
 
       {/* ── FC-3: Contract Packages ─────────────────────────────────────── */}
+      {/* Bare /packages fallback — sidebar link; renders composition with default mock package */}
+      <Route path="/packages">
+        <ScreenGate screenKey={SCREEN_KEYS.PACKAGES_COMPOSITION} fallback={<NotFound />}>
+          <PackagesComposition />
+        </ScreenGate>
+      </Route>
       <Route path="/packages/:contractId">
         <ScreenGate screenKey={SCREEN_KEYS.PACKAGES_COMPOSITION} fallback={<NotFound />}>
           <PackagesComposition />

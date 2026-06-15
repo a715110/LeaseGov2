@@ -21,7 +21,7 @@
  */
 
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useParams } from "wouter";
 import {
   AlertTriangle, CheckCircle2, XCircle, ChevronRight,
   AlertCircle, FileText, User, Calendar, Flag
@@ -117,6 +117,8 @@ function getSeverityBadgeCls(severity: FlagSeverity, status: FlagStatus) {
 export default function PackagesFlags() {
   const _screenKey = SCREEN_KEYS.PACKAGES_FLAGS;
   const [, navigate] = useLocation();
+  const params = useParams<{ packageId: string }>();
+  const packageId = params.packageId ?? 'PKG-2026-0041';
   const [flags, setFlags] = useState<PackageFlag[]>(INITIAL_FLAGS);
 
   const openBlockingCount = flags.filter(f => f.status === "open" && f.severity === "blocking").length;
@@ -156,10 +158,10 @@ export default function PackagesFlags() {
               </span>
             )}
           </div>
-          <p className="page-subtitle">PKG-2026-0041 · Office Tower — 350 Fifth Ave</p>
+          <p className="page-subtitle">{packageId} · Office Tower — 350 Fifth Ave</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => navigate("/packages/PKG-2026-0041")}>
+          <Button variant="outline" size="sm" onClick={() => navigate(`/packages/${packageId}`)}>
             Back to Package
           </Button>
           <Tooltip>

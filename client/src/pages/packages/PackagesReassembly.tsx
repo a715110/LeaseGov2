@@ -14,7 +14,7 @@
  * Data model refs: ContractPackage (status), PackageDocument, PackageFlag
  */
 
-import { useLocation } from "wouter";
+import { useLocation, useParams } from "wouter";
 import {
   AlertTriangle, CheckCircle2, XCircle, ArrowRight,
   FileText, Plus, Minus, RefreshCw
@@ -92,6 +92,8 @@ function DocRow({ doc, isNew, isRemoved }: { doc: DocSnapshot; isNew?: boolean; 
 export default function PackagesReassembly() {
   const _screenKey = SCREEN_KEYS.PACKAGES_REASSEMBLY;
   const [, navigate] = useLocation();
+  const params = useParams<{ packageId: string }>();
+  const packageId = params.packageId ?? 'PKG-2026-0041';
 
   // BR5: Read live event from sessionStorage if available (set by PackagesComposition on Change Role / Remove)
   // Falls back to REASSEMBLY_EVENT mock for direct navigation
@@ -110,7 +112,7 @@ export default function PackagesReassembly() {
             <h1 className="page-title">Package Re-Assembly</h1>
             <ScreenNumberBadge screenKey="packages-reassembly" />
           </div>
-          <p className="page-subtitle">PKG-2026-0041 · Office Tower — 350 Fifth Ave</p>
+          <p className="page-subtitle">{packageId} · Office Tower — 350 Fifth Ave</p>
         </div>
       </div>
 
@@ -230,12 +232,12 @@ export default function PackagesReassembly() {
             Review and resolve all new flags before proceeding to approval.
           </p>
           <div className="flex items-center gap-3">
-            <Button variant="outline" onClick={() => navigate("/packages/PKG-2026-0041")}>
+            <Button variant="outline" onClick={() => navigate(`/packages/${packageId}`)}>
               Back to Package
             </Button>
             <Button
               className="gap-2"
-              onClick={() => navigate("/packages/PKG-2026-0041/flags")}
+              onClick={() => navigate(`/packages/${packageId}/flags`)}
             >
               <AlertTriangle className="w-4 h-4" />
               Dismiss and Review Flags

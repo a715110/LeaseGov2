@@ -18,6 +18,8 @@ interface Crumb {
 /** Map of route prefixes → human-readable section labels.
  *  Ordered from most-specific to least-specific. */
 const ROUTE_LABELS: Array<{ prefix: string; label: string }> = [
+  // Packages
+  { prefix: '/packages',                 label: 'Packages' },
   // Pipeline
   { prefix: '/pipeline/upload',          label: 'Upload' },
   { prefix: '/pipeline/review',          label: 'Review Grouping' },
@@ -78,6 +80,7 @@ const ROUTE_LABELS: Array<{ prefix: string; label: string }> = [
 
 /** Section roots — used to build the parent crumb */
 const SECTION_ROOTS: Record<string, string> = {
+  '/packages':     '/packages',
   '/pipeline':     '/pipeline',
   '/extraction':   '/extraction',
   '/records':      '/records',
