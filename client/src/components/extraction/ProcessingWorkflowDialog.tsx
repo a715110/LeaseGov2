@@ -16,7 +16,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   ChevronRight, ChevronLeft, CheckCircle2, Cpu, FileText,
-  BarChart2, ShieldCheck, X, GripVertical, Zap
+  BarChart2, ShieldCheck, X, GripVertical, Zap, AlertTriangle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -78,9 +78,41 @@ function confidenceClass(c: number) {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 // ─── Amendment detection helper ─────────────────────────────────────────────
-function detectAmendment(fileName: string, batchFiles: string[]): boolean {
+/** Returns the list of amendment-like file names found in the current file or its batch siblings. */
+function detectAmendmentFiles(fileName: string, batchFiles: string[]): string[] {
   const AMENDMENT_PATTERNS = /amend|amendment|addendum|addenda|rider|supplement|modification/i;
-  return AMENDMENT_PATTERNS.test(fileName) || batchFiles.some(f => AMENDMENT_PATTERNS.test(f));
+  const matched: string[] = [];
+  if (AMENDMENT_PATTERNS.test(fileName)) matched.push(fileName);
+  batchFiles.forEach(f => { if (AMENDMENT_PATTERNS.test(f)) matched.push(f); });
+  return matched;
+}
+
+/** Inline banner shown at Steps 1, 2, and 5 when amendment files are present. */
+function AmendmentBanner({ amendmentFiles, step }: { amendmentFiles: string[]; step: number }) {
+  if (amendmentFiles.length === 0) return null;
+  const fileList = amendmentFiles.join(', ');
+  const stepMessages: Record<number, string> = {
+    1: 'Review this document alongside the amendment before proceeding. Superseded clauses may not be visible in the base contract alone.',
+    2: 'Select a template that covers amendment-specific fields (e.g. Amendment Effective Date, Rent Changed, Dates Changed). Do not use a base-lease-only template.',
+    5: 'Verify rent, dates, and area fields against the amendment — these are the fields most commonly superseded. Flag any value that conflicts with the amendment text.',
+  };
+  return (
+    <div className="flex items-start gap-2.5 rounded-lg border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30 px-3.5 py-3">
+      <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-amber-500" />
+      <div className="flex flex-col gap-0.5">
+        <p className="text-[13px] font-semibold text-amber-800 dark:text-amber-300">
+          Amendment detected — superseded fields require manual verification
+        </p>
+        <p className="text-[12px] text-amber-700 dark:text-amber-400 leading-relaxed">
+          <span className="font-medium">File{amendmentFiles.length > 1 ? 's' : ''}:</span>{' '}
+          <span className="font-mono">{fileList}</span>
+        </p>
+        <p className="text-[12px] text-amber-700 dark:text-amber-400 leading-relaxed mt-0.5">
+          {stepMessages[step] ?? stepMessages[2]}
+        </p>
+      </div>
+    </div>
+  );
 }
 
 export function ProcessingWorkflowDialog({
@@ -92,7 +124,7 @@ export function ProcessingWorkflowDialog({
   preConfirmedTemplate = null,
   batchFiles = [],
 }: ProcessingWorkflowDialogProps) {
-  const hasAmendment = detectAmendment(fileName, batchFiles);
+  const amendmentFiles = detectAmendmentFiles(fileName, batchFiles);
   const [currentStep, setCurrentStep] = useState(initialStep);
   // S6b: confirmed template flows from Step 2 → Step 5
   const extractionStore = useExtractionStore();
@@ -262,6 +294,7 @@ export function ProcessingWorkflowDialog({
           {currentStep === 1 && (
             <div className="flex flex-col gap-4">
               <h3 className="text-[14px] font-semibold text-foreground">Document Review</h3>
+              <AmendmentBanner amendmentFiles={amendmentFiles} step={1} />
               <div className="rounded-lg border border-border bg-muted h-48 flex items-center justify-center text-muted-foreground text-[13px]">
                 PDF preview — {fileName}
               </div>
@@ -284,26 +317,7 @@ export function ProcessingWorkflowDialog({
             <div className="flex flex-col gap-4">
               <h3 className="text-[14px] font-semibold text-foreground">Map Fields</h3>
               {/* Amendment detection banner */}
-              {hasAmendment && (
-                <div className="flex items-start gap-2.5 rounded-lg border border-amber-300 bg-amber-50 px-3.5 py-3">
-                  <span className="mt-0.5 text-amber-500 shrink-0">
-                    {/* Warning triangle inline SVG to avoid extra import */}
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                      <line x1="12" y1="9" x2="12" y2="13"/>
-                      <line x1="12" y1="17" x2="12.01" y2="17"/>
-                    </svg>
-                  </span>
-                  <div className="flex flex-col gap-0.5">
-                    <p className="text-[13px] font-semibold text-amber-800">Amendment detected in this batch</p>
-                    <p className="text-[12px] text-amber-700 leading-relaxed">
-                      One or more files appear to be amendments, addenda, or riders.
-                      Before selecting a template, verify this amendment against the base contract
-                      to ensure the correct fields and clauses are mapped.
-                    </p>
-                  </div>
-                </div>
-              )}
+              <AmendmentBanner amendmentFiles={amendmentFiles} step={2} />
               <p className="text-[13px] text-muted-foreground">
                 Select the extraction template to use for this document.
               </p>
@@ -485,6 +499,7 @@ export function ProcessingWorkflowDialog({
                   </span>
                 )}
               </div>
+              <AmendmentBanner amendmentFiles={amendmentFiles} step={5} />
               {!confirmedTemplate ? (
                 <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 p-4 text-[13px] text-amber-800 dark:text-amber-300">
                   No template confirmed in Step 2. Go back to Step 2 to select a template.
