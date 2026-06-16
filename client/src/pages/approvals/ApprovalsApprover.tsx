@@ -54,9 +54,10 @@ export default function ApprovalsApprover() {
   const [deferredAcknowledged, setDeferredAcknowledged] = useState(false);
   const [reviewerCommentsExpanded, setReviewerCommentsExpanded] = useState(false);
 
-  // FC-9: Checkpoint wiring — read task ID from route param, fall back to 't1'
+  // FC-9: Checkpoint wiring — read task ID from route param; fall back to navigation state, then 't1'
   const params = useParams<{ id: string }>();
-  const contractRecordId = params.id || 't1';
+  const navState = (typeof window !== 'undefined' ? window.history.state : null) as { taskId?: string; contractRecordId?: string } | null;
+  const contractRecordId = params.id || navState?.taskId || 't1';
   const { summary: s } = getApprovalTaskData(contractRecordId);
   const { activeRole } = useRole();
   const canApprove = !s.sod_violation && (!s.has_deferred || deferredAcknowledged);

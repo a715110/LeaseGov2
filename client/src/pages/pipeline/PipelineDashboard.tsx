@@ -1581,8 +1581,24 @@ export default function PipelineDashboard() {
           batchRef: string;
           reasonLabel: string;
           reason: string;
+          document_ids?: string[];
+          perFileReasons?: { jobId: string; fileName: string; reason: string }[];
         };
-        // Mark the matching submission as Declined
+        // If document_ids were provided, reset those specific staged docs
+        // (status, locked_for_review, target_record_id) before the submission-level restore.
+        if (payload.document_ids && payload.document_ids.length > 0) {
+          const idSet = new Set(payload.document_ids);
+          setStagedDocs(prev => prev.map(d => {
+            if (!idSet.has(d.id)) return d;
+            return {
+              ...d,
+              status: d.original_status ?? 'valid',
+              locked_for_review: false,
+              target_record_id: null,
+            };
+          }));
+        }
+        // Mark the matching submission as Declined and restore its docs to Table 1
         setSubmissions(prev => prev.map(sub => {
           const isMatch =
             sub.batchRef === payload.batchRef ||
@@ -1616,22 +1632,22 @@ export default function PipelineDashboard() {
               submission_path: null,
               submitter_context_notes: null,
               document_job_status: 'staged' as const,
+              locked_for_review: false,
               assignee_id: null, // DEMO ONLY — restored from decline, auto-routed
             };
           });
           // Prepend restored docs to Table 1
           setStagedDocs(prev => [...restoredDocs, ...prev]);
           // Notify the Document Submitter
+          const fileWord = restoredDocs.length !== 1 ? 'files' : 'file';
           addNotification({
-            title: `${sub.packageNum} submission declined`,
-            body: payload.reasonLabel
-              ? `Reason: ${payload.reasonLabel}. ${restoredDocs.length} file${restoredDocs.length !== 1 ? 's' : ''} returned to Stage Documents for correction.`
-              : `${restoredDocs.length} file${restoredDocs.length !== 1 ? 's' : ''} returned to Stage Documents for correction.`,
+            title: `${sub.packageNum} declined — ${payload.reasonLabel || 'Submission declined'}`,
+            body: `${restoredDocs.length} ${fileWord} returned to Stage Documents for correction.`,
             severity: 'error',
             href: '/pipeline/dashboard',
           });
           toast.error(`${sub.packageNum} declined — ${payload.reasonLabel || 'Submission declined'}`, {
-            description: `${restoredDocs.length} file${restoredDocs.length !== 1 ? 's' : ''} returned to Stage Documents. Review and resubmit.`,
+            description: `${restoredDocs.length} ${fileWord} returned to Stage Documents. Review and resubmit.`,
             duration: 8000,
           });
           return {
@@ -1639,7 +1655,7 @@ export default function PipelineDashboard() {
             status: 'Declined' as const,
             declineReasonLabel: payload.reasonLabel,
             declineReason: payload.reason,
-            declineFileReasons: (payload as { perFileReasons?: { jobId: string; fileName: string; reason: string }[] }).perFileReasons ?? [],
+            declineFileReasons: payload.perFileReasons ?? [],
           };
         }));
       }

@@ -16,7 +16,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   ChevronRight, ChevronLeft, CheckCircle2, Cpu, FileText,
-  BarChart2, ShieldCheck, X, GripVertical, Zap, AlertTriangle
+  BarChart2, ShieldCheck, X, GripVertical, Zap, AlertTriangle, GitMerge
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -50,6 +50,10 @@ interface ProcessingWorkflowDialogProps {
   preConfirmedTemplate?: ExtractionTemplate | null;
   /** Optional: all file names in the same batch, used for amendment detection */
   batchFiles?: string[];
+  /** V3: submission_path from StagedDocument — 'existing_record' triggers comparison banner in Step 3 */
+  submissionPath?: string;
+  /** MOD-3: contract_type from upload context — used to auto-select a template in Step 2 */
+  contractType?: string;
 }
 
 // ─── Step definitions ─────────────────────────────────────────────────────────
@@ -123,6 +127,8 @@ export function ProcessingWorkflowDialog({
   initialStep = 1,
   preConfirmedTemplate = null,
   batchFiles = [],
+  submissionPath,
+  contractType,
 }: ProcessingWorkflowDialogProps) {
   const amendmentFiles = detectAmendmentFiles(fileName, batchFiles);
   const [currentStep, setCurrentStep] = useState(initialStep);
@@ -131,6 +137,8 @@ export function ProcessingWorkflowDialog({
   const [confirmedTemplate, setConfirmedTemplate] = useState<ExtractionTemplate | null>(
     preConfirmedTemplate
   );
+  // MOD-3: track whether the current template was auto-selected from contractType
+  const [autoSelectedTemplateId, setAutoSelectedTemplateId] = useState<string | null>(null);
   // Step 5 verification state
   const [verificationFields, setVerificationFields] = useState<VerificationField[]>([]);
 
@@ -190,8 +198,32 @@ export function ProcessingWorkflowDialog({
     if (open) {
       setCurrentStep(initialStep);
       setConfirmedTemplate(preConfirmedTemplate);
+      setAutoSelectedTemplateId(null);
     }
   }, [open, initialStep, preConfirmedTemplate]);
+
+  // MOD-3: auto-select template from contractType on dialog open
+  useEffect(() => {
+    if (!open || !contractType || confirmedTemplate) return;
+    const CONTRACT_TYPE_TO_TEMPLATE: Record<string, string> = {
+      commercial_lease:  'tpl-1', // Standard Commercial Lease
+      lease_amendment:   'tpl-2', // Lease Amendment
+      sublease:          'tpl-3', // Sublease Agreement
+      lease_renewal:     'tpl-4', // Lease Renewal
+      termination:       'tpl-5', // Termination Agreement
+      // V3 upload context values
+      'Property Lease':  'tpl-1',
+      'Equipment Lease': 'tpl-1',
+      'Service Contract':'tpl-1',
+    };
+    const templateId = CONTRACT_TYPE_TO_TEMPLATE[contractType];
+    if (!templateId) return;
+    const match = MOCK_EXTRACTION_TEMPLATES.find(t => t.id === templateId);
+    if (!match) return;
+    setConfirmedTemplate(match);
+    extractionStore.setConfirmedTemplate(match);
+    setAutoSelectedTemplateId(match.id);
+  }, [open, contractType]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Build verification fields from confirmed template (S6b)
   useEffect(() => {
@@ -337,8 +369,15 @@ export function ProcessingWorkflowDialog({
                     }}
                   >
                     <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-[13px] font-semibold text-foreground">{template.name}</p>
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex items-center gap-2">
+                          <p className="text-[13px] font-semibold text-foreground">{template.name}</p>
+                          {autoSelectedTemplateId === template.id && (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted text-muted-foreground border border-border">
+                              Auto-selected from upload context
+                            </span>
+                          )}
+                        </div>
                         <p className="text-[12px] text-muted-foreground">{template.version} · {template.fields.length} fields</p>
                       </div>
                       {confirmedTemplate?.id === template.id && (
@@ -358,6 +397,21 @@ export function ProcessingWorkflowDialog({
 
           {currentStep === 3 && (
             <div className="flex flex-col gap-5">
+              {/* MOD-2: existing_record comparison banner */}
+              {submissionPath === 'existing_record' && (
+                <div className="flex items-start gap-2.5 rounded-lg border-l-4 border-amber-400 bg-amber-50 dark:bg-amber-950/30 px-3.5 py-3">
+                  <GitMerge className="w-4 h-4 mt-0.5 shrink-0 text-amber-500" />
+                  <div className="flex flex-col gap-0.5">
+                    <p className="text-[13px] font-semibold text-amber-800 dark:text-amber-300">
+                      Matched to existing record
+                    </p>
+                    <p className="text-[12px] text-amber-700 dark:text-amber-400 leading-relaxed">
+                      Amendment or addition detected — this document was matched to an existing record.
+                      Verify extracted values against the existing approved record fields.
+                    </p>
+                  </div>
+                </div>
+              )}
               <div className="flex items-center justify-between">
                 <h3 className="text-[14px] font-semibold text-foreground">AI Extract</h3>
                 <span className={cn(

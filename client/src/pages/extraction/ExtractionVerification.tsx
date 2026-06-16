@@ -20,6 +20,9 @@
 
 import { useState, useMemo, useCallback } from "react";
 import { useLocation, useSearch } from "wouter";
+import { toast } from 'sonner';
+import { publishEvent } from '@/lib/eventBus';
+import { useRole } from '@/contexts/RoleContext';
 import { ContractCheckpointCard } from '@/components/checkpoints/ContractCheckpointCard';
 import { GracefulDegradationBanner } from '@/components/automation/GracefulDegradationBanner';
 import { useCheckpoints } from '@/hooks/useCheckpoints';
@@ -158,6 +161,7 @@ export default function ExtractionVerification() {
 
   const [, navigate] = useLocation();
   const search = useSearch();
+  const { activeRole } = useRole();
 
   // S8: ?from= back navigation; ?record= contract context from AgentCheckpointQueue
   const backDestination = useMemo(() => {
@@ -467,7 +471,21 @@ export default function ExtractionVerification() {
           <Tooltip>
             <TooltipTrigger asChild>
               <span>
-                <Button disabled={!canSubmit} className="gap-2 h-9">
+                <Button
+                  disabled={!canSubmit}
+                  className="gap-2 h-9"
+                  onClick={() => {
+                    publishEvent({
+                      type: 'SUBMIT_FOR_REVIEW',
+                      payload: { contractRecordId },
+                      sourceRole: activeRole,
+                    });
+                    toast.success('Submitted for review — notifying Reviewer', {
+                      duration: 3000,
+                    });
+                    navigate('/approvals/queue');
+                  }}
+                >
                   Submit for Review <ChevronRight className="w-4 h-4" />
                 </Button>
               </span>

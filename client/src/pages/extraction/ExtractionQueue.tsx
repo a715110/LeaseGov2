@@ -1415,6 +1415,20 @@ export default function ExtractionQueue() {
           fileName={workflowJob?.file_name}
           initialStep={workflowInitialStep}
           batchFiles={workflowJob ? jobs.filter(j => j.batch_ref === workflowJob.batch_ref && j.id !== workflowJob.id).map(j => j.file_name) : []}
+          submissionPath={workflowJob?.workspace ? 'existing_record' : undefined}
+          contractType={
+            workflowJob?.file_name
+              ? /amendment|addendum|rider/i.test(workflowJob.file_name)
+                ? 'lease_amendment'
+                : /renewal/i.test(workflowJob.file_name)
+                  ? 'lease_renewal'
+                  : /sublease/i.test(workflowJob.file_name)
+                    ? 'sublease'
+                    : /termination/i.test(workflowJob.file_name)
+                      ? 'termination'
+                      : 'commercial_lease'
+              : undefined
+          }
         />
         {/* Batch-level Decline Package dialog — package-level with per-file reason rows */}
         <Dialog open={!!declineBatch} onOpenChange={v => { if (!v) closeDeclineBatch(); }}>
@@ -1518,6 +1532,9 @@ export default function ExtractionQueue() {
                     .map(j => ({ jobId: j.id, fileName: j.file_name, reason: fileReasons[j.id].trim() }));
                   // DEMO ONLY: Fire cross-role event so PipelineDashboard Table 3 updates.
                   // PRODUCTION: replace with: await api.post(`/api/v1/submissions/${declineBatch.batchRef}/decline`, { reasonCategory, notes, perFileReasons })
+                  // document_ids populated from the job list so PipelineDashboard can
+                  // match and reset individual staged documents by ID.
+                  const document_ids: string[] = declineBatch.jobs.map(j => j.id);
                   publishEvent({
                     type: 'DECLINE_SUBMITTED',
                     sourceRole: 'preparer',
@@ -1528,6 +1545,7 @@ export default function ExtractionQueue() {
                       reason: declineBatchNotes.trim(),
                       reasonLabel: reasonLabel[declineReasonCategory] ?? 'Other',
                       perFileReasons,
+                      document_ids,
                     },
                   });
                   toast.error(`${declineBatch.batchRef} declined — ${reasonLabel[declineReasonCategory]}`, {

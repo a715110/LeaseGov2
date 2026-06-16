@@ -773,7 +773,7 @@ export default function ApprovalsReview() {
               </p>
               <div className="flex justify-end gap-2 mt-4">
                 <Button variant="outline" onClick={() => setShowApproverModal(false)}>Cancel</Button>
-                <Button onClick={() => { setShowApproverModal(false); navigate(`/approvals/final/${contractRecordId}`); }}>
+                <Button onClick={() => { setShowApproverModal(false); navigate(`/approvals/final/${contractRecordId}`, { state: { taskId: contractRecordId, contractRecordId: taskSummary.record_id } }); }}>
                   Open Approver Screen
                 </Button>
               </div>
