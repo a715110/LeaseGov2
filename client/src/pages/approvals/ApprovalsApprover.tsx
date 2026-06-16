@@ -20,6 +20,8 @@
 
 import { useState } from "react";
 import { useLocation, useParams } from "wouter";
+import { publishEvent } from "@/lib/eventBus";
+import { useRole } from "@/contexts/RoleContext";
 import { getApprovalTaskData } from "@/lib/mockApprovalsData";
 import { ContractCheckpointCard } from '@/components/checkpoints/ContractCheckpointCard';
 import { AutomationPolicyBadge } from '@/components/automation/AutomationPolicyBadge';
@@ -56,6 +58,7 @@ export default function ApprovalsApprover() {
   const params = useParams<{ id: string }>();
   const contractRecordId = params.id || 't1';
   const { summary: s } = getApprovalTaskData(contractRecordId);
+  const { activeRole } = useRole();
   const canApprove = !s.sod_violation && (!s.has_deferred || deferredAcknowledged);
   const automationLevel: 'full_autonomous' | 'collaborative' | 'full_manual' = 'collaborative'; // TODO: from contractRecord
   const { activeCheckpoint } = useCheckpoints(contractRecordId, {
@@ -234,7 +237,14 @@ export default function ApprovalsApprover() {
             <Button
               variant="outline"
               className="border-[var(--color-lg-error)] text-[var(--color-lg-error)] hover:bg-[var(--color-lg-error-subtle)] gap-1.5"
-              onClick={() => navigate("/approvals/queue")}
+              onClick={() => {
+                publishEvent({
+                  type: 'REVIEW_COMPLETED',
+                  payload: { task_id: contractRecordId, record_id: s.record_id, outcome: 'rejected' },
+                  sourceRole: activeRole,
+                });
+                navigate("/approvals/queue");
+              }}
             >
               <X className="w-4 h-4" /> Reject
             </Button>
@@ -244,7 +254,14 @@ export default function ApprovalsApprover() {
                   <Button
                     disabled={!canApprove}
                     className="gap-1.5 bg-[var(--color-lg-success)] hover:bg-[var(--color-lg-success)]/90 text-white"
-                    onClick={() => navigate("/approvals/queue")}
+                    onClick={() => {
+                      publishEvent({
+                        type: 'RECORD_APPROVED',
+                        payload: { task_id: contractRecordId, record_id: s.record_id, label: s.record_title },
+                        sourceRole: activeRole,
+                      });
+                      navigate("/approvals/queue");
+                    }}
                   >
                     <CheckCircle2 className="w-4 h-4" /> Final Approve
                   </Button>

@@ -246,6 +246,20 @@ export default function ApprovalsQueue() {
           return t;
         }));
       }
+      if (event.type === 'REVIEW_COMPLETED') {
+        const p = event.payload as { task_id?: string; outcome?: string };
+        if (p.outcome === 'rejected') {
+          setTasks(prev => prev.map(t =>
+            (p.task_id && t.id === p.task_id) ? { ...t, status: 'rejected' as TaskStatus } : t
+          ));
+        }
+      }
+      if (event.type === 'RECORD_APPROVED') {
+        const p = event.payload as { task_id?: string };
+        setTasks(prev => prev.map(t =>
+          (p.task_id && t.id === p.task_id) ? { ...t, status: 'approved' as TaskStatus } : t
+        ));
+      }
     });
   }, [])
 

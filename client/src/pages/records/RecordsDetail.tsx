@@ -163,9 +163,9 @@ export default function RecordsDetail() {
   }, [recordId]);
 
   // Sync active tab with browser back/forward navigation.
-  // The tab click handler uses replaceState, so popstate fires when the user
-  // navigates away from and then back to this page via the browser buttons.
-  // Reading ?tab= from the restored URL keeps the tab bar in sync with history.
+  // The tab click handler uses pushState so each tab click is a discrete history
+  // entry. popstate fires on browser back/forward; reading ?tab= from the
+  // restored URL keeps the tab bar in sync.
   useEffect(() => {
     function handlePopState() {
       const tab = new URLSearchParams(window.location.search).get('tab') || 'overview';
@@ -272,7 +272,9 @@ export default function RecordsDetail() {
               setActiveTab(tab.id);
               const url = new URL(window.location.href);
               url.searchParams.set('tab', tab.id);
-              window.history.replaceState(null, '', url.toString());
+              // pushState makes each tab a navigable history entry so the
+              // browser back button can step through individual tab visits.
+              window.history.pushState(null, '', url.toString());
             }}
           >
             {tab.label}

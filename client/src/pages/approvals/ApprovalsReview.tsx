@@ -693,7 +693,21 @@ export default function ApprovalsReview() {
               <Button
                 disabled={!canReject}
                 className="bg-[var(--color-lg-error)] hover:bg-[var(--color-lg-error)]/90 text-white gap-1.5"
-                onClick={() => { setShowRejectForm(false); navigate("/approvals/queue"); }}
+                onClick={() => {
+                  publishEvent({
+                    type: 'REVIEW_COMPLETED',
+                    payload: {
+                      task_id: contractRecordId,
+                      record_id: taskSummary.record_id,
+                      outcome: 'rejected',
+                      reasons: rejectionReasons,
+                      comments: rejectionComments,
+                    },
+                    sourceRole: activeRole,
+                  });
+                  setShowRejectForm(false);
+                  navigate("/approvals/queue");
+                }}
               >
                 <X className="w-4 h-4" /> Confirm Rejection
               </Button>
