@@ -21,7 +21,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation, useParams, useSearch } from "wouter";
 import { publishEvent } from "@/lib/eventBus";
-import { Download, CheckCircle2, Lock, AlertTriangle, Upload, Eye, ToggleLeft, ToggleRight } from "lucide-react";
+import { Download, CheckCircle2, Lock, AlertTriangle, Upload, Eye, ToggleLeft, ToggleRight, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
@@ -268,17 +268,57 @@ export default function ExportUploadTask() {
   return (
     <div className="flex flex-col min-h-full min-w-0 bg-[var(--color-lg-page-bg)]">
       <div className="page-header">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="font-mono text-[13px] font-bold text-foreground">{task.task_ref}</span>
-            <span className="text-muted-foreground">·</span>
-            <span className="text-[12px] text-muted-foreground">{task.record_ref}</span>
-            <span className="text-muted-foreground">·</span>
-            <span className="text-[12px] text-muted-foreground">{task.template}</span>
-          </div>
-          <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="page-title">Upload Task</h1>
-            <ScreenNumberBadge screenKey="export-upload-task" />
+        <div className="flex items-start gap-3">
+          {/* Back button — destination depends on entry point */}
+          <button
+            onClick={() =>
+              _recordParam
+                ? navigate('/agents/checkpoints')
+                : navigate(`/records/${task.record_id}`)
+            }
+            className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors mt-0.5 shrink-0"
+            title={_recordParam ? 'Back to Checkpoint Queue' : 'Back to Record'}
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+          <div>
+            {/* Breadcrumb trail — shows Checkpoint Queue crumb when arrived from AgentCheckpointQueue */}
+            <div className="flex items-center gap-1.5 mb-1 text-[11px] text-muted-foreground">
+              {_recordParam ? (
+                <>
+                  <button
+                    onClick={() => navigate('/agents/checkpoints')}
+                    className="hover:text-foreground transition-colors"
+                  >
+                    Checkpoint Queue
+                  </button>
+                  <span>/</span>
+                  <span className="text-foreground font-medium">Upload Task</span>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => navigate(`/records/${task.record_id}`)}
+                    className="hover:text-foreground transition-colors"
+                  >
+                    {task.record_ref}
+                  </button>
+                  <span>/</span>
+                  <span className="text-foreground font-medium">Upload Task</span>
+                </>
+              )}
+            </div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="font-mono text-[13px] font-bold text-foreground">{task.task_ref}</span>
+              <span className="text-muted-foreground">·</span>
+              <span className="text-[12px] text-muted-foreground">{task.record_ref}</span>
+              <span className="text-muted-foreground">·</span>
+              <span className="text-[12px] text-muted-foreground">{task.template}</span>
+            </div>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="page-title">Upload Task</h1>
+              <ScreenNumberBadge screenKey="export-upload-task" />
+            </div>
           </div>
         </div>
         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[12px] font-semibold badge-processing">

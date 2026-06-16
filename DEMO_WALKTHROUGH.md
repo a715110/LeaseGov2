@@ -46,7 +46,7 @@ Navigate to the Pipeline Upload screen. The screen presents a drag-and-drop zone
 - `Retail-HQ-Lease-2026.pdf` — Base Contract, 24 pages, 4.2 MB
 - `Office-Tower-Amendment-3.pdf` — Amendment, 8 pages, 1.8 MB
 - `Warehouse-Lease-Exhibit-A.tiff` — Exhibit, 12 pages, 6.1 MB
-- `Corrupted-Scan-Draft.pdf` — will resolve as **invalid** (corrupted PDF header, OCR confidence 12%)
+- `Corrupted-Scan-Draft.pdf` — will resolve as **invalid** (corrupted PDF header, fails file integrity check)
 - `Ground-Lease-Base-Contract.pdf` — valid, but will be removed in the next step
 
 **What to point out:**
@@ -62,13 +62,12 @@ Navigate to the Pipeline Upload screen. The screen presents a drag-and-drop zone
 **URL:** `/pipeline/validation`  
 **Role:** Document Submitter
 
-This screen shows the detailed validation report for `Office-Tower-Amendment-3.pdf`, which carries a **warning** status due to low OCR confidence (68% average, below the 80% threshold).
+This screen shows the detailed validation report for `Office-Tower-Amendment-3.pdf`. Under the V3 model, upload-time validation is fast and synchronous — four checks only, completing in under two seconds per file. OCR and field-quality assessment happen later, when the Preparer triggers extraction.
 
 **What to point out:**
-- Six validation categories are shown: Authentication, File Integrity, Security Scan, OCR Quality, Duplicate Check, and Contract Likeness.
-- OCR Quality is the only failing category; all others pass.
-- A per-page confidence bar chart reveals that pages 5 and 6 drop below 55% — the system flags these for manual review.
-- The warning does not block the file from proceeding; the Preparer will be alerted during extraction.
+- Four validation categories are shown: **File Format**, **File Size**, **Duplicate Check**, and **File Integrity**. All four pass for this file.
+- An informational note at the bottom explains that OCR confidence and extraction quality are assessed by the Preparer during the extraction step — not at upload time.
+- This design keeps the Document Submitter's upload experience fast and deterministic; no AI processing blocks the upload flow.
 - Click **Continue to Review** to advance to the grouping screen.
 
 ---
@@ -197,9 +196,11 @@ The Approvals Queue lists all pending approval tasks. The notification bell in t
 - In the queue table, task `AT-2026-0041` (Office Tower — 350 Fifth Ave) is shown with:
   - Priority: **High**
   - Stage: **Review**
-  - Status: **Pending**
+  - Status: **Pending** (will flip to **Opened** the moment the review screen loads — see Step 10)
   - SLA deadline: May 18, 2026 17:00 — overdue (shown in red)
 - Click the **Open →** button on task `t1` to navigate to `/approvals/review/t1`.
+
+> **Live demo beat:** As soon as the review screen loads, navigate back to `/approvals/queue` in a second tab or after returning — the row status will have flipped from **Pending** to **Opened** in real time, driven by the `REVIEW_OPENED` event published on mount.
 
 ---
 
@@ -208,6 +209,8 @@ The Approvals Queue lists all pending approval tasks. The notification bell in t
 **Role:** Reviewer
 
 The Review screen shows the full extracted field set for the Office Tower record alongside the PDF viewer.
+
+> **Event fired on load:** Opening this screen automatically publishes `REVIEW_OPENED` to the event bus. This drives two simultaneous effects: the `ApprovalsQueue` row for `AT-2026-0041` flips from **Pending** to **Opened**, and the lock banner on `/records/r1` updates to *"Under Review — editing disabled"*. Both changes are visible in real time without any manual action.
 
 **What to point out:**
 - The task header shows: `AT-2026-0041 · CR-2026-0088 · Office Tower — 350 Fifth Ave`.
@@ -397,7 +400,8 @@ Document Submitter                     Preparer                        Reviewer 
 
 ### For IT / Integration Teams
 - The export flow threads a consistent `?task=` and `?record=` query parameter chain from template selection through to the upload task, enabling deep-linking and browser history navigation.
-- The `publishEvent` / `subscribeToEvents` event bus allows cross-screen state propagation (e.g., `BATCH_SUBMITTED`, `REVIEW_OPENED`, `UPLOAD_TASK_STARTED`) without a backend in the current demo build.
+- The `publishEvent` / `subscribeToEvents` event bus drives live cross-screen state propagation. **Watch the live demo beat at Step 9–10:** opening the review screen publishes `REVIEW_OPENED`, which simultaneously flips the queue row to **Opened** and updates the record lock banner — all without a backend round-trip.
+- The `AgentCheckpointQueue` now threads `?record=<contract_id>` when opening extraction and export checkpoints, so agents land directly on the correct record context rather than the generic queue root.
 - All mock data IDs (`ut1`, `r1`, `t1`) are designed to be replaced with real API responses in the production integration.
 
 ### For End Users (Preparers / Reviewers)
@@ -407,12 +411,22 @@ Document Submitter                     Preparer                        Reviewer 
 
 ---
 
-## Suggested Follow-Up Improvements
+## Shipped Improvements (as of this build)
 
-The following three enhancements were identified during the audit sessions and are recommended for the next development sprint:
+The following three enhancements were completed and are live in the current demo build:
 
-1. **Publish `REVIEW_OPENED` from `ApprovalsReview` on mount** — a single `useEffect` with `publishEvent({ type: 'REVIEW_OPENED', ... })` would flip the corresponding row in `ApprovalsQueue` from `pending` to `opened` in real time, completing the event-driven status feedback loop.
+1. **`REVIEW_OPENED` published from `ApprovalsReview` on mount** ✓ — a `useEffect` fires `publishEvent({ type: 'REVIEW_OPENED', payload: { task_id }, sourceRole })` the moment a Reviewer lands on the review screen. The `ApprovalsQueue` row flips from **Pending** to **Opened** in real time, and the record lock banner updates simultaneously.
 
-2. **`AgentCheckpointQueue` extraction checkpoint deep-link** — the "Open" button for extraction-type checkpoints should pass `contract_id` as a `?record=` query parameter when navigating to `/extraction/queue`, enabling the queue to pre-filter to the relevant batch.
+2. **`AgentCheckpointQueue` extraction and export checkpoint deep-link** ✓ — the **Open** button for `extraction_review` checkpoints now navigates to `/extraction/verify?record=<contract_id>`, and `export_attest` checkpoints navigate to `/export/tasks/<contract_id>?record=<contract_id>`. Both destination screens read the `?record=` param to resolve the correct record context and set the appropriate back-navigation destination.
 
-3. **`RecordsDetail` browser back/forward tab sync** — adding a `popstate` listener alongside the existing `window.history.replaceState` call would keep the active tab in sync when the user navigates with browser back/forward buttons.
+3. **`RecordsDetail` browser back/forward tab sync** ✓ — a `popstate` listener reads `?tab=` from the restored URL and calls `setActiveTab`, keeping the tab bar accurate when the user navigates with browser back/forward buttons.
+
+## Suggested Next Steps
+
+The following enhancements are recommended for the next development sprint:
+
+1. **`ApprovalsQueue` row badge for Opened state** — the `REVIEW_OPENED` event fires and the queue subscribes to it, but the row badge UI does not yet render a distinct "Opened" visual state. Adding a new badge variant (e.g., a blue `Opened` pill) would close the feedback loop visually.
+
+2. **Switch tab click handler from `replaceState` to `pushState` in `RecordsDetail`** — currently each tab click replaces the history entry, so the browser back button skips over individual tab visits. Changing to `pushState` would make every tab a navigable history step, making the `popstate` listener significantly more useful in practice.
+
+3. **Surface `?record=` in `ExportUploadTask` breadcrumb** — the param is parsed but not yet rendered. Adding a *← Checkpoint Queue* breadcrumb crumb when `?record=` is present would complete the navigation thread from `AgentCheckpointQueue` all the way through the upload task.

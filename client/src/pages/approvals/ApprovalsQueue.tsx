@@ -122,6 +122,35 @@ function SlaBadge({ sla_deadline_at }: { sla_deadline_at: string | null }) {
   );
 }
 
+function StatusBadge({ status, opened_at }: { status: TaskStatus; opened_at: string | null }) {
+  const map: Record<TaskStatus, { label: string; cls: string }> = {
+    pending:            { label: 'Pending',     cls: 'bg-gray-100 text-gray-600 border border-gray-200' },
+    opened:             { label: 'Opened',      cls: 'bg-blue-50 text-blue-700 border border-blue-200' },
+    approved:           { label: 'Approved',    cls: 'badge-valid' },
+    rejected:           { label: 'Rejected',    cls: 'badge-invalid' },
+    rework_in_progress: { label: 'Rework',      cls: 'badge-warning' },
+    resubmitted:        { label: 'Resubmitted', cls: 'bg-purple-50 text-purple-700 border border-purple-200' },
+  };
+  const { label, cls } = map[status] ?? map.pending;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold cursor-default ${cls}`}>
+          {status === 'opened' && (
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse shrink-0" />
+          )}
+          {label}
+        </span>
+      </TooltipTrigger>
+      {status === 'opened' && opened_at && (
+        <TooltipContent className="text-[12px]">
+          Opened at {new Date(opened_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+        </TooltipContent>
+      )}
+    </Tooltip>
+  );
+}
+
 function TypeBadge({ subject_type }: { subject_type: SubjectType }) {
   if (subject_type === "contract_record") {
     return <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-[var(--color-lg-accent-subtle)] text-[var(--color-lg-info)] border border-blue-200">Record</span>;
@@ -398,6 +427,7 @@ export default function ApprovalsQueue() {
                 <th className="text-left">Type</th>
                 <th className="text-left">Name</th>
                 <th className="text-left">Stage</th>
+                <th className="text-left">Status</th>
                 <th className="text-left">Submitted By</th>
                 <th className="text-left">Assigned To</th>
                 <th className="text-left">Date</th>
@@ -411,7 +441,7 @@ export default function ApprovalsQueue() {
             <tbody>
               {visibleTasks.length === 0 && (
                 <tr>
-                  <td colSpan={activeTab === "my_submissions" ? 13 : 12} className="text-center py-12 text-muted-foreground text-[13px]">
+                  <td colSpan={activeTab === "my_submissions" ? 14 : 13} className="text-center py-12 text-muted-foreground text-[13px]">
                     No tasks in this queue
                   </td>
                 </tr>
@@ -443,6 +473,7 @@ export default function ApprovalsQueue() {
                     </div>
                   </td>
                   <td><StageBadge stage={task.approval_stage} /></td>
+                  <td><StatusBadge status={task.status} opened_at={task.opened_at} /></td>
                   <td className="text-muted-foreground">{task.submitted_by}</td>
                   <td>
                     <ReviewerAvatar reviewerId={task.reviewer_id} />
