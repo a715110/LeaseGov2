@@ -273,6 +273,11 @@
   }
   .animate-slide-in-right { animation: slideInRight 0.25s ease-out; }
   .animate-fade-in-up     { animation: fadeInUp 0.3s ease-out; }
+  @keyframes flashRow {
+    0%   { background-color: oklch(0.93 0.04 240); }
+    100% { background-color: transparent; }
+  }
+  .animate-flash-row { animation: flashRow 1s ease-out forwards; }
 
   /* ─── Scrollbar ──────────────────────────────────────────────────────────── */
   ::-webkit-scrollbar { width: 6px; height: 6px; }

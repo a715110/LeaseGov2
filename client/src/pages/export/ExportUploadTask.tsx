@@ -33,6 +33,7 @@ interface UploadTaskData {
   task_ref: string;       // e.g. UT-2026-0041
   record_id: string;      // e.g. r1
   record_ref: string;     // e.g. CR-2026-0041
+  record_title: string;   // e.g. Office Tower — 350 Fifth Ave
   template: string;       // e.g. New Lease Onboarding v3.2
   file_name: string;
   generated_at: string;
@@ -46,6 +47,7 @@ const MOCK_UPLOAD_TASKS: Record<string, UploadTaskData> = {
     task_ref: 'UT-2026-0041',
     record_id: 'r1',
     record_ref: 'CR-2026-0041',
+    record_title: 'Office Tower — 350 Fifth Ave',
     template: 'New Lease Onboarding v3.2',
     file_name: 'CR-2026-0041_NewLeaseOnboarding_v3.2.xlsx',
     generated_at: '2026-05-16 14:00:00 UTC',
@@ -58,6 +60,7 @@ const MOCK_UPLOAD_TASKS: Record<string, UploadTaskData> = {
     task_ref: 'UT-2026-0038',
     record_id: 'r3',
     record_ref: 'CR-2026-0038',
+    record_title: 'Retail HQ — 1200 Market St',
     template: 'Lease Modification v2.1',
     file_name: 'CR-2026-0038_LeaseModification_v2.1.xlsx',
     generated_at: '2026-05-14 09:15:00 UTC',
@@ -70,6 +73,7 @@ const MOCK_UPLOAD_TASKS: Record<string, UploadTaskData> = {
     task_ref: 'UT-2026-0035',
     record_id: 'r5',
     record_ref: 'CR-2026-0035',
+    record_title: 'Industrial Park — Unit 7',
     template: 'Lease Termination v1.0',
     file_name: 'CR-2026-0035_LeaseTermination_v1.0.xlsx',
     generated_at: '2026-05-12 16:45:00 UTC',
@@ -311,7 +315,9 @@ export default function ExportUploadTask() {
             <div className="flex items-center gap-2 mb-1">
               <span className="font-mono text-[13px] font-bold text-foreground">{task.task_ref}</span>
               <span className="text-muted-foreground">·</span>
-              <span className="text-[12px] text-muted-foreground">{task.record_ref}</span>
+              <span className="text-[12px] text-muted-foreground">
+                {_recordParam ? `${task.record_ref} · ${task.record_title}` : task.record_ref}
+              </span>
               <span className="text-muted-foreground">·</span>
               <span className="text-[12px] text-muted-foreground">{task.template}</span>
             </div>

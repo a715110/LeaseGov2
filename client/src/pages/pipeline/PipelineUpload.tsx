@@ -5,10 +5,10 @@
  * Role: Document Submitter
  *
  * Design: Structured Authority — Structured Clarity (Modern Gov-Tech)
- * Prompt 1.2: Drag-drop upload zone, file validation cards (valid/warning/invalid),
+ * Prompt 1.2: Drag-drop upload zone, file validation cards (valid/invalid),
  *             Target Context right panel, Continue to Review button.
- * Data model refs: StagedDocument (validation_result, validation_warnings, validation_errors,
- *                  ocr_confidence_avg, status: uploaded|validating|valid|warning|invalid)
+ * Data model refs: StagedDocument (validation_result, validation_errors,
+ *                  status: uploaded|validating|valid|invalid) — V3: binary model, no warning state
  */
 
 import { useState, useRef, useCallback, useEffect } from 'react';
@@ -27,7 +27,8 @@ import { WORKSPACE_TAGS, formatBytes } from '@/lib/uploadSimulation';
 // Prompt 12: WORKSPACE_TAGS, formatBytes imported from shared @/lib/uploadSimulation.
 // MOCK_FILES removed — the drag-drop zone now accepts real files via the file input.
 // ─── Types ────────────────────────────────────────────────────────────────────
-type ValidationStatus = 'valid' | 'warning' | 'invalid' | 'validating';
+// V3 binary model: valid or invalid only (no warning state at upload time)
+type ValidationStatus = 'valid' | 'invalid' | 'validating';
 interface ValidationCategory {
   name: string;
   passed: boolean;
@@ -42,7 +43,6 @@ interface StagedFile {
   ocr_confidence?: number;
   categories: ValidationCategory[];
   error?: string;
-  warning?: string;
 }
 
 // ─── File validation card ─────────────────────────────────────────────────────
@@ -58,14 +58,12 @@ function FileCard({ file, onRemove, onRetry }: FileCardProps) {
 
   const statusConfig = {
     valid:      { icon: <CheckCircle2 className="w-4 h-4" />, badgeClass: 'badge-valid',    label: 'Valid' },
-    warning:    { icon: <AlertTriangle className="w-4 h-4" />, badgeClass: 'badge-warning', label: 'Warning' },
     invalid:    { icon: <XCircle className="w-4 h-4" />,       badgeClass: 'badge-invalid', label: 'Invalid' },
     validating: { icon: <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />, badgeClass: 'badge-processing', label: 'Validating' },
   }[file.status];
 
   const borderColorStyle = {
     valid:      { borderLeftColor: 'var(--color-lg-success)' },
-    warning:    { borderLeftColor: 'var(--color-lg-warning)' },
     invalid:    { borderLeftColor: 'var(--color-lg-error)' },
     validating: { borderLeftColor: 'var(--color-lg-primary-light)' },
   }[file.status];
@@ -108,16 +106,6 @@ function FileCard({ file, onRemove, onRetry }: FileCardProps) {
           <X className="w-4 h-4" />
         </button>
       </div>
-
-      {file.status === 'warning' && file.warning && (
-        <div className="mx-4 mb-3 px-3 py-2 rounded bg-amber-50 border border-amber-200 text-[12px] text-amber-800 flex items-start gap-2">
-          <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-          <div>
-            <span className="font-medium">{file.warning}</span>
-            <span className="ml-1 text-amber-700">Warnings don't block submission.</span>
-          </div>
-        </div>
-      )}
 
       {file.status === 'invalid' && file.error && (
         <div className="mx-4 mb-3 px-3 py-2 rounded bg-red-50 border border-red-200 text-[12px] text-red-800 flex items-start gap-2">
@@ -176,7 +164,7 @@ export default function PipelineUpload() {
     if (workspaceTag) localStorage.setItem('leasegov_last_workspace', workspaceTag);
   }, [workspaceTag]);
 
-  const validFiles = files.filter(f => f.status === 'valid' || f.status === 'warning');
+  const validFiles = files.filter(f => f.status === 'valid');
   const invalidFiles = files.filter(f => f.status === 'invalid');
   const canContinue = validFiles.length > 0 && workspaceTag !== '';
 
@@ -203,7 +191,8 @@ export default function PipelineUpload() {
     setIsValidating(true);
     // TODO: Backend integration required — POST /api/staged-documents/:id/revalidate
     setTimeout(() => {
-      setFiles(prev => prev.map(f => f.id === id ? { ...f, status: 'warning' as ValidationStatus, warning: 'Re-validation complete — review warnings before submitting.' } : f));
+      // V3: re-validation resolves to valid (binary model — no warning state)
+      setFiles(prev => prev.map(f => f.id === id ? { ...f, status: 'valid' as ValidationStatus } : f));
       setIsValidating(false);
     }, 2000);
   }, []);
@@ -277,12 +266,6 @@ export default function PipelineUpload() {
                     <CheckCircle2 className="w-3.5 h-3.5 text-[var(--color-lg-success)]" />
                     {files.filter(f => f.status === 'valid').length} valid
                   </span>
-                  {files.filter(f => f.status === 'warning').length > 0 && (
-                    <span className="flex items-center gap-1">
-                      <AlertTriangle className="w-3.5 h-3.5 text-[var(--color-lg-warning)]" />
-                      {files.filter(f => f.status === 'warning').length} warning
-                    </span>
-                  )}
                   {invalidFiles.length > 0 && (
                     <span className="flex items-center gap-1">
                       <XCircle className="w-3.5 h-3.5 text-[var(--color-lg-error)]" />

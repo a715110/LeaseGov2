@@ -218,6 +218,12 @@ export default function ApprovalsQueue() {
   const [, navigate] = useLocation();
   const [activeTab, setActiveTab] = useState<TabId>("my_reviews");
   const [tasks, setTasks] = useState<ApprovalTask[]>(INITIAL_TASKS);
+  const [flashedRows, setFlashedRows] = useState<Set<string>>(new Set());
+
+  const triggerFlash = (taskId: string) => {
+    setFlashedRows(prev => new Set(prev).add(taskId));
+    setTimeout(() => setFlashedRows(prev => { const n = new Set(prev); n.delete(taskId); return n; }), 1100);
+  };
   const { addNotification } = useNotifications();
   const { setApprovalsCount } = usePipelineCounts();
 
@@ -245,6 +251,7 @@ export default function ApprovalsQueue() {
           }
           return t;
         }));
+        if (p.task_id) triggerFlash(p.task_id);
       }
       if (event.type === 'REVIEW_COMPLETED') {
         const p = event.payload as { task_id?: string; outcome?: string };
@@ -252,6 +259,7 @@ export default function ApprovalsQueue() {
           setTasks(prev => prev.map(t =>
             (p.task_id && t.id === p.task_id) ? { ...t, status: 'rejected' as TaskStatus } : t
           ));
+          if (p.task_id) triggerFlash(p.task_id);
         }
       }
       if (event.type === 'RECORD_APPROVED') {
@@ -259,6 +267,7 @@ export default function ApprovalsQueue() {
         setTasks(prev => prev.map(t =>
           (p.task_id && t.id === p.task_id) ? { ...t, status: 'approved' as TaskStatus } : t
         ));
+        if (p.task_id) triggerFlash(p.task_id);
       }
     });
   }, [])
@@ -461,7 +470,10 @@ export default function ApprovalsQueue() {
                 </tr>
               )}
               {visibleTasks.map(task => (
-                <tr key={task.id} className={selectedIds.has(task.id) ? 'bg-[var(--color-lg-accent-subtle)]' : ''}>
+                <tr key={task.id} className={[
+                  selectedIds.has(task.id) ? 'bg-[var(--color-lg-accent-subtle)]' : '',
+                  flashedRows.has(task.id) ? 'animate-flash-row' : '',
+                ].filter(Boolean).join(' ')}>
                   <td className="text-center">
                     {canReassign(task) ? (
                       <input
