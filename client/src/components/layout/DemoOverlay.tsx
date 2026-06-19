@@ -27,7 +27,7 @@ function RolePill({ label, color }: { label: string; color: string }) {
   return (
     <span
       className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest"
-      style={{ background: `${color}22`, color }}
+      style={{ background: 'rgba(255,255,255,0.18)', color: '#ffffff' }}
     >
       {label}
     </span>
@@ -134,7 +134,7 @@ export function DemoOverlay() {
         <div className="flex items-center gap-2">
           <span
             className="text-[10px] font-bold uppercase tracking-widest"
-            style={{ color: 'var(--sidebar-foreground)', opacity: 0.5 }}
+            style={{ color: '#ffffff' }}
           >
             Demo Tour
           </span>
@@ -150,7 +150,7 @@ export function DemoOverlay() {
               'flex h-6 w-6 items-center justify-center rounded transition-colors',
               drawerOpen ? 'bg-white/20' : 'hover:bg-white/10'
             )}
-            style={{ color: 'var(--sidebar-foreground)', opacity: drawerOpen ? 1 : 0.6 }}
+            style={{ color: '#ffffff', opacity: drawerOpen ? 1 : 0.85 }}
             aria-label={drawerOpen ? 'Hide step list' : 'Show all steps'}
             title={drawerOpen ? 'Hide step list' : 'View all steps'}
           >
@@ -163,7 +163,7 @@ export function DemoOverlay() {
               endDemo()
             }}
             className="flex h-6 w-6 items-center justify-center rounded transition-colors hover:bg-white/10"
-            style={{ color: 'var(--sidebar-foreground)', opacity: 0.6 }}
+            style={{ color: '#ffffff', opacity: 0.85 }}
             aria-label="Close demo tour"
           >
             <X className="h-3.5 w-3.5" />
