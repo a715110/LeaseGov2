@@ -62,7 +62,7 @@ export const DEMO_STEPS: DemoStep[] = [
     title: 'Submit Batch — Handoff to Preparer',
     description: "The operator submits the validated batch. This triggers the cross-tab handoff — the Preparer's Processing Queue will receive the new jobs immediately.",
     instruction: 'Click "Submit Batch" to send the documents to the Preparer. Watch Tab 2 receive the new jobs in real time.',
-    route: '/pipeline/confirm',
+    route: '/pipeline/review',  // V3: submission fires from /pipeline/review; /pipeline/confirm removed
     eventToPublish: { type: 'BATCH_SUBMITTED', payload: { batchId: 'BATCH-DEMO-001', documentCount: 12, workspaceTag: 'Retail', submittedBy: 'Document Submitter' } },
     isHandoff: true, handoffTo: 'preparer',
     handoffLabel: 'Batch submitted → Preparer receives 12 new jobs in Processing Queue',

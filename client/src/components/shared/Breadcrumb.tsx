@@ -28,7 +28,7 @@ const ROUTE_LABELS: Array<{ prefix: string; label: string }> = [
   { prefix: '/pipeline/upload',          label: 'Upload' },
   { prefix: '/pipeline/review',          label: 'Review Grouping' },
   { prefix: '/pipeline/validation',      label: 'Validation' },
-  { prefix: '/pipeline/confirm',         label: 'Submit' },
+  // /pipeline/confirm removed in V3 — BATCH_SUBMITTED fires from /pipeline/review
   { prefix: '/pipeline',                 label: 'Pipeline' },
   // Extraction
   { prefix: '/extraction/understanding', label: 'Document Understanding' },

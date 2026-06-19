@@ -96,7 +96,7 @@ export const ROUTE_PATHS: Record<string, string> = {
   pipelineNewRecord:        '/pipeline/new-record',
   pipelineValidation:       '/pipeline/validation',
   pipelineReview:           '/pipeline/review',
-  pipelineConfirm:          '/pipeline/confirm',
+  // pipelineConfirm removed in V3 — BATCH_SUBMITTED fires from pipelineReview
 
   // FC-2: Extraction and Verification
   extractionQueue:          '/extraction/queue',

@@ -274,7 +274,9 @@
   .animate-slide-in-right { animation: slideInRight 0.25s ease-out; }
   .animate-fade-in-up     { animation: fadeInUp 0.3s ease-out; }
   @keyframes flashRow {
-    0%   { background-color: oklch(0.93 0.04 240); }
+    /* Start: primary-tinted accent — resolves correctly in all 4 themes × 2 modes
+       because --accent is always the theme's muted highlight colour */
+    0%   { background-color: var(--accent); }
     100% { background-color: transparent; }
   }
   .animate-flash-row { animation: flashRow 1s ease-out forwards; }

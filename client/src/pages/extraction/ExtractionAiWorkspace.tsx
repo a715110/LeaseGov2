@@ -81,6 +81,48 @@ const CATEGORY_LABELS: Record<string, string> = {
   property: "Property",
 };
 
+// ─── Amendment detection ─────────────────────────────────────────────────────
+
+const AMENDMENT_PATTERNS = /amend|amendment|addendum|addenda|rider|supplement|modification/i;
+
+/**
+ * Detects amendment-type file names from the current document and its batch siblings.
+ * Returns the list of matched file names (may be empty).
+ */
+function detectAmendmentFiles(fileName: string, batchFiles: string[] = []): string[] {
+  const matched: string[] = [];
+  if (AMENDMENT_PATTERNS.test(fileName)) matched.push(fileName);
+  batchFiles.forEach(f => { if (AMENDMENT_PATTERNS.test(f)) matched.push(f); });
+  // Deduplicate
+  return Array.from(new Set(matched));
+}
+
+/**
+ * Inline amber banner shown in the AI Workspace when amendment files are detected.
+ * Mirrors the step-5 variant in ProcessingWorkflowDialog — rent/dates/area guidance.
+ */
+function AiWorkspaceAmendmentBanner({ amendmentFiles }: { amendmentFiles: string[] }) {
+  if (amendmentFiles.length === 0) return null;
+  const fileList = amendmentFiles.join(', ');
+  return (
+    <div className="shrink-0 flex items-start gap-2.5 px-6 py-3 border-b border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30">
+      <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-amber-500" />
+      <div className="flex flex-col gap-0.5">
+        <p className="text-[13px] font-semibold text-amber-800 dark:text-amber-300">
+          Amendment detected — superseded fields require manual verification
+        </p>
+        <p className="text-[12px] text-amber-700 dark:text-amber-400 leading-relaxed">
+          <span className="font-medium">File{amendmentFiles.length > 1 ? 's' : ''}:</span>{' '}
+          <span className="font-mono">{fileList}</span>
+        </p>
+        <p className="text-[12px] text-amber-700 dark:text-amber-400 leading-relaxed mt-0.5">
+          Verify rent, dates, and area fields against the amendment — these are the fields most commonly superseded. Flag any value that conflicts with the amendment text.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getConfidenceTier(c: number | null): ConfidenceTier {
@@ -371,6 +413,15 @@ export default function ExtractionAiWorkspace() {
 
       {/* Graceful degradation banner — self-hiding when not needed */}
       <GracefulDegradationBanner />
+
+      {/* Amendment banner — shown when the document (or a batch sibling) is an amendment/addendum */}
+      <AiWorkspaceAmendmentBanner
+        amendmentFiles={detectAmendmentFiles(
+          'Office-Tower-Amendment-3.pdf',
+          // TODO: Backend integration — pass actual batch sibling file names
+          []
+        )}
+      />
 
       {/* Summary bar */}
       <div className="shrink-0 flex items-center gap-6 px-6 py-2.5 bg-muted/40 border-b border-border text-[13px]">

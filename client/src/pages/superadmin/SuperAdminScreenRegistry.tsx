@@ -22,7 +22,7 @@ import NotFound from '@/pages/NotFound';
 import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 
 type ScreenPhase = 'mvp' | 'phase_2' | 'phase_3';
-type ScreenStatus = 'active' | 'hidden' | 'development';
+type ScreenStatus = 'active' | 'hidden' | 'development' | 'deprecated';
 
 interface ScreenDef {
   screen_key: string;
@@ -43,7 +43,7 @@ const MOCK_SCREENS: ScreenDef[] = [
   { screen_key:'pipeline-upload',            display_name:'Upload & Validate',            route_path:'/pipeline/upload',             phase:'mvp',     status:'active',      role_access:['document_submitter','preparer'],                           feature_cluster:'FC-1',  dependency_screen_keys:['pipeline-dashboard'], is_system_screen:false, override_count:0 },
   { screen_key:'pipeline-validation',        display_name:'Validation Detail',            route_path:'/pipeline/validation',         phase:'mvp',     status:'active',      role_access:['document_submitter','preparer'],                           feature_cluster:'FC-1',  dependency_screen_keys:['pipeline-upload'],    is_system_screen:false, override_count:0 },
   { screen_key:'pipeline-review-grouping',   display_name:'Review & Grouping',            route_path:'/pipeline/review',             phase:'mvp',     status:'active',      role_access:['preparer'],                                               feature_cluster:'FC-1',  dependency_screen_keys:['pipeline-validation'],is_system_screen:false, override_count:0 },
-  { screen_key:'pipeline-submit-confirm',    display_name:'Submit Confirmation',          route_path:'/pipeline/confirm',            phase:'mvp',     status:'active',      role_access:['preparer'],                                               feature_cluster:'FC-1',  dependency_screen_keys:['pipeline-review-grouping'], is_system_screen:false, override_count:0 },
+  { screen_key:'pipeline-submit-confirm',    display_name:'Submit Confirmation (V3 Deprecated)',  route_path:'/pipeline/confirm',  phase:'mvp',  status:'deprecated',  role_access:['preparer'],  feature_cluster:'FC-1',  dependency_screen_keys:['pipeline-review-grouping'], is_system_screen:false, override_count:0 },  // V3 Change 4: BATCH_SUBMITTED fires from /pipeline/review; this screen is no longer reachable
   { screen_key:'extraction-queue',           display_name:'Extraction Queue',             route_path:'/extraction/queue',            phase:'mvp',     status:'active',      role_access:['preparer','reviewer','lease_admin'],                       feature_cluster:'FC-2',  dependency_screen_keys:[],                    is_system_screen:false, override_count:0 },
   { screen_key:'extraction-ai-workspace',    display_name:'AI Extraction Workspace',      route_path:'/extraction/ai-workspace',     phase:'mvp',     status:'active',      role_access:['preparer'],                                               feature_cluster:'FC-2',  dependency_screen_keys:['extraction-queue'],  is_system_screen:false, override_count:2 },
   { screen_key:'extraction-manual-workspace',display_name:'Manual Extraction Workspace',  route_path:'/extraction/manual-workspace', phase:'mvp',     status:'active',      role_access:['preparer'],                                               feature_cluster:'FC-2',  dependency_screen_keys:['extraction-queue'],  is_system_screen:false, override_count:0 },
@@ -108,6 +108,7 @@ const STATUS_STYLE: Record<ScreenStatus, { cls: string; label: string }> = {
   active:      { cls: 'badge-valid',    label: 'Active' },
   hidden:      { cls: 'badge-muted',    label: 'Hidden' },
   development: { cls: 'badge-warning',  label: 'Dev' },
+  deprecated:  { cls: 'badge-rejected', label: 'Deprecated' },
 };
 
 const CLUSTER_LIST = ['All','FC-1','FC-2','FC-3','FC-4','FC-5','FC-6','FC-7','FC-8','FC-9','FC-10'];
@@ -170,7 +171,7 @@ export default function SuperAdminScreenRegistry() {
   function cycleStatus(key: string) {
     setScreens(prev => prev.map(s => {
       if (s.screen_key !== key || s.is_system_screen) return s;
-      const order: ScreenStatus[] = ['active','hidden','development'];
+      const order: ScreenStatus[] = ['active','hidden','development','deprecated'];
       const next = order[(order.indexOf(s.status) + 1) % order.length];
       return { ...s, status: next };
     }));
@@ -268,7 +269,7 @@ export default function SuperAdminScreenRegistry() {
             ))}
           </div>
           <div className="flex gap-1">
-            {(['all','active','hidden','development'] as const).map(v => (
+            {(['all','active','hidden','development','deprecated'] as const).map(v => (
               <button key={v} onClick={() => setStatusFilter(v)}
                 className="px-2.5 py-1 rounded-full text-[11px] font-semibold border capitalize transition-all"
                 style={{
