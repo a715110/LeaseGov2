@@ -157,11 +157,59 @@ function VerificationFieldHistoryTooltip({ field }: { field: VerificationField }
   );
 }
 
+// ─── Amendment callout ───────────────────────────────────────────────────────
+
+const VERIFICATION_AMENDMENT_PATTERNS = /amend|amendment|addendum|addenda|rider|supplement|modification/i;
+
+/**
+ * Detects amendment-type file names from nav state or falls back to the demo file name.
+ * Returns the list of matched file names (may be empty).
+ */
+function getVerificationAmendmentFiles(): string[] {
+  const stateFiles = (window.history.state as { amendmentFiles?: string[] } | null)?.amendmentFiles;
+  if (stateFiles && stateFiles.length > 0) return stateFiles;
+  // Fallback: the demo document is an amendment — always show the callout in demo mode
+  const demoFile = 'Office-Tower-Amendment-3.pdf';
+  return VERIFICATION_AMENDMENT_PATTERNS.test(demoFile) ? [demoFile] : [];
+}
+
+/**
+ * Amber callout shown at the top of the Verification Workspace when the job
+ * being reviewed contains an amendment file. Mirrors the AiWorkspace banner —
+ * rent/dates/area guidance for the Reviewer role.
+ */
+function VerificationAmendmentBanner({ amendmentFiles }: { amendmentFiles: string[] }) {
+  if (amendmentFiles.length === 0) return null;
+  const fileList = amendmentFiles.join(', ');
+  return (
+    <div className="shrink-0 flex items-start gap-2.5 px-6 py-3 border-b border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30">
+      <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-amber-500" />
+      <div className="flex flex-col gap-0.5">
+        <p className="text-[13px] font-semibold text-amber-800 dark:text-amber-300">
+          Amendment detected — verify superseded fields before approving
+        </p>
+        <p className="text-[12px] text-amber-700 dark:text-amber-400 leading-relaxed">
+          <span className="font-medium">File{amendmentFiles.length > 1 ? 's' : ''}:</span>{' '}
+          <span className="font-mono">{fileList}</span>
+        </p>
+        <p className="text-[12px] text-amber-700 dark:text-amber-400 leading-relaxed mt-0.5">
+          Pay close attention to <strong>rent</strong>, <strong>dates</strong>, and <strong>area</strong> fields — these are most commonly superseded by amendments. Reject if any extracted value conflicts with the amendment text.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
 export default function ExtractionVerification() {
 
   const [, navigate] = useLocation();
   const search = useSearch();
   const { activeRole } = useRole();
+  // Amendment files from nav state (set by ExtractionAiWorkspace or ExtractionQueue)
+  // Falls back to demo file detection so the callout is always visible in demo mode.
+  const amendmentFiles = useMemo(() => getVerificationAmendmentFiles(), []);
 
   // S8: ?from= back navigation; ?record= contract context from AgentCheckpointQueue
   const backDestination = useMemo(() => {
@@ -265,6 +313,9 @@ export default function ExtractionVerification() {
 
       {/* FC-9: Graceful degradation banner */}
       <GracefulDegradationBanner />
+
+      {/* Amendment callout — shown when the job contains an amendment/addendum file */}
+      <VerificationAmendmentBanner amendmentFiles={amendmentFiles} />
 
       <div className="flex flex-1 overflow-hidden">
         {/* Left panel */}

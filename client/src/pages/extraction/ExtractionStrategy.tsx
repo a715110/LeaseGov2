@@ -88,6 +88,8 @@ export default function ExtractionStrategy() {
   const search = useSearch();
   const [selected, setSelected] = useState<AutomationLevel>("ai_assisted");
   const [threshold, setThreshold] = useState(0.90);
+  // Forward amendment files from nav state (set by ExtractionUnderstanding)
+  const navAmendmentFiles: string[] = (window.history.state as { amendmentFiles?: string[] } | null)?.amendmentFiles ?? [];
 
   // S8: ?from= back navigation
   const backDestination = useMemo(() => {
@@ -242,7 +244,10 @@ export default function ExtractionStrategy() {
           <Button variant="outline" onClick={() => navigate("/extraction/understanding")}>Back</Button>
           <Button
             className="gap-2"
-            onClick={() => navigate(selected === "manual" ? "/extraction/manual" : "/extraction/ai")}
+            onClick={() => {
+              const dest = selected === "manual" ? "/extraction/manual" : "/extraction/ai";
+              navigate(dest, { state: { amendmentFiles: navAmendmentFiles } } as any);
+            }}
           >
             Start Extraction
             <ChevronRight className="w-4 h-4" />

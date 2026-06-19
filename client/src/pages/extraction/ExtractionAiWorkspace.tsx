@@ -296,6 +296,17 @@ export default function ExtractionAiWorkspace() {
   const [, navigate] = useLocation();
   const search = useSearch();
 
+  // Read amendment files forwarded via navigation state from ExtractionStrategy
+  // (set by ExtractionQueue after ProcessingWorkflowDialog completes).
+  // Falls back to pattern-matching the hardcoded demo file name so the banner
+  // still appears when navigating directly to this screen without nav state.
+  const navAmendmentFiles: string[] = useMemo(() => {
+    const stateFiles = (window.history.state as { amendmentFiles?: string[] } | null)?.amendmentFiles;
+    if (stateFiles && stateFiles.length > 0) return stateFiles;
+    // Fallback: detect from the demo file name so the banner is always visible in demos
+    return detectAmendmentFiles('Office-Tower-Amendment-3.pdf', []);
+  }, []);
+
   // S8: ?from= back navigation
   const backDestination = useMemo(() => {
     const from = new URLSearchParams(search).get('from');
@@ -414,14 +425,9 @@ export default function ExtractionAiWorkspace() {
       {/* Graceful degradation banner — self-hiding when not needed */}
       <GracefulDegradationBanner />
 
-      {/* Amendment banner — shown when the document (or a batch sibling) is an amendment/addendum */}
-      <AiWorkspaceAmendmentBanner
-        amendmentFiles={detectAmendmentFiles(
-          'Office-Tower-Amendment-3.pdf',
-          // TODO: Backend integration — pass actual batch sibling file names
-          []
-        )}
-      />
+      {/* Amendment banner — shown when amendment files are present in nav state (real flow)
+           or detected from the demo file name (direct navigation / demo mode). */}
+      <AiWorkspaceAmendmentBanner amendmentFiles={navAmendmentFiles} />
 
       {/* Summary bar */}
       <div className="shrink-0 flex items-center gap-6 px-6 py-2.5 bg-muted/40 border-b border-border text-[13px]">

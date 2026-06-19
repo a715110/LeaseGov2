@@ -825,6 +825,8 @@ export default function ExtractionQueue() {
   // S6a: ProcessingWorkflowDialog state
   const [workflowJob, setWorkflowJob] = useState<ProcessingJob | null>(null);
   const [workflowInitialStep, setWorkflowInitialStep] = useState(1);
+  // S6a+: amendment files detected by the workflow dialog — forwarded to /extraction/ai via nav state
+  const [pendingAmendmentFiles, setPendingAmendmentFiles] = useState<string[]>([]);
 
   // S6a: re-open workflow dialog when returning from field mapping with ?from=workflow
   const search = useSearch();
@@ -1383,7 +1385,15 @@ export default function ExtractionQueue() {
               </Button>
               <Button
                 className="w-full gap-2 text-[13px]"
-                onClick={() => navigate('/extraction/understanding')}
+                onClick={() => {
+                  // Forward amendment files detected by the workflow dialog to the AI Workspace
+                  // via window.history.state (consistent with PipelineReviewGrouping pattern).
+                  // Each screen in the chain (Understanding → Strategy → AiWorkspace) reads and
+                  // re-forwards the state so it survives multi-step navigation.
+                  navigate('/extraction/understanding', {
+                    state: { amendmentFiles: pendingAmendmentFiles },
+                  } as any);
+                }}
               >
                 Open in Workspace
                 <ChevronRight className="w-3.5 h-3.5" />
@@ -1429,6 +1439,10 @@ export default function ExtractionQueue() {
                       : 'commercial_lease'
               : undefined
           }
+          onComplete={(files) => {
+            // Store amendment files so they can be forwarded to /extraction/ai via nav state
+            setPendingAmendmentFiles(files);
+          }}
         />
         {/* Batch-level Decline Package dialog — package-level with per-file reason rows */}
         <Dialog open={!!declineBatch} onOpenChange={v => { if (!v) closeDeclineBatch(); }}>

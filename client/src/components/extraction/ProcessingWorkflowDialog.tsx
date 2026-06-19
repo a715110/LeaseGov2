@@ -54,6 +54,12 @@ interface ProcessingWorkflowDialogProps {
   submissionPath?: string;
   /** MOD-3: contract_type from upload context — used to auto-select a template in Step 2 */
   contractType?: string;
+  /**
+   * Called when the operator clicks Complete on step 5.
+   * Receives the list of amendment file names detected in this job's batch
+   * so the caller can forward them as navigation state to the AI Workspace.
+   */
+  onComplete?: (amendmentFiles: string[]) => void;
 }
 
 // ─── Step definitions ─────────────────────────────────────────────────────────
@@ -129,6 +135,7 @@ export function ProcessingWorkflowDialog({
   batchFiles = [],
   submissionPath,
   contractType,
+  onComplete,
 }: ProcessingWorkflowDialogProps) {
   const amendmentFiles = detectAmendmentFiles(fileName, batchFiles);
   const [currentStep, setCurrentStep] = useState(initialStep);
@@ -262,6 +269,7 @@ export function ProcessingWorkflowDialog({
     toast.success('Processing workflow complete', {
       description: `${verificationFields.length} fields verified for ${jobId}`,
     });
+    onComplete?.(amendmentFiles);
     onClose();
   };
 

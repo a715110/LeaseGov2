@@ -41,6 +41,8 @@ type RecordAction = 'select' | 'create' | 'defer';
 export default function ExtractionUnderstanding() {
   const _screenKey = SCREEN_KEYS.EXTRACTION_UNDERSTANDING;
   const [, navigate] = useLocation();
+  // Forward amendment files from nav state (set by ExtractionQueue after workflow dialog completes)
+  const navAmendmentFiles: string[] = (window.history.state as { amendmentFiles?: string[] } | null)?.amendmentFiles ?? [];
 
   const [searchQuery, setSearchQuery] = useState('');
   const [showResults, setShowResults] = useState(false);
@@ -275,7 +277,7 @@ export default function ExtractionUnderstanding() {
           <Button variant="outline" onClick={() => navigate('/extraction/queue')}>Back</Button>
           <Button
             disabled={!canProceed}
-            onClick={() => navigate('/extraction/strategy')}
+            onClick={() => navigate('/extraction/strategy', { state: { amendmentFiles: navAmendmentFiles } } as any)}
             className="gap-2"
           >
             Confirm and Proceed
