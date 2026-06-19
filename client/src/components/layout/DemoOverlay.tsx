@@ -150,7 +150,7 @@ export function DemoOverlay() {
               'flex h-6 w-6 items-center justify-center rounded transition-colors',
               drawerOpen ? 'bg-white/20' : 'hover:bg-white/10'
             )}
-            style={{ color: '#ffffff', opacity: drawerOpen ? 1 : 0.85 }}
+            style={{ color: '#ffffff', opacity: 1 }}
             aria-label={drawerOpen ? 'Hide step list' : 'Show all steps'}
             title={drawerOpen ? 'Hide step list' : 'View all steps'}
           >
@@ -163,7 +163,7 @@ export function DemoOverlay() {
               endDemo()
             }}
             className="flex h-6 w-6 items-center justify-center rounded transition-colors hover:bg-white/10"
-            style={{ color: '#ffffff', opacity: 0.85 }}
+            style={{ color: '#ffffff', opacity: 1 }}
             aria-label="Close demo tour"
           >
             <X className="h-3.5 w-3.5" />
