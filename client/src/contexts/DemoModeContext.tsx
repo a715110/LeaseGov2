@@ -6,12 +6,16 @@
  * "incompatible export" HMR warning that occurs when a context file exports both
  * a React component and plain constants.
  *
- * Step coverage (v2 — updated to reflect current inline-dialog workflow):
- *   Document Submitter  : steps 1–4   (unchanged)
- *   Preparer           : steps 5–12  (expanded: Processing Workflow dialog, Extractions Table, Flag Panel)
- *   Reviewer           : steps 13–16 (updated: /approvals/queue + ReviewDialog421 inline)
- *   Approver           : steps 17–18 (updated routes)
- *   Accountant         : steps 19–20 (unchanged)
+ * Step coverage (v3 — expanded to all 9 FCs and all 9 roles):
+ *   Document Submitter  : steps 1–4    FC-1 Pipeline
+ *   Preparer            : steps 5–16   FC-2 Extraction + FC-3 Packages
+ *   Reviewer            : steps 17–21  FC-4 Approval (review + rework path)
+ *   Approver            : steps 22–23  FC-4 Final Approval
+ *   Accountant          : steps 24–27  FC-7 Governed Export (full 4-screen path)
+ *   Controller          : steps 28–37  FC-5 Records + FC-6 Reassessment
+ *   Business Submitter  : steps 32–33  FC-6 Survey + Trigger
+ *   Auditor             : steps 38–40  FC-5 Deferred Tracker + FC-8 Audit Log + Snapshot Viewer
+ *   Lease Admin         : steps 41–46  FC-8 Administration + FC-9 AI Agents
  */
 import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
 import type { UserRole } from '@/lib/types';
