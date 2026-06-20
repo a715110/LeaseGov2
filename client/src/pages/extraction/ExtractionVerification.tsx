@@ -12,7 +12,7 @@
  *     Deferred requires justification textarea, critical fields show Confirm button.
  *   Right 50%: PDF with anchor overlays, selected anchor highlighted.
  *   Bottom bar (64px fixed): progress gate — Total/Critical/Deferred/Unresolved,
- *     Submit disabled until all 73 disposed + all 22 critical confirmed + 0 unresolved.
+ *     Submit disabled until all mock fields disposed + all critical confirmed + 0 unresolved.
  *   Automation variants annotated.
  * Data model refs: ExtractionRecord, ExtractionField (disposition, is_critical,
  *   ai_confidence, rework_flagged), EvidenceAnchor
@@ -231,14 +231,14 @@ export default function ExtractionVerification() {
   const [heatmap, setHeatmap] = useState(false);
   const isRework = false; // set true to show rejection banner
 
-  // TODO: Backend integration required
-  const totalFields = 73;
+  // Dynamic: gate against the loaded mock set, not the full schema count
+  const totalFields = fields.length;
   const disposedCount = fields.filter(f => f.disposition !== null).length;
   const criticalTotal = fields.filter(f => f.is_critical).length;
   const criticalConfirmed = fields.filter(f => f.is_critical && f.confirmed).length;
   const deferredCount = fields.filter(f => f.disposition === "deferred").length;
   const unresolvedCount = fields.filter(f => f.disposition === null).length;
-  const canSubmit = disposedCount >= totalFields && criticalConfirmed >= 22 && unresolvedCount === 0;
+  const canSubmit = disposedCount >= totalFields && criticalConfirmed >= criticalTotal && unresolvedCount === 0;
 
   function toggleCat(cat: string) {
     setExpandedCats(prev => { const n = new Set(prev); n.has(cat) ? n.delete(cat) : n.add(cat); return n; });
@@ -505,10 +505,10 @@ export default function ExtractionVerification() {
         </div>
         <div className="flex items-center gap-1.5">
           <div className="h-1.5 w-20 bg-muted rounded overflow-hidden">
-            <div className="h-full rounded transition-all" style={{ width: `${(criticalConfirmed / 22) * 100}%`, backgroundColor: "var(--color-lg-critical)" }} />
+            <div className="h-full rounded transition-all" style={{ width: `${criticalTotal > 0 ? (criticalConfirmed / criticalTotal) * 100 : 0}%`, backgroundColor: "var(--color-lg-critical)" }} />
           </div>
           <span className="text-[12px] font-medium" style={{ color: "var(--color-lg-critical)" }}>
-            <strong>{criticalConfirmed}</strong>/22 Critical
+            <strong>{criticalConfirmed}</strong>/{criticalTotal} Critical
           </span>
         </div>
         <span className="text-[12px] font-medium text-[var(--color-lg-warning)]">
@@ -545,7 +545,7 @@ export default function ExtractionVerification() {
               <TooltipContent side="top" className="max-w-[260px] text-[12px]">
                 <div className="flex flex-col gap-1">
                   {unresolvedCount > 0 && <span>• {unresolvedCount} field{unresolvedCount !== 1 ? "s" : ""} unresolved</span>}
-                  {criticalConfirmed < 22 && <span>• {22 - criticalConfirmed} critical field{22 - criticalConfirmed !== 1 ? "s" : ""} not confirmed</span>}
+                  {criticalConfirmed < criticalTotal && <span>• {criticalTotal - criticalConfirmed} critical field{criticalTotal - criticalConfirmed !== 1 ? "s" : ""} not confirmed</span>}
                   {disposedCount < totalFields && <span>• {totalFields - disposedCount} field{totalFields - disposedCount !== 1 ? "s" : ""} need disposition</span>}
                 </div>
               </TooltipContent>
