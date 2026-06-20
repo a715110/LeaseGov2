@@ -229,7 +229,26 @@ export default function ExtractionVerification() {
   const [activeFieldId, setActiveFieldId] = useState("v1");
   const [zoom, setZoom] = useState(100);
   const [heatmap, setHeatmap] = useState(false);
-  const isRework = false; // set true to show rejection banner
+  // Read rework context from navigation state (set by ApprovalsRework "Open for Rework" button)
+  const reworkState = useMemo(() => {
+    const s = window.history.state as {
+      isRework?: boolean;
+      reworkIteration?: number;
+      rejectedBy?: string;
+      rejectedAt?: string;
+      rejectionComments?: string;
+      rejectionFlaggedFields?: string[];
+    } | null;
+    return {
+      isRework: s?.isRework ?? false,
+      reworkIteration: s?.reworkIteration ?? 1,
+      rejectedBy: s?.rejectedBy ?? 'M. Thompson (Reviewer)',
+      rejectedAt: s?.rejectedAt ?? '2026-05-15T16:30:00Z',
+      rejectionComments: s?.rejectionComments ?? 'Base rent amount requires re-verification against executed amendment.',
+      rejectionFlaggedFields: s?.rejectionFlaggedFields ?? ['base_rent_amount'],
+    };
+  }, []);
+  const isRework = reworkState.isRework;
 
   // Dynamic: gate against the loaded mock set, not the full schema count
   const totalFields = fields.length;
@@ -321,13 +340,32 @@ export default function ExtractionVerification() {
         {/* Left panel */}
         <div className="flex flex-col overflow-hidden" style={{ width: "50%", borderRight: "1px solid var(--border)" }}>
 
-          {/* Rework rejection banner */}
+          {/* Rework rejection banner — populated from ApprovalsRework navigation state */}
           {isRework && (
-            <div className="shrink-0 flex items-start gap-3 px-5 py-3 bg-red-50 border-b-2 border-destructive text-[13px] text-destructive">
-              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-              <div>
-                <strong>Returned for Rework</strong> — Reviewer rejected on 2026-05-14.
-                <span className="ml-2 text-muted-foreground">Reason: Base rent amount requires re-verification against executed amendment.</span>
+            <div className="shrink-0 flex flex-col gap-1.5 px-5 py-3 bg-red-50 dark:bg-red-950/30 border-b-2 border-destructive">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-destructive" />
+                <div className="flex flex-col gap-0.5 flex-1">
+                  <p className="text-[13px] font-semibold text-destructive">
+                    Returned for Rework — Iteration #{reworkState.reworkIteration}
+                  </p>
+                  <p className="text-[12px] text-muted-foreground">
+                    Rejected by <span className="font-medium text-foreground">{reworkState.rejectedBy}</span>
+                    {' '}on {new Date(reworkState.rejectedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </p>
+                  {reworkState.rejectionComments && (
+                    <p className="text-[12px] text-foreground mt-0.5 leading-relaxed">{reworkState.rejectionComments}</p>
+                  )}
+                  {reworkState.rejectionFlaggedFields.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-1">
+                      {reworkState.rejectionFlaggedFields.map(f => (
+                        <span key={f} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-destructive/10 text-destructive text-[11px] font-semibold">
+                          {f.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}

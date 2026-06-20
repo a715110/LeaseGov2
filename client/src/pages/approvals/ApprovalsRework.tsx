@@ -80,7 +80,16 @@ export default function ApprovalsRework() {
           <Button variant="outline" size="sm" className="gap-1.5" onClick={() => navigate("/approvals/queue")}>
             <History className="w-3.5 h-3.5" /> View Rejection History
           </Button>
-          <Button className="gap-1.5" onClick={() => navigate("/extraction/verify")}>
+          <Button className="gap-1.5" onClick={() => navigate("/extraction/verify", {
+            state: {
+              isRework: true,
+              reworkIteration: r.rework_iteration,
+              rejectedBy: r.rejected_by,
+              rejectedAt: r.rejected_at,
+              rejectionComments: r.rejection_comments,
+              rejectionFlaggedFields: r.rejection_flagged_fields,
+            }
+          })}>
             <RotateCcw className="w-4 h-4" /> Open for Rework
           </Button>
         </div>
