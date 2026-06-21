@@ -20,7 +20,10 @@ import {
   List, CheckCircle2, Circle, Play,
 } from 'lucide-react'
 import { cn } from '../../lib/utils'
-import { useDemoMode, globalIndexForRole } from '../../contexts/DemoModeContext'
+import { useDemoMode, globalIndexForRole, DEMO_STEPS } from '../../contexts/DemoModeContext'
+import { useRole } from '../../contexts/RoleContext'
+import { ROLE_LABELS, ROLE_COLORS } from '../../lib/types'
+import type { UserRole } from '../../lib/types'
 
 // ─── Role colour helper ───────────────────────────────────────────────────────
 function RolePill({ label, color }: { label: string; color: string }) {
@@ -64,6 +67,7 @@ export function DemoOverlay() {
   } = useDemoMode()
 
   const [, navigate] = useLocation()
+  const { setActiveRole } = useRole()
 
   // ── Animation state ──────────────────────────────────────────────────────
   const [shown, setShown] = useState(false)
@@ -188,6 +192,30 @@ export function DemoOverlay() {
 
       {/* Step-list drawer — replaces content when open */}
       {drawerOpen ? (
+        <div className="flex flex-col flex-1 overflow-hidden">
+        {/* Role switcher row */}
+        <div className="flex-shrink-0 flex gap-1.5 px-3 py-2.5 overflow-x-auto border-b border-border bg-muted/30">
+          {(Object.keys(ROLE_LABELS) as UserRole[]).filter(r => DEMO_STEPS.some(s => s.role === r)).map(r => {
+            const isActive = r === activeRole
+            return (
+              <button
+                key={r}
+                onClick={() => {
+                  setActiveRole(r)
+                  const firstGlobal = globalIndexForRole(r, 0)
+                  if (firstGlobal >= 0) goToStep(firstGlobal)
+                }}
+                className={cn(
+                  'flex-shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider transition-all duration-150',
+                  isActive ? 'text-white' : 'text-muted-foreground hover:text-foreground bg-transparent hover:bg-accent'
+                )}
+                style={isActive ? { background: ROLE_COLORS[r] } : {}}
+              >
+                {ROLE_LABELS[r]}
+              </button>
+            )
+          })}
+        </div>
         <ul className="flex-1 overflow-y-auto divide-y divide-border">
           {roleSteps.map((step, i) => {
             const isCompleted = i < roleLocalIndex
@@ -257,6 +285,7 @@ export function DemoOverlay() {
             )
           })}
         </ul>
+        </div>
       ) : (
         /* Content — scrollable so footer is always visible */
         currentStep && (

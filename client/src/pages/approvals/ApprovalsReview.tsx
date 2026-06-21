@@ -694,6 +694,9 @@ export default function ApprovalsReview() {
                 disabled={!canReject}
                 className="bg-[var(--color-lg-error)] hover:bg-[var(--color-lg-error)]/90 text-white gap-1.5"
                 onClick={() => {
+                  const flaggedFields = taskFields
+                    .filter(f => f.rework_flagged)
+                    .map(f => f.field_name);
                   publishEvent({
                     type: 'REVIEW_COMPLETED',
                     payload: {
@@ -706,7 +709,16 @@ export default function ApprovalsReview() {
                     sourceRole: activeRole,
                   });
                   setShowRejectForm(false);
-                  navigate("/approvals/queue");
+                  navigate("/extraction/verify", {
+                    state: {
+                      isRework: true,
+                      reworkIteration: (reworkIteration ?? 0) + 1,
+                      rejectedBy: `${taskSummary.reviewer_name} (Reviewer)`,
+                      rejectedAt: new Date().toISOString(),
+                      rejectionComments: rejectionComments,
+                      rejectionFlaggedFields: flaggedFields,
+                    }
+                  });
                 }}
               >
                 <X className="w-4 h-4" /> Confirm Rejection

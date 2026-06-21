@@ -149,7 +149,27 @@ export default function PipelineUpload() {
   const _screenKey = SCREEN_KEYS.PIPELINE_UPLOAD;
 
   const [, navigate] = useLocation();
-  const [files, setFiles] = useState<StagedFile[]>([]);
+  const [files, setFiles] = useState<StagedFile[]>([
+    // Demo seed: Corrupted-Scan-Draft.pdf — invalid file (file integrity check failed)
+    // Matches the doc-7 entry in PipelineDashboard MOCK_DOCUMENTS so the invalid
+    // upload state is demonstrable from Step 2 without requiring a real file upload.
+    {
+      id: 'demo-corrupted',
+      name: 'Corrupted-Scan-Draft.pdf',
+      size: 1_048_576,
+      mime_type: 'application/pdf',
+      status: 'invalid',
+      ocr_confidence: 0,
+      error: 'File integrity check failed — the PDF structure is malformed or the scan is unreadable.',
+      categories: [
+        { name: 'File Integrity',  passed: false, detail: 'PDF structure is malformed; file may be corrupted.' },
+        { name: 'OCR Readability', passed: false, detail: 'No readable text layer detected; confidence: 0%.' },
+        { name: 'Page Count',      passed: true,  detail: '3 pages detected.' },
+        { name: 'File Size',       passed: true,  detail: '1.0 MB — within the 50 MB limit.' },
+        { name: 'Virus Scan',      passed: true,  detail: 'No threats detected.' },
+      ],
+    },
+  ]);
   const [isDragging, setIsDragging] = useState(false);
   // S2b: auto-select last used workspace from localStorage
   const [workspaceTag, setWorkspaceTag] = useState(
