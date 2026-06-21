@@ -80,6 +80,12 @@ export function DemoOverlay() {
   // ── Drawer state ─────────────────────────────────────────────────────────
   const [drawerOpen, setDrawerOpen] = useState(false)
 
+  // ── Per-role scroll position persistence ─────────────────────────────────
+  // Stores the scrollTop for each role's step list so switching roles and
+  // switching back restores the user's previous scroll position.
+  const scrollPositions = useRef<Record<string, number>>({})
+  const stepListRef = useRef<HTMLUListElement>(null)
+
   useEffect(() => {
     const wasActive = prevIsActive.current
     prevIsActive.current = isActive
@@ -201,9 +207,19 @@ export function DemoOverlay() {
               <button
                 key={r}
                 onClick={() => {
+                  // Save current scroll position before switching
+                  if (activeRole && stepListRef.current) {
+                    scrollPositions.current[activeRole] = stepListRef.current.scrollTop
+                  }
                   setActiveRole(r)
                   const firstGlobal = globalIndexForRole(r, 0)
                   if (firstGlobal >= 0) goToStep(firstGlobal)
+                  // Restore saved scroll position for the target role (after render)
+                  requestAnimationFrame(() => {
+                    if (stepListRef.current) {
+                      stepListRef.current.scrollTop = scrollPositions.current[r] ?? 0
+                    }
+                  })
                 }}
                 className={cn(
                   'flex-shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider transition-all duration-150',
@@ -216,7 +232,15 @@ export function DemoOverlay() {
             )
           })}
         </div>
-        <ul className="flex-1 overflow-y-auto divide-y divide-border">
+        <ul
+          ref={stepListRef}
+          className="flex-1 overflow-y-auto divide-y divide-border"
+          onScroll={() => {
+            if (activeRole && stepListRef.current) {
+              scrollPositions.current[activeRole] = stepListRef.current.scrollTop
+            }
+          }}
+        >
           {roleSteps.map((step, i) => {
             const isCompleted = i < roleLocalIndex
             const isCurrent = i === roleLocalIndex

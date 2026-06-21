@@ -150,7 +150,25 @@ export default function PipelineUpload() {
 
   const [, navigate] = useLocation();
   const [files, setFiles] = useState<StagedFile[]>([
-    // Demo seed: Corrupted-Scan-Draft.pdf — invalid file (file integrity check failed)
+    // Demo seed 1: Retail-HQ-Lease-2026.pdf — valid file (all checks pass)
+    // Matches the doc-1 entry in PipelineDashboard MOCK_DOCUMENTS. Enables the
+    // "Continue to Review" button immediately for the demo without a real upload.
+    {
+      id: 'demo-retail-hq',
+      name: 'Retail-HQ-Lease-2026.pdf',
+      size: 2_621_440,
+      mime_type: 'application/pdf',
+      status: 'valid',
+      ocr_confidence: 97,
+      categories: [
+        { name: 'File Integrity',  passed: true, detail: 'PDF structure is valid and well-formed.' },
+        { name: 'OCR Readability', passed: true, detail: 'High-quality text layer detected; confidence: 97%.' },
+        { name: 'Page Count',      passed: true, detail: '42 pages detected.' },
+        { name: 'File Size',       passed: true, detail: '2.5 MB — within the 50 MB limit.' },
+        { name: 'Virus Scan',      passed: true, detail: 'No threats detected.' },
+      ],
+    },
+    // Demo seed 2: Corrupted-Scan-Draft.pdf — invalid file (file integrity check failed)
     // Matches the doc-7 entry in PipelineDashboard MOCK_DOCUMENTS so the invalid
     // upload state is demonstrable from Step 2 without requiring a real file upload.
     {

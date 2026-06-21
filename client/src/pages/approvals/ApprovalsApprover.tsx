@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
 import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
@@ -53,12 +54,15 @@ export default function ApprovalsApprover() {
   const [, navigate] = useLocation();
   const [deferredAcknowledged, setDeferredAcknowledged] = useState(false);
   const [reviewerCommentsExpanded, setReviewerCommentsExpanded] = useState(false);
+  // Decline-for-rework inline form state
+  const [showDeclineForm, setShowDeclineForm] = useState(false);
+  const [declineComments, setDeclineComments] = useState('');
 
   // FC-9: Checkpoint wiring — read task ID from route param; fall back to navigation state, then 't1'
   const params = useParams<{ id: string }>();
   const navState = (typeof window !== 'undefined' ? window.history.state : null) as { taskId?: string; contractRecordId?: string } | null;
   const contractRecordId = params.id || navState?.taskId || 't1';
-  const { summary: s } = getApprovalTaskData(contractRecordId);
+  const { summary: s, fields: taskFields } = getApprovalTaskData(contractRecordId);
   const { activeRole } = useRole();
   const canApprove = !s.sod_violation && (!s.has_deferred || deferredAcknowledged);
   const automationLevel: 'full_autonomous' | 'collaborative' | 'full_manual' = 'collaborative'; // TODO: from contractRecord
@@ -229,6 +233,59 @@ export default function ApprovalsApprover() {
           )}
         </div>
 
+        {/* Decline-for-rework inline form */}
+        {showDeclineForm && (
+          <div className="px-6 py-4 border-t border-border bg-[var(--color-lg-error-subtle)]">
+            <p className="text-[13px] font-semibold text-[var(--color-lg-error)] mb-2">Decline for Rework — Approver Comments</p>
+            <Textarea
+              placeholder="Describe the issue(s) that require rework before final approval…"
+              value={declineComments}
+              onChange={e => setDeclineComments(e.target.value)}
+              rows={3}
+              className="text-[13px] mb-3"
+            />
+            <div className="flex items-center justify-end gap-2">
+              <Button variant="ghost" size="sm" onClick={() => { setShowDeclineForm(false); setDeclineComments(''); }}>
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={declineComments.trim().length < 10}
+                className="border-[var(--color-lg-error)] text-[var(--color-lg-error)] hover:bg-[var(--color-lg-error-subtle)] gap-1.5"
+                onClick={() => {
+                  const flaggedFields = taskFields
+                    .filter(f => f.rework_flagged)
+                    .map(f => f.field_name);
+                  publishEvent({
+                    type: 'DECLINE_SUBMITTED',
+                    payload: {
+                      task_id: contractRecordId,
+                      record_id: s.record_id,
+                      outcome: 'declined_for_rework',
+                      comments: declineComments,
+                    },
+                    sourceRole: activeRole,
+                  });
+                  setShowDeclineForm(false);
+                  navigate('/extraction/verify', {
+                    state: {
+                      isRework: true,
+                      reworkIteration: (s.rework_iteration ?? 0) + 1,
+                      rejectedBy: `Approver`,
+                      rejectedAt: new Date().toISOString(),
+                      rejectionComments: declineComments,
+                      rejectionFlaggedFields: flaggedFields,
+                    },
+                  });
+                }}
+              >
+                <X className="w-4 h-4" /> Confirm Decline
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Action bar */}
         <div className="flex items-center justify-between px-6 py-4 border-t border-border sticky bottom-0 bg-card">
           <Button variant="outline" onClick={() => navigate(`/approvals/review/${contractRecordId}`)}>
@@ -238,16 +295,9 @@ export default function ApprovalsApprover() {
             <Button
               variant="outline"
               className="border-[var(--color-lg-error)] text-[var(--color-lg-error)] hover:bg-[var(--color-lg-error-subtle)] gap-1.5"
-              onClick={() => {
-                publishEvent({
-                  type: 'REVIEW_COMPLETED',
-                  payload: { task_id: contractRecordId, record_id: s.record_id, outcome: 'rejected' },
-                  sourceRole: activeRole,
-                });
-                navigate("/approvals/queue");
-              }}
+              onClick={() => setShowDeclineForm(v => !v)}
             >
-              <X className="w-4 h-4" /> Reject
+              <X className="w-4 h-4" /> {showDeclineForm ? 'Cancel Decline' : 'Decline for Rework'}
             </Button>
             <Tooltip>
               <TooltipTrigger asChild>
