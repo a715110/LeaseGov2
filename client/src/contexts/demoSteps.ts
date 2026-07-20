@@ -369,8 +369,8 @@ export const DEMO_STEPS: DemoStep[] = [
     screenNumber: '6.13',
     title: 'Survey Intake — Lease Intelligence Signal',
     description: 'The Business Submitter submits informal lease intelligence signals via the Survey Intake screen. Six prompt types cover negotiation whispers, project ghosts, strategic pivots, asset utility changes, and more. The system scores the response and either promotes it to a reassessment case or routes it to the clarification queue.',
-    instruction: 'Navigate to /reassessment/survey-intake. Select the "Negotiation Whisper" prompt type. Fill in the survey fields and submit. Show the confidence-based result card and the "Promote to Case" CTA.',
-    route: '/reassessment/survey-intake', tabHint: 'Tab 7 — Business Submitter',
+    instruction: 'Navigate to /reassessment/surveys. Select the "Negotiation Whisper" prompt type. Fill in the survey fields and submit. Show the confidence-based result card and the "Promote to Case" CTA.',
+    route: '/reassessment/surveys', tabHint: 'Tab 7 — Business Submitter',
   },
   {
     id: 'step-33', stepNumber: 33, role: 'business_submitter',
@@ -405,8 +405,8 @@ export const DEMO_STEPS: DemoStep[] = [
     screenNumber: '6.6',
     title: 'Option Exercise Assessment — Materiality Threshold',
     description: 'The Assessment screen evaluates the financial materiality of the identified event. Tier 1 factors are shown by default. If the materiality threshold is exceeded, the full 12-factor Tier 2 form auto-expands. The "Continue to Analysis" button is gated until all required factors are completed.',
-    instruction: 'Navigate to /reassessment/cases/case-001/assessment. Show the Tier 1 factors. Adjust a value to exceed the materiality threshold and watch the Tier 2 form auto-expand.',
-    route: '/reassessment/cases/case-001/assessment', tabHint: 'Tab 6 — Controller',
+    instruction: 'Navigate to /reassessment/cases/case-001/assess. Show the Tier 1 factors. Adjust a value to exceed the materiality threshold and watch the Tier 2 form auto-expand.',
+    route: '/reassessment/cases/case-001/assess', tabHint: 'Tab 6 — Controller',
   },
   {
     id: 'step-37', stepNumber: 37, role: 'controller',

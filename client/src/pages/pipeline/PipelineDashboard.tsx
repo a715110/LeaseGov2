@@ -1596,12 +1596,18 @@ export default function PipelineDashboard() {
       }
       if (event.type === 'DECLINE_SUBMITTED') {
         const payload = event.payload as {
-          submissionId: string;
-          batchRef: string;
-          reasonLabel: string;
-          reason: string;
+          // ExtractionQueue (Preparer decline) shape
+          submissionId?: string;
+          batchRef?: string;
+          reasonLabel?: string;
+          reason?: string;
           document_ids?: string[];
           perFileReasons?: { jobId: string; fileName: string; reason: string }[];
+          // ApprovalsApprover (Approver decline-for-rework) shape
+          task_id?: string;
+          record_id?: string;
+          outcome?: string;
+          comments?: string;
         };
         // If document_ids were provided, reset those specific staged docs
         // (status, locked_for_review, target_record_id) before the submission-level restore.
@@ -1620,10 +1626,12 @@ export default function PipelineDashboard() {
         // Mark the matching submission as Declined and restore its docs to Table 1
         setSubmissions(prev => prev.map(sub => {
           const isMatch =
-            sub.batchRef === payload.batchRef ||
-            sub.packageNum === payload.submissionId ||
-            sub.id === payload.submissionId ||
-            sub.id === payload.batchRef;
+            (payload.batchRef     && sub.batchRef    === payload.batchRef)     ||
+            (payload.submissionId && sub.packageNum  === payload.submissionId) ||
+            (payload.submissionId && sub.id          === payload.submissionId) ||
+            (payload.batchRef     && sub.id          === payload.batchRef)     ||
+            // Approver decline-for-rework: match by task_id (contract record ref)
+            (payload.task_id      && (sub.batchRef   === payload.task_id || sub.id === payload.task_id));
           if (!isMatch) return sub;
           // Restore the submission's documents back to Table 1 staging
           // so the submitter can correct and re-package them.
@@ -1659,13 +1667,16 @@ export default function PipelineDashboard() {
           setStagedDocs(prev => [...restoredDocs, ...prev]);
           // Notify the Document Submitter
           const fileWord = restoredDocs.length !== 1 ? 'files' : 'file';
+          // Approver decline-for-rework uses `comments` instead of `reasonLabel`
+          const declineLabel = payload.reasonLabel ||
+            (payload.outcome === 'declined_for_rework' ? 'Declined for rework by Approver' : 'Submission declined');
           addNotification({
-            title: `${sub.packageNum} declined — ${payload.reasonLabel || 'Submission declined'}`,
+            title: `${sub.packageNum} declined — ${declineLabel}`,
             body: `${restoredDocs.length} ${fileWord} returned to Stage Documents for correction.`,
             severity: 'error',
             href: '/pipeline/dashboard',
           });
-          toast.error(`${sub.packageNum} declined — ${payload.reasonLabel || 'Submission declined'}`, {
+          toast.error(`${sub.packageNum} declined — ${declineLabel}`, {
             description: `${restoredDocs.length} ${fileWord} returned to Stage Documents. Review and resubmit.`,
             duration: 8000,
           });
