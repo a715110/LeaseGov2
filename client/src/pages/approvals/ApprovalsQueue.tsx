@@ -269,6 +269,51 @@ export default function ApprovalsQueue() {
         ));
         if (p.task_id) triggerFlash(p.task_id);
       }
+      // G-01: Preparer submits for review → add a new review-stage task to the queue // DEMO ONLY
+      if (event.type === 'SUBMIT_FOR_REVIEW') {
+        const p = event.payload as { contractRecordId?: string };
+        const recordId = p.contractRecordId ?? 'r1';
+        const RECORD_LABEL_MAP: Record<string, string> = {
+          'r1':              'Office Tower Amendment 3',
+          'mock-record-001': 'Acme Corp — 123 Main St',
+          'mock-record-002': 'Globex LLC — 456 Oak Ave',
+          'mock-record-003': 'Initech — 789 Pine Rd',
+          'mock-record-004': 'Office Tower — 350 Fifth Ave',
+        };
+        const label = RECORD_LABEL_MAP[recordId] ?? `Record ${recordId}`;
+        const newTaskId = `live-${Date.now()}`;
+        const newTask: ApprovalTask = {
+          id: newTaskId,
+          task_reference: `AT-${new Date().getFullYear()}-LIVE`,
+          subject_type: 'contract_record',
+          subject_label: label,
+          approval_stage: 'review',
+          status: 'pending',
+          submitted_by: 'Current User (Preparer)',
+          submitted_at: new Date().toISOString(),
+          opened_at: null,
+          recall_available: true,
+          priority: 'high',
+          sla_deadline_at: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+          rework_iteration: 0,
+          reviewer_id: 'user-rev-001',
+        };
+        setTasks(prev => [newTask, ...prev]);
+        triggerFlash(newTaskId);
+        toast.success(`Review task arrived: ${label}`, { duration: 4000 });
+      }
+      // G-03: Reviewer approves for final → advance matching task to final_approval stage // DEMO ONLY
+      if (event.type === 'APPROVE_FOR_FINAL') {
+        const p = event.payload as { task_id?: string; label?: string };
+        setTasks(prev => prev.map(t => {
+          if (p.task_id && t.id === p.task_id) {
+            return { ...t, approval_stage: 'final_approval' as ApprovalStage, status: 'pending' as TaskStatus };
+          }
+          return t;
+        }));
+        if (p.task_id) triggerFlash(p.task_id);
+        toast.success(`Advanced to Final Approval${p.label ? ': ' + p.label : ''}`, { duration: 4000 });
+      }
     });
   }, [])
 

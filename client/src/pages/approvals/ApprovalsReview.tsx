@@ -774,19 +774,45 @@ export default function ApprovalsReview() {
         <div className="absolute inset-0 bg-black/60 z-20 flex items-center justify-center p-8">
           <div className="bg-card rounded-xl shadow-2xl w-[680px] max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-              <h2 className="text-[15px] font-semibold text-foreground">Final Approval — ApproverDialog431</h2>
+              <h2 className="text-[15px] font-semibold text-foreground">Send for Final Approval</h2>
               <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setShowApproverModal(false)}>
                 <X className="w-4 h-4" />
               </Button>
             </div>
-            <div className="px-6 py-4">
+            <div className="px-6 py-4 space-y-3">
+              <p className="text-[13px] text-foreground font-medium">{taskSummary.record_title}</p>
               <p className="text-[13px] text-muted-foreground">
-                Navigate to <strong>/approvals/final</strong> to view the full Approver screen (ApproverDialog431).
+                Review complete. This record will be forwarded to the Approver queue for final sign-off.
+                The Approver will receive a notification and the task will appear in their queue as
+                <span className="font-semibold text-foreground"> Final Approval — Pending</span>.
               </p>
-              <div className="flex justify-end gap-2 mt-4">
+              <div className="rounded-lg border border-border bg-muted/40 px-4 py-3 text-[12px] text-muted-foreground space-y-1">
+                <p><span className="font-medium text-foreground">Task reference:</span> {taskSummary.task_reference}</p>
+                <p><span className="font-medium text-foreground">Submitted by:</span> {taskSummary.submitted_by}</p>
+                <p><span className="font-medium text-foreground">Reviewer:</span> {taskSummary.reviewer_name}</p>
+              </div>
+              <div className="flex justify-end gap-2 pt-1">
                 <Button variant="outline" onClick={() => setShowApproverModal(false)}>Cancel</Button>
-                <Button onClick={() => { setShowApproverModal(false); navigate(`/approvals/final/${contractRecordId}`, { state: { taskId: contractRecordId, contractRecordId: taskSummary.record_id } }); }}>
-                  Open Approver Screen
+                <Button
+                  className="bg-[var(--color-lg-success)] hover:bg-[var(--color-lg-success)]/90 text-white gap-1.5"
+                  onClick={() => {
+                    // G-02: Publish APPROVE_FOR_FINAL so ApprovalsQueue advances the task // DEMO ONLY
+                    publishEvent({
+                      type: 'APPROVE_FOR_FINAL',
+                      payload: {
+                        task_id: contractRecordId,
+                        record_id: taskSummary.record_id,
+                        label: taskSummary.record_title,
+                      },
+                      sourceRole: activeRole,
+                    });
+                    setShowApproverModal(false);
+                    navigate(`/approvals/final/${contractRecordId}`, {
+                      state: { taskId: contractRecordId, contractRecordId: taskSummary.record_id },
+                    });
+                  }}
+                >
+                  <CheckCircle2 className="w-4 h-4" /> Confirm &amp; Open Approver Screen
                 </Button>
               </div>
             </div>
