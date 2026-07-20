@@ -730,11 +730,32 @@ function SubmissionDetailPanel({ submission, isReadOnly, onClose, onUnsubmit }: 
 
         {/* Decline History — shown only for Declined submissions */}
         {submission.status === 'Declined' && (
-          <div className="rounded-lg border border-orange-200 bg-orange-50/60 p-4 space-y-3">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-orange-700 mb-1 flex items-center gap-1.5">
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-orange-500" />
+          <div className={`rounded-lg border p-4 space-y-3 ${
+            submission.declineSource === 'approver'
+              ? 'border-amber-300 bg-amber-50/60'
+              : 'border-orange-200 bg-orange-50/60'
+          }`}>
+            <p className={`text-[11px] font-semibold uppercase tracking-widest mb-1 flex items-center gap-1.5 ${
+              submission.declineSource === 'approver' ? 'text-amber-700' : 'text-orange-700'
+            }`}>
+              <span className={`inline-block w-1.5 h-1.5 rounded-full ${
+                submission.declineSource === 'approver' ? 'bg-amber-500' : 'bg-orange-500'
+              }`} />
               Decline History
             </p>
+            {/* Declined by — source indicator */}
+            <div>
+              <p className={`text-[10px] font-semibold uppercase tracking-wider mb-0.5 ${
+                submission.declineSource === 'approver' ? 'text-amber-600/70' : 'text-orange-600/70'
+              }`}>Declined By</p>
+              <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[12px] font-semibold border ${
+                submission.declineSource === 'approver'
+                  ? 'bg-amber-100 text-amber-800 border-amber-300'
+                  : 'bg-orange-100 text-orange-800 border-orange-200'
+              }`}>
+                {submission.declineSource === 'approver' ? '⬡ Approver' : '◈ Preparer / Extraction'}
+              </span>
+            </div>
             {/* Reason category */}
             {submission.declineReasonLabel && (
               <div>

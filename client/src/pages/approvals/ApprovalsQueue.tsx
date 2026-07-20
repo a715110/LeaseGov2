@@ -16,7 +16,7 @@
  */
 
 import { useState, useCallback, useEffect } from "react";
-import { subscribeToEvents } from "@/lib/eventBus";
+import { subscribeToEvents, getLatestEvent } from "@/lib/eventBus";
 import { useLocation } from "wouter";
 import {
   Clock, AlertTriangle, CheckCircle2, XCircle,
@@ -217,7 +217,16 @@ export default function ApprovalsQueue() {
   const _screenKey = SCREEN_KEYS.APPROVALS_QUEUE;
   const [, navigate] = useLocation();
   const [activeTab, setActiveTab] = useState<TabId>("my_reviews");
-  const [tasks, setTasks] = useState<ApprovalTask[]>(INITIAL_TASKS);
+  // Initialise tasks — apply any RECORD_APPROVED that fired before this mount
+  const [tasks, setTasks] = useState<ApprovalTask[]>(() => {
+    const approvedEvent = getLatestEvent('RECORD_APPROVED');
+    if (!approvedEvent) return INITIAL_TASKS;
+    const p = approvedEvent.payload as { task_id?: string };
+    if (!p.task_id) return INITIAL_TASKS;
+    return INITIAL_TASKS.map(t =>
+      t.id === p.task_id ? { ...t, status: 'approved' as TaskStatus } : t
+    );
+  });
   const [flashedRows, setFlashedRows] = useState<Set<string>>(new Set());
 
   const triggerFlash = (taskId: string) => {
