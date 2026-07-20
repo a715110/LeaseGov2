@@ -1,28 +1,16 @@
 /**
- * Equipment lease record — terms (Phase 2)
- *
- * Screen key: equipment_lease_record_terms
+ * Equipment Lease Record Terms
+ * Screen key: equipmentleaserecordterms
  * // TODO: Implement screen UI
  */
-import React from 'react'
+import StubPage from "@/components/dev/StubPage";
 
 export default function EquipmentLeaseRecordTermsPage() {
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold text-foreground">EquipmentLeaseRecordTermsPage</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Screen key: <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">equipment_lease_record_terms</code>
-        </p>
-      </div>
-      <div className="rounded-lg border border-dashed border-border bg-muted/30 p-8 text-center">
-        <p className="text-sm text-muted-foreground">
-          This screen is scaffolded and ready for implementation.
-        </p>
-        <p className="mt-1 text-xs text-muted-foreground/60">
-          Equipment lease record — terms (Phase 2)
-        </p>
-      </div>
-    </div>
-  )
+    <StubPage
+      screenKey="equipmentleaserecordterms"
+      title="Equipment Lease Record Terms"
+      description="Equipment lease record — terms (Phase 2)"
+    />
+  );
 }

@@ -159,6 +159,8 @@ interface Submission {
   attemptNumber?: number;
   /** Correction note added by submitter at resubmit time */
   correctionNote?: string;
+  /** 'approver' when declined-for-rework by Approver; 'preparer' for Preparer/Extraction decline */
+  declineSource?: 'approver' | 'preparer';
 }
 
 // ─── Mock data — V3 Change 1 §1a — 8-document seed distribution ─────────────
@@ -694,8 +696,14 @@ function SubmissionDetailPanel({ submission, isReadOnly, onClose, onUnsubmit }: 
         {/* Status */}
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Status</p>
-          <span className={`inline-flex items-center px-2.5 py-1 rounded text-[12px] font-semibold ${SUB_STATUS_BADGE[submission.status]}`}>
-            {submission.status}
+          <span className={`inline-flex items-center px-2.5 py-1 rounded text-[12px] font-semibold ${
+            submission.status === 'Declined' && submission.declineSource === 'approver'
+              ? 'bg-amber-50 text-amber-700 border border-amber-300'
+              : SUB_STATUS_BADGE[submission.status]
+          }`}>
+            {submission.status === 'Declined' && submission.declineSource === 'approver'
+              ? 'Rework Required'
+              : submission.status}
           </span>
         </div>
 
@@ -1683,9 +1691,10 @@ export default function PipelineDashboard() {
           return {
             ...sub,
             status: 'Declined' as const,
-            declineReasonLabel: payload.reasonLabel,
-            declineReason: payload.reason,
+            declineReasonLabel: declineLabel,
+            declineReason: payload.reason ?? payload.comments,
             declineFileReasons: payload.perFileReasons ?? [],
+            declineSource: payload.outcome === 'declined_for_rework' ? 'approver' as const : 'preparer' as const,
           };
         }));
       }
@@ -3254,11 +3263,17 @@ export default function PipelineDashboard() {
                       <td onClick={e => e.stopPropagation()}>
                         <div className="flex flex-col gap-0.5">
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold ${SUB_STATUS_BADGE[sub.status]}`}>
+                            <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold ${
+                              sub.status === 'Declined' && sub.declineSource === 'approver'
+                                ? 'bg-amber-50 text-amber-700 border border-amber-300'
+                                : SUB_STATUS_BADGE[sub.status]
+                            }`}>
                               {sub.status === 'In Progress' && (
                                 <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
                               )}
-                              {sub.status}
+                              {sub.status === 'Declined' && sub.declineSource === 'approver'
+                                ? 'Rework Required'
+                                : sub.status}
                             </span>
                             {sub.status === 'In Progress' && (
                               <TooltipProvider delayDuration={200}>

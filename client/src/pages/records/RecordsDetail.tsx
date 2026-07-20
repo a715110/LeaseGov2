@@ -18,7 +18,7 @@ import { useState, useEffect } from "react";
 import { useLocation, useParams } from "wouter";
 import { subscribeToEvents } from "@/lib/eventBus";
 import {
-  ChevronRight, Star, StarOff, Lock, AlertTriangle, Bot, Clock, Edit3
+  ChevronRight, Star, StarOff, Lock, AlertTriangle, Bot, Clock, Edit3, CheckCircle2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
@@ -132,6 +132,8 @@ export default function RecordsDetail() {
   const [record, setRecord] = useState({ ...MOCK_RECORD, id: recordId });
   const initialTab = new URLSearchParams(window.location.search).get('tab') || 'overview';
   const [activeTab, setActiveTab] = useState(initialTab);
+  // Transient green flash shown for 4 s after RECORD_APPROVED fires
+  const [approvedFlash, setApprovedFlash] = useState(false);
 
   const lockBanner = LOCK_BANNER[record.lock_status];
   const automationStyle = AUTOMATION_BADGE[record.automation_level] || AUTOMATION_BADGE.full_manual;
@@ -151,7 +153,10 @@ export default function RecordsDetail() {
       } else if (event.type === 'APPROVE_FOR_FINAL') {
         setRecord(r => ({ ...r, lock_status: 'pending_approval' as LockStatus }));
       } else if (event.type === 'RECORD_APPROVED') {
-        setRecord(r => ({ ...r, lock_status: 'unlocked' as LockStatus }));
+        // Flip status badge to Approved and clear the lock banner
+        setRecord(r => ({ ...r, status: 'approved' as RecordStatus, lock_status: 'unlocked' as LockStatus }));
+        setApprovedFlash(true);
+        setTimeout(() => setApprovedFlash(false), 4000);
       } else if (event.type === 'DECLINE_SUBMITTED') {
         setRecord(r => ({ ...r, lock_status: 'unlocked' as LockStatus }));
       } else if (event.type === 'UPLOAD_TASK_STARTED') {
@@ -205,6 +210,16 @@ export default function RecordsDetail() {
         >
           <Lock className="w-4 h-4 shrink-0" />
           {lockBanner.text}
+        </div>
+      )}
+      {/* Transient approval confirmation banner — auto-dismisses after 4 s */}
+      {approvedFlash && (
+        <div
+          className="flex items-center gap-3 px-6 py-2.5 text-[13px] font-semibold"
+          style={{ background:'var(--color-lg-success-subtle)', borderBottom:'2px solid var(--color-lg-success)', color:'var(--color-lg-success)' }}
+        >
+          <CheckCircle2 className="w-4 h-4 shrink-0" />
+          Record approved — all locks cleared.
         </div>
       )}
 
