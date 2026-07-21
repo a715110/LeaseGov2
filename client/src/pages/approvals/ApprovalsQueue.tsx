@@ -644,7 +644,14 @@ export default function ApprovalsQueue() {
                         size="sm"
                         className="h-7 gap-1 text-[12px]"
                         onClick={() => {
-                          if (task.subject_type === "reassessment_case" && task.case_id) {
+                          if (task.subject_type === "reassessment_case") {
+                            if (!task.case_id) {
+                              // Runtime guard — case_id must be seeded on every reassessment_case task
+                              toast.error("Case ID missing — contact admin", {
+                                description: `Task ${task.task_reference} has no linked case ID. Update INITIAL_TASKS to add case_id.`,
+                              });
+                              return;
+                            }
                             navigate(task.approval_stage === "final_approval"
                               ? `/workflows/reassessment/approval?caseId=${task.case_id}`
                               : `/workflows/reassessment/review?caseId=${task.case_id}`);

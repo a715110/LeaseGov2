@@ -17,20 +17,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { SCREEN_KEYS } from '@/constants/screenKeys';
 import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
-
-// TODO: Backend integration required — GET /api/reassessments/cases/:id
-const MOCK_CASES_LOOKUP: Record<string, { id: string; case_ref: string; contract_number: string; title: string; analyst: string; ai_confidence: number }> = {
-  c1:  { id: 'c1',  case_ref: 'RC-2026-0014', contract_number: 'CR-2026-0088', title: 'Office Tower — 350 Fifth Ave',   analyst: 'Jordan Kim',  ai_confidence: 96 },
-  c2:  { id: 'c2',  case_ref: 'RC-2026-0013', contract_number: 'CR-2026-0072', title: 'Retail HQ — 200 Park Ave',       analyst: 'Jordan Kim',  ai_confidence: 91 },
-  c3:  { id: 'c3',  case_ref: 'RC-2026-0012', contract_number: 'CR-2026-0055', title: 'Warehouse — 1 Industrial Blvd',  analyst: 'Sarah Chen',  ai_confidence: 88 },
-  c4:  { id: 'c4',  case_ref: 'RC-2026-0011', contract_number: 'CR-2026-0041', title: 'Data Center — 500 Tech Park',    analyst: 'Jordan Kim',  ai_confidence: 93 },
-  c5:  { id: 'c5',  case_ref: 'RC-2026-0010', contract_number: 'CR-2026-0033', title: 'Branch Office — 88 Main St',     analyst: 'Sarah Chen',  ai_confidence: 95 },
-  c6:  { id: 'c6',  case_ref: 'RC-2026-0009', contract_number: 'CR-2026-0028', title: 'Parking Garage — Level B2',      analyst: 'Jordan Kim',  ai_confidence: 87 },
-  c7:  { id: 'c7',  case_ref: 'RC-2026-0008', contract_number: 'CR-2026-0088', title: 'Office Tower — 350 Fifth Ave',   analyst: 'Sarah Chen',  ai_confidence: 96 },
-  c8:  { id: 'c8',  case_ref: 'RC-2026-0007', contract_number: 'CR-2026-0072', title: 'Retail HQ — 200 Park Ave',       analyst: 'Jordan Kim',  ai_confidence: 90 },
-  c9:  { id: 'c9',  case_ref: 'RC-2026-0006', contract_number: 'CR-2026-0055', title: 'Warehouse — 1 Industrial Blvd',  analyst: 'Sarah Chen',  ai_confidence: 89 },
-  c10: { id: 'c10', case_ref: 'RC-2026-0005', contract_number: 'CR-2026-0041', title: 'Data Center — 500 Tech Park',    analyst: 'Jordan Kim',  ai_confidence: 94 },
-};
+import { MOCK_REASSESSMENT_CASES, FALLBACK_REASSESSMENT_CASE } from '@/lib/mockReassessmentData';
 
 const BEFORE_AFTER = [
   { label: 'Lease Term (months)',  before: '60',         after: '84',         delta: '+24' },
@@ -62,7 +49,7 @@ export default function ReassessmentAnalysisWorkflowPage() {
   const [, navigate] = useLocation();
   const searchStr = useSearch();
   const caseId = useMemo(() => new URLSearchParams(searchStr).get('caseId') ?? 'c1', [searchStr]);
-  const MOCK_CASE = MOCK_CASES_LOOKUP[caseId] ?? MOCK_CASES_LOOKUP['c1'];
+  const MOCK_CASE = MOCK_REASSESSMENT_CASES[caseId] ?? FALLBACK_REASSESSMENT_CASE;
 
   const [submitted, setSubmitted] = useState(false);
 

@@ -106,6 +106,30 @@ const FILTER_TABS = [
   { id:"remediation", label:"Remediation" },
 ];
 
+/**
+ * Resolve the correct destination URL for a case's Open button.
+ * Workflow screens receive ?caseId= so they can look up case data from
+ * the shared MOCK_REASSESSMENT_CASES lookup.
+ * Case-level screens (/reassessment/cases/:id/*) use the :id param directly.
+ */
+function resolveOpenUrl(c: { id: string; status: string }): string {
+  switch (c.status) {
+    // Workflow screens — pass caseId as query param
+    case 'pending_review':       return `/workflows/reassessment/review?caseId=${c.id}`;
+    case 'pending_approval':     return `/workflows/reassessment/approval?caseId=${c.id}`;
+    case 'analysis_in_progress':
+    case 'analysis_pending':     return `/workflows/reassessment/analysis?caseId=${c.id}`;
+    case 'initiated':            return `/workflows/reassessment/update?caseId=${c.id}`;
+    // Case-level screens — use :id param in path
+    case 'memo_draft':           return `/reassessment/cases/${c.id}/memo`;
+    case 'assessment_pending':
+    case 'assessment_review':    return `/reassessment/cases/${c.id}/assess`;
+    case 'classification_pending':
+    case 'classification_review':
+    default:                     return `/reassessment/cases/${c.id}/classify`;
+  }
+}
+
 export default function ReassessmentCaseList() {
   const _screenKey = SCREEN_KEYS.REASSESSMENT_CASE_LIST;
   const [, navigate] = useLocation();
@@ -254,7 +278,7 @@ export default function ReassessmentCaseList() {
                       <div className="flex items-center justify-end gap-1">
                         <Button
                           variant="ghost" size="sm" className="h-7 gap-1 text-[12px]"
-                          onClick={() => navigate(`/reassessment/cases/${c.id}/classify`)}
+                          onClick={() => navigate(resolveOpenUrl(c))}
                         >
                           Open <ChevronRight className="w-3.5 h-3.5" />
                         </Button>

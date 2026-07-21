@@ -18,23 +18,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { SCREEN_KEYS } from '@/constants/screenKeys';
 import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
-
-// TODO: Backend integration required — GET /api/reassessments/cases/:id
-const MOCK_CASES_LOOKUP: Record<string, {
-  id: string; case_ref: string; contract_number: string; title: string;
-  approver: string; memo_ref: string; submitted_by: string; submitted_at: string;
-}> = {
-  c1:  { id: 'c1',  case_ref: 'RC-2026-0014', contract_number: 'CR-2026-0088', title: 'Office Tower — 350 Fifth Ave',   approver: 'Michael Torres', memo_ref: 'MEMO-2026-0088-R1', submitted_by: 'Sarah Chen',  submitted_at: '2026-05-15 14:32' },
-  c2:  { id: 'c2',  case_ref: 'RC-2026-0013', contract_number: 'CR-2026-0072', title: 'Retail HQ — 200 Park Ave',       approver: 'Michael Torres', memo_ref: 'MEMO-2026-0072-R1', submitted_by: 'Jordan Kim',  submitted_at: '2026-05-14 11:20' },
-  c3:  { id: 'c3',  case_ref: 'RC-2026-0012', contract_number: 'CR-2026-0055', title: 'Warehouse — 1 Industrial Blvd',  approver: 'Michael Torres', memo_ref: 'MEMO-2026-0055-R1', submitted_by: 'Jordan Kim',  submitted_at: '2026-05-13 09:45' },
-  c4:  { id: 'c4',  case_ref: 'RC-2026-0011', contract_number: 'CR-2026-0041', title: 'Data Center — 500 Tech Park',    approver: 'Michael Torres', memo_ref: 'MEMO-2026-0041-R1', submitted_by: 'Sarah Chen',  submitted_at: '2026-05-12 16:10' },
-  c5:  { id: 'c5',  case_ref: 'RC-2026-0010', contract_number: 'CR-2026-0033', title: 'Branch Office — 88 Main St',     approver: 'Michael Torres', memo_ref: 'MEMO-2026-0033-R1', submitted_by: 'Jordan Kim',  submitted_at: '2026-05-11 14:55' },
-  c6:  { id: 'c6',  case_ref: 'RC-2026-0009', contract_number: 'CR-2026-0028', title: 'Parking Garage — Level B2',      approver: 'Michael Torres', memo_ref: 'MEMO-2026-0028-R1', submitted_by: 'Sarah Chen',  submitted_at: '2026-05-10 10:30' },
-  c7:  { id: 'c7',  case_ref: 'RC-2026-0008', contract_number: 'CR-2026-0088', title: 'Office Tower — 350 Fifth Ave',   approver: 'Michael Torres', memo_ref: 'MEMO-2026-0088-R2', submitted_by: 'Jordan Kim',  submitted_at: '2026-05-09 15:22' },
-  c8:  { id: 'c8',  case_ref: 'RC-2026-0007', contract_number: 'CR-2026-0072', title: 'Retail HQ — 200 Park Ave',       approver: 'Michael Torres', memo_ref: 'MEMO-2026-0072-R2', submitted_by: 'Sarah Chen',  submitted_at: '2026-05-08 13:40' },
-  c9:  { id: 'c9',  case_ref: 'RC-2026-0006', contract_number: 'CR-2026-0055', title: 'Warehouse — 1 Industrial Blvd',  approver: 'Michael Torres', memo_ref: 'MEMO-2026-0055-R2', submitted_by: 'Jordan Kim',  submitted_at: '2026-05-07 11:15' },
-  c10: { id: 'c10', case_ref: 'RC-2026-0005', contract_number: 'CR-2026-0041', title: 'Data Center — 500 Tech Park',    approver: 'Michael Torres', memo_ref: 'MEMO-2026-0041-R2', submitted_by: 'Sarah Chen',  submitted_at: '2026-05-06 09:00' },
-};
+import { MOCK_REASSESSMENT_CASES, FALLBACK_REASSESSMENT_CASE } from '@/lib/mockReassessmentData';
 
 const SOD_CHECKS = [
   { label: 'Approver did not prepare this case', passed: true },
@@ -65,7 +49,7 @@ export default function ReassessmentApprovalPage() {
   const [, navigate] = useLocation();
   const searchStr = useSearch();
   const caseId = useMemo(() => new URLSearchParams(searchStr).get('caseId') ?? 'c1', [searchStr]);
-  const MOCK_CASE = MOCK_CASES_LOOKUP[caseId] ?? MOCK_CASES_LOOKUP['c1'];
+  const MOCK_CASE = MOCK_REASSESSMENT_CASES[caseId] ?? FALLBACK_REASSESSMENT_CASE;
 
   const MEMO_SUMMARY = [
     { label: 'Classification',      value: 'Reassessment — Option Exercise' },
