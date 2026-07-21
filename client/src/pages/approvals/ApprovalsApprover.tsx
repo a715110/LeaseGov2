@@ -269,13 +269,29 @@ export default function ApprovalsApprover() {
                   const flaggedFields = taskFields
                     .filter(f => f.rework_flagged)
                     .map(f => f.field_name);
+                  // FC-4 Fix 2: populate document_ids and perFileReasons so
+                  // PipelineDashboard can reliably match and restore staged docs.
+                  // document_ids are derived from flagged field IDs as a proxy
+                  // (production: use the actual file/document IDs from the task).
+                  const document_ids: string[] = taskFields.map(f => f.id);
+                  const perFileReasons = flaggedFields.map(fieldName => ({
+                    jobId: fieldName,
+                    fileName: fieldName,
+                    reason: declineComments,
+                  }));
                   publishEvent({
                     type: 'DECLINE_SUBMITTED',
                     payload: {
                       task_id: contractRecordId,
                       record_id: s.record_id,
+                      // batchRef and submissionId let PipelineDashboard isMatch
+                      // find the right submission row even without document_ids.
+                      batchRef: s.task_reference,
+                      submissionId: s.record_id,
                       outcome: 'declined_for_rework',
                       comments: declineComments,
+                      document_ids,
+                      perFileReasons,
                     },
                     sourceRole: activeRole,
                   });

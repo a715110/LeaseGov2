@@ -241,7 +241,9 @@ export default function ApprovalsQueue() {
       base = base.map(t => {
         if (t.id !== p.task_id) return t;
         if (t.status !== 'pending') return t; // don't downgrade approved/rejected rows
-        return { ...t, status: 'opened' as TaskStatus, opened_at: t.opened_at ?? event.timestamp };
+        // FC-4 Fix 3: also clear recall_available during replay so My Submissions
+        // Recall button is correctly disabled after page reload.
+        return { ...t, status: 'opened' as TaskStatus, opened_at: t.opened_at ?? event.timestamp, recall_available: false };
       });
     }
     return base;
@@ -275,7 +277,9 @@ export default function ApprovalsQueue() {
         setTasks(prev => prev.map(t => {
           if (t.status !== 'pending') return t;
           if (p.task_id && t.id === p.task_id) {
-            return { ...t, status: 'opened' as TaskStatus, opened_at: new Date().toISOString() };
+            // FC-4 Fix 3: set recall_available=false when a reviewer/approver opens
+            // the task, so the Recall button in My Submissions disables correctly.
+            return { ...t, status: 'opened' as TaskStatus, opened_at: new Date().toISOString(), recall_available: false };
           }
           return t;
         }));
