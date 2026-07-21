@@ -217,20 +217,26 @@ export default function RecordTabWorkflow({ recordId }: RecordTabWorkflowProps) 
   const [showRework, setShowRework] = useState(true);
   const [liveEvents, setLiveEvents] = useState<string[]>([]);
 
-  // Apply an event to the step list
-  const applyEvent = useCallback((eventType: string, _payload: Record<string, unknown>) => {
+    // Apply an event to the step list
+  const applyEvent = useCallback((eventType: string, payload: Record<string, unknown>) => {
     const mapping = EVENT_STEP_MAP[eventType];
     if (!mapping) return;
-
     setSteps(prev => prev.map(s => {
       if (s.id !== mapping.stepId) return s;
-      const now = nowLabel();
+      // Prefer the event's own ISO timestamp; fall back to nowLabel()
+      const rawTs = payload.timestamp as string | undefined;
+      const ts = rawTs
+        ? new Date(rawTs).toLocaleString('en-US', {
+            month: '2-digit', day: '2-digit', year: 'numeric',
+            hour: '2-digit', minute: '2-digit', hour12: false,
+          }).replace(',', '')
+        : nowLabel();
       return {
         ...s,
         status: mapping.status,
-        ...(mapping.status === "in_progress" ? { started_at: now } : {}),
-        ...(mapping.status === "completed" ? { completed_at: now } : {}),
-        notes: `[Live] ${mapping.label} at ${now}`,
+        ...(mapping.status === 'in_progress' ? { started_at: ts } : {}),
+        ...(mapping.status === 'completed' ? { completed_at: ts } : {}),
+        notes: `[Live] ${mapping.label} at ${ts}`,
       };
     }));
 

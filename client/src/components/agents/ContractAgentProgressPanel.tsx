@@ -6,7 +6,7 @@
  */
 
 import { useState } from 'react';
-import { Bot, CheckCircle2, Clock, ChevronDown, ChevronRight, AlertTriangle, Flag } from 'lucide-react';
+import { Bot, CheckCircle2, Clock, ChevronDown, ChevronRight, AlertTriangle, Flag, Loader2 } from 'lucide-react';
 import { AutomationPolicyBadge } from '@/components/automation/AutomationPolicyBadge';
 import { InterventionButton } from '@/components/automation/InterventionButton';
 import { GracefulDegradationBanner } from '@/components/automation/GracefulDegradationBanner';
@@ -150,7 +150,7 @@ export function ContractAgentProgressPanel({ task, agentUnavailable = false, onI
         {activeStep && (
           <div className="rounded-lg px-4 py-3 border" style={{ background: 'var(--color-lg-accent-subtle)', borderColor: 'var(--color-lg-accent)' }}>
             <div className="flex items-center gap-3">
-              <div className="w-4 h-4 rounded-full shrink-0 animate-pulse" style={{ background: 'var(--color-lg-accent)' }} />
+              <Loader2 className="w-4 h-4 shrink-0 animate-spin" style={{ color: 'var(--color-lg-accent)', animationDuration: '1s' }} />
               <span className="text-[12px] font-semibold flex-1" style={{ color: 'var(--color-lg-accent)' }}>{activeStep.label}</span>
               {activeStep.duration && <span className="text-[11px] text-muted-foreground">{activeStep.duration}</span>}
             </div>

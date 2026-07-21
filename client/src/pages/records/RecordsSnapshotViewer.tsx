@@ -463,6 +463,24 @@ export default function RecordsSnapshotViewer() {
 
       {/* Comparison panels */}
       <div className="flex-1 overflow-y-auto px-6 py-5">
+        {/* Empty state when changed-only filter has no results */}
+        {showChangedOnly && changedCount === 0 && (
+          <div className="flex flex-col items-center justify-center py-20 gap-4">
+            <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ background: 'var(--color-lg-success-subtle)' }}>
+              <CheckCircle2 className="w-7 h-7" style={{ color: 'var(--color-lg-success)' }} />
+            </div>
+            <div className="text-center">
+              <p className="text-[15px] font-semibold text-foreground">No differences found</p>
+              <p className="text-[13px] text-muted-foreground mt-1">These two versions are identical across all fields.</p>
+            </div>
+            <button
+              className="text-[12px] text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
+              onClick={() => setShowChangedOnly(false)}
+            >
+              Show all fields
+            </button>
+          </div>
+        )}
         {categories.map(category => {
           const categoryKeys = allKeys.filter(k => (FIELD_CATEGORIES[k] ?? 'Other') === category)
           const hasCategoryChanges = categoryKeys.some(k => diff[k])
