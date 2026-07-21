@@ -25,6 +25,7 @@ import {
   MOCK_EXTRACTION_TEMPLATES,
   useExtractionStore,
   type ExtractionTemplate,
+  type ClassificationResult,
 } from '../../contexts/ExtractionStoreContext';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -231,6 +232,32 @@ export function ProcessingWorkflowDialog({
     extractionStore.setConfirmedTemplate(match);
     setAutoSelectedTemplateId(match.id);
   }, [open, contractType]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // FC-2 Gap 3: seed classificationResult when dialog opens at Step 1.
+  // Derives document type from fileName heuristics and stores it in the shared
+  // ExtractionStoreContext so ExtractionVerification can display the badge.
+  useEffect(() => {
+    if (!open) return;
+    const AMENDMENT_RE = /amend|amendment|addendum|rider|supplement|modification/i;
+    const RENEWAL_RE   = /renew|renewal|extension/i;
+    const SUBLEASE_RE  = /sublease|sub-lease|subtenant/i;
+    const TERMINATION_RE = /terminat|surrender/i;
+    let documentType = 'Commercial Lease';
+    let confidence   = 0.91;
+    let suggestedTemplateId = 'tpl-1';
+    if (AMENDMENT_RE.test(fileName))    { documentType = 'Lease Amendment';      confidence = 0.94; suggestedTemplateId = 'tpl-2'; }
+    else if (RENEWAL_RE.test(fileName)) { documentType = 'Lease Renewal';        confidence = 0.89; suggestedTemplateId = 'tpl-4'; }
+    else if (SUBLEASE_RE.test(fileName)){ documentType = 'Sublease Agreement';   confidence = 0.87; suggestedTemplateId = 'tpl-3'; }
+    else if (TERMINATION_RE.test(fileName)){ documentType = 'Termination Agreement'; confidence = 0.92; suggestedTemplateId = 'tpl-5'; }
+    // Also honour the contractType prop if present
+    if (contractType === 'lease_amendment')   { documentType = 'Lease Amendment';      confidence = 0.96; suggestedTemplateId = 'tpl-2'; }
+    else if (contractType === 'sublease')     { documentType = 'Sublease Agreement';   confidence = 0.95; suggestedTemplateId = 'tpl-3'; }
+    else if (contractType === 'lease_renewal'){ documentType = 'Lease Renewal';        confidence = 0.94; suggestedTemplateId = 'tpl-4'; }
+    else if (contractType === 'termination')  { documentType = 'Termination Agreement'; confidence = 0.95; suggestedTemplateId = 'tpl-5'; }
+    const suggestedTemplate = MOCK_EXTRACTION_TEMPLATES.find(t => t.id === suggestedTemplateId) ?? null;
+    const result: ClassificationResult = { documentType, confidence, suggestedTemplate: suggestedTemplate ?? undefined };
+    extractionStore.setClassificationResult(result);
+  }, [open, fileName, contractType]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Build verification fields from confirmed template (S6b)
   useEffect(() => {

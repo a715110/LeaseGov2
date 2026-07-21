@@ -18,7 +18,7 @@
  *   ai_confidence, rework_flagged), EvidenceAnchor
  */
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { useLocation, useSearch } from "wouter";
 import { toast } from 'sonner';
 import { publishEvent } from '@/lib/eventBus';
@@ -30,7 +30,7 @@ import { useCheckpoints } from '@/hooks/useCheckpoints';
 import {
   Shield, CheckCircle2, AlertTriangle, Link2, Link2Off,
   ChevronDown, ChevronUp, ZoomIn, ZoomOut, Layers,
-  FileText, ChevronRight, AlertCircle, Copy, ArrowLeft
+  FileText, ChevronRight, ChevronLeft, AlertCircle, Copy, ArrowLeft
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -233,6 +233,11 @@ export default function ExtractionVerification() {
   const [activeFieldId, setActiveFieldId] = useState("v1");
   const [zoom, setZoom] = useState(100);
   const [heatmap, setHeatmap] = useState(false);
+  // Multi-page PDF navigation state
+  const [pdfPage, setPdfPage] = useState(1);
+  const PDF_TOTAL_PAGES = 4;
+  // Ref for the PDF scroll container (for field-to-anchor scroll sync)
+  const pdfScrollRef = useRef<HTMLDivElement>(null);
   // Read rework context from navigation state (set by ApprovalsRework "Open for Rework" button)
   const reworkState = useMemo(() => {
     const s = window.history.state as {
@@ -262,6 +267,25 @@ export default function ExtractionVerification() {
   const deferredCount = fields.filter(f => f.disposition === "deferred").length;
   const unresolvedCount = fields.filter(f => f.disposition === null).length;
   const canSubmit = disposedCount >= totalFields && criticalConfirmed >= criticalTotal && unresolvedCount === 0;
+
+  // Field-to-anchor scroll sync: when activeFieldId changes, scroll the PDF panel
+  // so the anchor highlight is visible in the viewport.
+  // Anchor positions (as % of document height) per field id:
+  const ANCHOR_TOP_PCT: Record<string, number> = {
+    v1: 15, v2: 18, v3: 32, v4: 37, v5: 42, v6: 26,
+    v7: 52, v8: 58, v9: 64, v10: 22, v11: 70,
+  };
+  useEffect(() => {
+    const container = pdfScrollRef.current;
+    if (!container) return;
+    const pct = ANCHOR_TOP_PCT[activeFieldId] ?? 22;
+    // The PDF page div is the first child of the scroll container
+    const pageEl = container.querySelector('[data-pdf-page]') as HTMLElement | null;
+    if (!pageEl) return;
+    const pageHeight = pageEl.offsetHeight;
+    const targetScrollTop = (pct / 100) * pageHeight - container.clientHeight / 2;
+    container.scrollTo({ top: Math.max(0, targetScrollTop), behavior: 'smooth' });
+  }, [activeFieldId]);
 
   function toggleCat(cat: string) {
     setExpandedCats(prev => { const n = new Set(prev); n.has(cat) ? n.delete(cat) : n.add(cat); return n; });
@@ -495,7 +519,28 @@ export default function ExtractionVerification() {
             <div className="flex items-center gap-2">
               <FileText className="w-4 h-4 text-muted-foreground" />
               <span className="text-[12px] font-medium text-foreground">Office-Tower-Amendment-3.pdf</span>
-              <span className="text-[10px] text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded">p.1/4</span>
+              {/* Multi-page navigation */}
+              <div className="flex items-center gap-1 ml-1">
+                <button
+                  onClick={() => setPdfPage(p => Math.max(1, p - 1))}
+                  disabled={pdfPage <= 1}
+                  className="p-0.5 rounded hover:bg-muted text-muted-foreground disabled:opacity-30 disabled:cursor-not-allowed"
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                </button>
+                <span className="text-[10px] text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded">
+                  p.{pdfPage}/{PDF_TOTAL_PAGES}
+                </span>
+                <button
+                  onClick={() => setPdfPage(p => Math.min(PDF_TOTAL_PAGES, p + 1))}
+                  disabled={pdfPage >= PDF_TOTAL_PAGES}
+                  className="p-0.5 rounded hover:bg-muted text-muted-foreground disabled:opacity-30 disabled:cursor-not-allowed"
+                  aria-label="Next page"
+                >
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <button onClick={() => setHeatmap(v => !v)} className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-[12px] font-medium border transition-colors ${heatmap ? "border-primary bg-accent text-primary" : "border-border text-muted-foreground hover:border-primary/40"}`}>
@@ -506,9 +551,10 @@ export default function ExtractionVerification() {
               <button onClick={() => setZoom(z => Math.min(200, z + 10))} className="p-1.5 rounded hover:bg-muted text-muted-foreground"><ZoomIn className="w-3.5 h-3.5" /></button>
             </div>
           </div>
-          <div className="flex-1 bg-[#e8e8e8] p-4 overflow-auto">
+          <div ref={pdfScrollRef} className="flex-1 bg-[#e8e8e8] p-4 overflow-auto">
             {/* Simulated PDF page */}
             <div
+              data-pdf-page
               className="relative bg-white shadow-[0_2px_12px_rgba(0,0,0,0.18)] mx-auto"
               style={{ width: `${zoom * 3.5}px`, maxWidth: '100%', minHeight: '700px', fontFamily: 'Georgia, serif', transition: 'width 0.15s ease' }}
             >
@@ -516,20 +562,23 @@ export default function ExtractionVerification() {
               {heatmap && (
                 <div className="absolute inset-0 pointer-events-none z-10" style={{ background: 'linear-gradient(135deg, rgba(46,117,182,0.10) 0%, rgba(245,127,23,0.07) 55%, rgba(198,40,40,0.12) 100%)' }} />
               )}
-              {/* Active field anchor highlight — tracks activeFieldId */}
-              <div
-                className="absolute z-20 border-2 rounded pointer-events-none"
-                style={{
-                  top: activeFieldId === 'v7' ? '52%' : activeFieldId === 'v3' ? '32%' : activeFieldId === 'v4' ? '37%' : activeFieldId === 'v10' ? '22%' : '22%',
-                  left: '8%', width: '84%', height: '3.5%',
-                  borderColor: 'var(--color-lg-primary-light)',
-                  background: 'rgba(46,117,182,0.08)',
-                  boxShadow: '0 0 0 3px rgba(46,117,182,0.22)',
-                  transition: 'top 0.2s ease',
-                }}
-              />
-              {/* Document content */}
+              {/* Active field anchor highlight — only shown on page 1 where fields are anchored */}
+              {pdfPage === 1 && (
+                <div
+                  className="absolute z-20 border-2 rounded pointer-events-none"
+                  style={{
+                    top: `${ANCHOR_TOP_PCT[activeFieldId] ?? 22}%`,
+                    left: '8%', width: '84%', height: '3.5%',
+                    borderColor: 'var(--color-lg-primary-light)',
+                    background: 'rgba(46,117,182,0.08)',
+                    boxShadow: '0 0 0 3px rgba(46,117,182,0.22)',
+                    transition: 'top 0.2s ease',
+                  }}
+                />
+              )}
+              {/* Document content — conditional per page */}
               <div className="px-10 py-10 text-gray-900" style={{ fontSize: `${Math.max(8, zoom * 0.11)}px`, lineHeight: 1.6 }}>
+              {pdfPage === 1 && (<>
                 {/* Header */}
                 <div className="text-center mb-6">
                   <p className="text-[1.05em] font-bold uppercase tracking-widest mb-1">THIRD AMENDMENT TO OFFICE LEASE</p>
@@ -624,6 +673,94 @@ export default function ExtractionVerification() {
                 <div className="mt-8 pt-4 border-t border-gray-200 text-center text-[0.78em] text-gray-400">
                   <p>Office-Tower-Amendment-3.pdf · Page 1 of 4 · JOB-2026-0442 · Confidential</p>
                 </div>
+              </>)}
+              {pdfPage === 2 && (
+                <>
+                  {/* Page 2 — Exhibit A: Premises Description */}
+                  <div className="text-center mb-6">
+                    <p className="text-[1.0em] font-bold uppercase tracking-widest mb-1">Exhibit A</p>
+                    <p className="text-[0.9em] font-semibold">Description of Premises</p>
+                    <p className="text-[0.8em] text-gray-500 mt-0.5">(Third Amendment to Office Lease)</p>
+                  </div>
+                  <p className="mb-3 text-[0.9em]">
+                    The Premises consist of the entirety of Suites 2400 through 2450 on the twenty-fourth (24th) floor
+                    of the building commonly known as the Empire State Building, located at{' '}
+                    <span className="bg-blue-50 border border-blue-200 px-0.5 rounded font-semibold text-blue-900">350 Fifth Avenue, New York, New York 10118</span>{' '}
+                    (the “Building”), as more particularly shown on the floor plan attached hereto as Schedule 1.
+                  </p>
+                  <p className="mb-3 text-[0.9em]">
+                    The Premises contain approximately{' '}
+                    <span className="bg-blue-50 border border-blue-200 px-0.5 rounded font-semibold text-blue-900">24,500 rentable square feet</span>{' '}
+                    (the “Rentable Area”), as measured in accordance with the Building Owners and Managers Association
+                    (BOMA) 2017 standard for office buildings.
+                  </p>
+                  <p className="font-bold text-[0.9em] mb-2 uppercase tracking-wide">Common Areas</p>
+                  <p className="mb-3 text-[0.88em]">
+                    Tenant shall have the non-exclusive right to use the common areas of the Building, including
+                    lobbies, elevators, stairwells, restrooms, and loading docks, subject to the rules and regulations
+                    of the Building as amended from time to time by Landlord.
+                  </p>
+                  <p className="font-bold text-[0.9em] mb-2 uppercase tracking-wide">Parking</p>
+                  <p className="mb-3 text-[0.88em]">
+                    Tenant shall have the right to lease up to twelve (12) parking spaces in the Building’s
+                    underground garage at the prevailing monthly rate, currently $425.00 per space per month,
+                    subject to availability.
+                  </p>
+                  <table className="w-full border-collapse text-[0.85em] mb-4">
+                    <thead>
+                      <tr className="bg-gray-100">
+                        <th className="border border-gray-300 px-2 py-1 text-left">Space Designation</th>
+                        <th className="border border-gray-300 px-2 py-1 text-right">Approx. Area (SF)</th>
+                        <th className="border border-gray-300 px-2 py-1 text-left">Use</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td className="border border-gray-300 px-2 py-1">Suite 2400</td>
+                        <td className="border border-gray-300 px-2 py-1 text-right">18,200</td>
+                        <td className="border border-gray-300 px-2 py-1">General Office</td>
+                      </tr>
+                      <tr className="bg-gray-50">
+                        <td className="border border-gray-300 px-2 py-1">Suite 2450</td>
+                        <td className="border border-gray-300 px-2 py-1 text-right">6,300</td>
+                        <td className="border border-gray-300 px-2 py-1">Conference &amp; Support</td>
+                      </tr>
+                      <tr>
+                        <td className="border border-gray-300 px-2 py-1 font-semibold">Total</td>
+                        <td className="border border-gray-300 px-2 py-1 text-right font-semibold">24,500</td>
+                        <td className="border border-gray-300 px-2 py-1"></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <p className="text-[0.85em] text-gray-500 italic mb-4">
+                    Note: The Rentable Area set forth above is stipulated by the parties and shall not be subject
+                    to remeasurement or adjustment during the Extended Term.
+                  </p>
+                  <div className="mt-8 pt-4 border-t border-gray-200 text-center text-[0.78em] text-gray-400">
+                    <p>Office-Tower-Amendment-3.pdf · Page 2 of 4 · JOB-2026-0442 · Confidential</p>
+                  </div>
+                </>
+              )}
+              {(pdfPage === 3 || pdfPage === 4) && (
+                <>
+                  <div className="text-center mb-6">
+                    <p className="text-[1.0em] font-bold uppercase tracking-widest mb-1">
+                      {pdfPage === 3 ? 'Exhibit B' : 'Exhibit C'}
+                    </p>
+                    <p className="text-[0.9em] font-semibold">
+                      {pdfPage === 3 ? 'Building Rules and Regulations' : 'Form of Estoppel Certificate'}
+                    </p>
+                    <p className="text-[0.8em] text-gray-500 mt-0.5">(Third Amendment to Office Lease)</p>
+                  </div>
+                  <p className="mb-3 text-[0.88em] text-gray-600 italic">
+                    [Content of {pdfPage === 3 ? 'Exhibit B' : 'Exhibit C'} — {pdfPage === 3 ? '14 pages of building rules and regulations including move-in/move-out procedures, HVAC scheduling, and security protocols.' : 'Standard form estoppel certificate for use by Landlord in connection with any financing or sale of the Building.'}
+                    {' '}No extracted fields are anchored to this exhibit.]
+                  </p>
+                  <div className="mt-8 pt-4 border-t border-gray-200 text-center text-[0.78em] text-gray-400">
+                    <p>Office-Tower-Amendment-3.pdf · Page {pdfPage} of 4 · JOB-2026-0442 · Confidential</p>
+                  </div>
+                </>
+              )}
               </div>
             </div>
           </div>
