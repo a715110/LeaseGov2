@@ -21,10 +21,11 @@ import { useState, useMemo } from 'react'
 import { useLocation, useParams } from 'wouter'
 import {
   ChevronRight, GitCompare, Calendar, User,
-  AlertTriangle, CheckCircle2, ArrowRight, ArrowLeftRight,
+  AlertTriangle, CheckCircle2, ArrowRight, ArrowLeftRight, Download, Printer,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { toast } from 'sonner'
 import {
   Select,
   SelectContent,
@@ -385,7 +386,7 @@ export default function RecordsSnapshotViewer() {
           </Select>
         </div>
 
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-3">
           {changedCount > 0 ? (
             <span className="flex items-center gap-1.5 text-[12px]" style={{ color: 'var(--color-lg-warning)' }}>
               <AlertTriangle className="h-3.5 w-3.5" />
@@ -397,6 +398,48 @@ export default function RecordsSnapshotViewer() {
               No differences
             </span>
           )}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1.5 text-[12px]"
+                onClick={() => {
+                  const leftLabel = leftSnapshot ? `Snapshot #${leftSnapshot.snapshot_number}` : 'Left'
+                  const rightLabel = rightIsCurrent ? 'Current Record' : rightSnapshot ? `Snapshot #${rightSnapshot.snapshot_number}` : 'Right'
+                  const lines = [`Snapshot Diff Export — Record ${recordId}`, `${leftLabel}  →  ${rightLabel}`, `Changed fields: ${changedCount}`, '']
+                  for (const key of allKeys) {
+                    if (!diff[key]) continue
+                    const lv = formatValue(key, leftData[key] ?? null)
+                    const rv = formatValue(key, rightData[key] ?? null)
+                    lines.push(`${FIELD_LABELS[key]}: ${lv}  →  ${rv}`)
+                  }
+                  const blob = new Blob([lines.join('\n')], { type: 'text/plain' })
+                  const url = URL.createObjectURL(blob)
+                  const a = document.createElement('a')
+                  a.href = url; a.download = `diff-${recordId}.txt`; a.click()
+                  URL.revokeObjectURL(url)
+                  toast.success('Diff exported')
+                }}
+              >
+                <Download className="h-3.5 w-3.5" /> Export
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-[12px]">Download changed fields as .txt</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1.5 text-[12px]"
+                onClick={() => window.print()}
+              >
+                <Printer className="h-3.5 w-3.5" /> Print
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-[12px]">Print this comparison</TooltipContent>
+          </Tooltip>
         </div>
       </div>
 
@@ -456,7 +499,7 @@ export default function RecordsSnapshotViewer() {
                   ) : null}
                 </div>
 
-                {/* Field rows */}
+                {/* Field rows — 3-column grid: left | arrow | right */}
                 {categoryKeys.map((key, idx) => {
                   const isChanged = diff[key]
                   const leftVal = formatValue(key, leftData[key] ?? null)
@@ -475,10 +518,15 @@ export default function RecordsSnapshotViewer() {
                         )}
                       >
                         <p className="text-[11px] text-muted-foreground mb-0.5">{FIELD_LABELS[key]}</p>
-                        <p className={cn('text-[13px]', isChanged ? 'font-medium' : 'text-foreground')}
-                          style={isChanged ? { color: 'var(--color-lg-warning)' } : {}}>
-                          {leftVal}
-                        </p>
+                        <div className="flex items-center gap-1.5">
+                          <p className={cn('text-[13px]', isChanged ? 'font-medium line-through opacity-60' : 'text-foreground')}
+                            style={isChanged ? { color: 'var(--color-lg-warning)' } : {}}>
+                            {leftVal}
+                          </p>
+                          {isChanged && (
+                            <ArrowRight className="h-3 w-3 shrink-0" style={{ color: 'var(--color-lg-warning)' }} />
+                          )}
+                        </div>
                       </div>
                       {/* Right cell */}
                       <div
@@ -490,7 +538,7 @@ export default function RecordsSnapshotViewer() {
                         )}
                       >
                         <p className="text-[11px] text-muted-foreground mb-0.5">{FIELD_LABELS[key]}</p>
-                        <p className={cn('text-[13px]', isChanged ? 'font-medium' : 'text-foreground')}
+                        <p className={cn('text-[13px]', isChanged ? 'font-semibold' : 'text-foreground')}
                           style={isChanged ? { color: 'var(--color-lg-warning)' } : {}}>
                           {rightVal}
                         </p>
