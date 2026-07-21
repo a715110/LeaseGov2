@@ -7,7 +7,7 @@
  *
  * Design: Structured Authority — dense information hierarchy, amber for attention
  */
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { ContractAgentProgressPanel, AgentTaskData } from '@/components/agents/ContractAgentProgressPanel';
 import { GracefulDegradationBanner } from '@/components/automation/GracefulDegradationBanner';
 import { AgentExceptionPanel } from '@/components/agents/AgentExceptionPanel';
@@ -59,6 +59,26 @@ const MOCK_EXCEPTIONS: import('@/components/agents/AgentExceptionPanel').AgentEx
 export default function RecordTabAgent({ recordId }: RecordTabAgentProps) {
   const [demoStatus, setDemoStatus] = useState<DemoStatus>('completed');
   const [showExceptions, setShowExceptions] = useState(true);
+  // Live progress bar for running state — increments every 2 seconds
+  const [liveProgress, setLiveProgress] = useState(0);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (demoStatus === 'running') {
+      setLiveProgress(12); // start at 12% (steps 1-2 already done)
+      intervalRef.current = setInterval(() => {
+        setLiveProgress(prev => {
+          const next = prev + 2;
+          if (next >= 98) { clearInterval(intervalRef.current!); return 98; }
+          return next;
+        });
+      }, 2000);
+    } else {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      setLiveProgress(demoStatus === 'completed' ? 100 : demoStatus === 'awaiting_checkpoint' ? 75 : 0);
+    }
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [demoStatus]);
 
   const mockAgentTask: AgentTaskData = useMemo(() => {
     const isRunning    = demoStatus === 'running';
@@ -180,9 +200,13 @@ export default function RecordTabAgent({ recordId }: RecordTabAgentProps) {
         current: isRunning ? 3 : isAwaiting ? 3 : 4,
         total: 4,
         label: isRunning ? 'Field Extraction' : isAwaiting ? 'Awaiting checkpoint' : isCompleted ? 'Complete' : 'Paused',
-      },
+            },
     };
   }, [recordId, demoStatus]);
+
+  const progressBarPct = demoStatus === 'running' ? liveProgress
+    : demoStatus === 'completed' ? 100
+    : demoStatus === 'awaiting_checkpoint' ? 75 : 0;
 
   function cycleStatus() {
     const idx = DEMO_STATUSES.indexOf(demoStatus);
@@ -221,8 +245,34 @@ export default function RecordTabAgent({ recordId }: RecordTabAgentProps) {
         </Button>
       </div>
 
+            {/* Live progress bar — only visible when running or awaiting */}
+      {(demoStatus === 'running' || demoStatus === 'awaiting_checkpoint') && (
+        <div className="px-5 py-3 border-b border-border bg-muted/20">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5">
+              {demoStatus === 'running' && (
+                <span className="inline-block w-2 h-2 rounded-full animate-pulse" style={{ background: 'var(--color-lg-primary)' }} />
+              )}
+              {demoStatus === 'running' ? 'Field Extraction in progress…' : 'Awaiting checkpoint approval'}
+            </span>
+            <span className="text-[11px] font-semibold" style={{ color: 'var(--color-lg-primary)' }}>
+              {progressBarPct}%
+            </span>
+          </div>
+          <div className="w-full h-1.5 rounded-full bg-border overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-[2000ms] ease-linear"
+              style={{
+                width: `${progressBarPct}%`,
+                background: demoStatus === 'running'
+                  ? 'var(--color-lg-primary)'
+                  : 'var(--color-lg-warning)',
+              }}
+            />
+          </div>
+        </div>
+      )}
       <GracefulDegradationBanner />
-
       <ContractAgentProgressPanel
         task={mockAgentTask}
         onIntervene={() => {

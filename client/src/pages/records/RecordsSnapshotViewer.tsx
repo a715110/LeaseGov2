@@ -286,6 +286,7 @@ export default function RecordsSnapshotViewer() {
   // Default: left = snapshot from URL param (or snapshot 1), right = current record
   const [leftId, setLeftId] = useState<string>(initialLeftId)
   const [rightId, setRightId] = useState<string>('current')
+  const [showChangedOnly, setShowChangedOnly] = useState(false)
 
   const leftSnapshot = MOCK_SNAPSHOTS.find(s => s.id === leftId) ?? null
   const rightSnapshot = rightId === 'current' ? null : MOCK_SNAPSHOTS.find(s => s.id === rightId) ?? null
@@ -440,6 +441,23 @@ export default function RecordsSnapshotViewer() {
             </TooltipTrigger>
             <TooltipContent side="bottom" className="text-[12px]">Print this comparison</TooltipContent>
           </Tooltip>
+          {/* Changed-only toggle */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={showChangedOnly ? 'default' : 'outline'}
+                size="sm"
+                className="h-7 gap-1.5 text-[12px]"
+                onClick={() => setShowChangedOnly(v => !v)}
+              >
+                <AlertTriangle className="h-3.5 w-3.5" />
+                {showChangedOnly ? 'All fields' : 'Changed only'}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-[12px]">
+              {showChangedOnly ? 'Show all fields' : 'Show only changed fields'}
+            </TooltipContent>
+          </Tooltip>
         </div>
       </div>
 
@@ -448,6 +466,8 @@ export default function RecordsSnapshotViewer() {
         {categories.map(category => {
           const categoryKeys = allKeys.filter(k => (FIELD_CATEGORIES[k] ?? 'Other') === category)
           const hasCategoryChanges = categoryKeys.some(k => diff[k])
+          // When showChangedOnly, skip categories with no changes entirely
+          if (showChangedOnly && !hasCategoryChanges) return null
 
           return (
             <div key={category} className="mb-6">
@@ -505,6 +525,8 @@ export default function RecordsSnapshotViewer() {
                   const leftVal = formatValue(key, leftData[key] ?? null)
                   const rightVal = formatValue(key, rightData[key] ?? null)
                   const isLast = idx === categoryKeys.length - 1
+                  // Skip unchanged rows when filter is active
+                  if (showChangedOnly && !isChanged) return null
 
                   return (
                     <>

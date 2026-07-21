@@ -4,18 +4,21 @@
  *
  * Shows: workflow summary header, 6-step approval timeline with SLA/duration,
  * approval task links, and a Rework History section (decline → resubmit cycles).
+ * Live event sync: SUBMIT_FOR_REVIEW, REVIEW_OPENED, REVIEW_COMPLETED,
+ *   APPROVE_FOR_FINAL, RECORD_APPROVED, DECLINE_SUBMITTED update step statuses.
  *
  * TODO: Backend integration required — GET /api/records/:id/workflow
  * Design: Structured Authority — dense information hierarchy, amber for rework
  */
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   CheckCircle2, Clock, AlertTriangle, User, ChevronDown, ChevronUp,
-  ArrowRight, RotateCcw, ExternalLink, FileText, Shield, Zap,
+  ArrowRight, RotateCcw, ExternalLink, FileText, Shield, Zap, Radio,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { subscribeToEvents, getEventHistory } from "@/lib/eventBus";
 
 interface RecordTabWorkflowProps {
   recordId: string;
@@ -51,9 +54,9 @@ interface ReworkIteration {
   resolution: "resubmitted" | "withdrawn" | "pending";
 }
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
+// ─── Mock baseline data ───────────────────────────────────────────────────────
 // TODO: Backend integration required — GET /api/records/:id/workflow
-const WORKFLOW_STEPS: WorkflowStep[] = [
+const BASE_WORKFLOW_STEPS: WorkflowStep[] = [
   {
     id: "w1",
     step: "Document Upload",
@@ -135,7 +138,7 @@ const WORKFLOW_STEPS: WorkflowStep[] = [
   },
 ];
 
-const REWORK_HISTORY: ReworkIteration[] = [
+const BASE_REWORK_HISTORY: ReworkIteration[] = [
   {
     id: "rw-001",
     iteration: 1,
@@ -149,15 +152,18 @@ const REWORK_HISTORY: ReworkIteration[] = [
   },
 ];
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-const STEP_ICON: Record<StepStatus, React.ReactNode> = {
-  completed:   <CheckCircle2 className="w-5 h-5" style={{ color: "var(--color-lg-success)" }} />,
-  in_progress: <Clock className="w-5 h-5" style={{ color: "var(--color-lg-warning)" }} />,
-  pending:     <Clock className="w-5 h-5 text-muted-foreground opacity-40" />,
-  failed:      <AlertTriangle className="w-5 h-5" style={{ color: "var(--color-lg-error)" }} />,
-  skipped:     <ArrowRight className="w-5 h-5 text-muted-foreground opacity-40" />,
+// ─── Event → step mapping ─────────────────────────────────────────────────────
+// Maps event types to which step ID they affect and what status to apply.
+const EVENT_STEP_MAP: Record<string, { stepId: string; status: StepStatus; label: string }> = {
+  SUBMIT_FOR_REVIEW:  { stepId: "w3", status: "completed",   label: "Submitted for review" },
+  REVIEW_OPENED:      { stepId: "w4", status: "in_progress", label: "Reviewer opened task" },
+  REVIEW_COMPLETED:   { stepId: "w4", status: "completed",   label: "Reviewer approved" },
+  APPROVE_FOR_FINAL:  { stepId: "w5", status: "in_progress", label: "Sent for final approval" },
+  RECORD_APPROVED:    { stepId: "w5", status: "completed",   label: "Final approval granted" },
+  DECLINE_SUBMITTED:  { stepId: "w4", status: "pending",     label: "Declined — awaiting resubmission" },
 };
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 function slaStatus(durationMins: number | undefined, slaMins: number, status: StepStatus) {
   if (status !== "completed" || durationMins === undefined) return null;
   const pct = durationMins / slaMins;
@@ -171,6 +177,10 @@ function formatDuration(mins: number): string {
   const h = Math.floor(mins / 60);
   const m = mins % 60;
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
+}
+
+function nowLabel(): string {
+  return new Date().toLocaleString("en-US", { month: "2-digit", day: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }).replace(",", "");
 }
 
 // ─── Workflow summary header ──────────────────────────────────────────────────
@@ -200,9 +210,73 @@ function WorkflowSummary({ steps, rework }: { steps: WorkflowStep[]; rework: Rew
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export default function RecordTabWorkflow({ recordId: _recordId }: RecordTabWorkflowProps) {
+export default function RecordTabWorkflow({ recordId }: RecordTabWorkflowProps) {
+  const [steps, setSteps] = useState<WorkflowStep[]>(BASE_WORKFLOW_STEPS);
+  const [rework, setRework] = useState<ReworkIteration[]>(BASE_REWORK_HISTORY);
   const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set());
   const [showRework, setShowRework] = useState(true);
+  const [liveEvents, setLiveEvents] = useState<string[]>([]);
+
+  // Apply an event to the step list
+  const applyEvent = useCallback((eventType: string, _payload: Record<string, unknown>) => {
+    const mapping = EVENT_STEP_MAP[eventType];
+    if (!mapping) return;
+
+    setSteps(prev => prev.map(s => {
+      if (s.id !== mapping.stepId) return s;
+      const now = nowLabel();
+      return {
+        ...s,
+        status: mapping.status,
+        ...(mapping.status === "in_progress" ? { started_at: now } : {}),
+        ...(mapping.status === "completed" ? { completed_at: now } : {}),
+        notes: `[Live] ${mapping.label} at ${now}`,
+      };
+    }));
+
+    // Append to live event log
+    setLiveEvents(prev => [`${eventType} — ${mapping.label}`, ...prev].slice(0, 5));
+
+    // If DECLINE_SUBMITTED, add a new rework iteration
+    if (eventType === "DECLINE_SUBMITTED") {
+      const now = nowLabel();
+      setRework(prev => [
+        ...prev,
+        {
+          id: `rw-live-${Date.now()}`,
+          iteration: prev.length + 1,
+          declined_at: now,
+          declined_by: "Reviewer",
+          declined_by_role: "Reviewer",
+          decline_reason: "Declined via live event — awaiting resubmission.",
+          resolution: "pending",
+        },
+      ]);
+    }
+  }, []);
+
+  // Replay event history on mount to restore state after navigation
+  useEffect(() => {
+    const history = getEventHistory();
+    for (const event of history) {
+      const p = event.payload as Record<string, unknown>;
+      const matches = !p.record_id || p.record_id === recordId || p.record_id === "r1";
+      if (matches) applyEvent(event.type, p);
+    }
+  }, [recordId, applyEvent]);
+
+  // Subscribe to live events
+  useEffect(() => {
+    return subscribeToEvents((event) => {
+      const p = event.payload as Record<string, unknown>;
+      const matches = !p.record_id || p.record_id === recordId || p.record_id === "r1";
+      if (!matches) return;
+      if (EVENT_STEP_MAP[event.type]) {
+        applyEvent(event.type, p);
+        toast.info(`Workflow updated: ${EVENT_STEP_MAP[event.type].label}`);
+      }
+    });
+  }, [recordId, applyEvent]);
 
   function toggleStep(id: string) {
     setExpandedSteps(prev => {
@@ -212,10 +286,30 @@ export default function RecordTabWorkflow({ recordId: _recordId }: RecordTabWork
     });
   }
 
+  const STEP_ICON: Record<StepStatus, React.ReactNode> = {
+    completed:   <CheckCircle2 className="w-5 h-5" style={{ color: "var(--color-lg-success)" }} />,
+    in_progress: <Clock className="w-5 h-5 animate-spin" style={{ color: "var(--color-lg-warning)", animationDuration: "2s" }} />,
+    pending:     <Clock className="w-5 h-5 text-muted-foreground opacity-40" />,
+    failed:      <AlertTriangle className="w-5 h-5" style={{ color: "var(--color-lg-error)" }} />,
+    skipped:     <ArrowRight className="w-5 h-5 text-muted-foreground opacity-40" />,
+  };
+
   return (
     <div className="p-6 flex flex-col gap-0">
       {/* Summary tiles */}
-      <WorkflowSummary steps={WORKFLOW_STEPS} rework={REWORK_HISTORY} />
+      <WorkflowSummary steps={steps} rework={rework} />
+
+      {/* Live event log strip */}
+      {liveEvents.length > 0 && (
+        <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg border border-border bg-muted/20">
+          <Radio className="w-3.5 h-3.5 shrink-0" style={{ color: "var(--color-lg-primary)" }} />
+          <span className="text-[11px] font-medium text-muted-foreground">Live:</span>
+          <span className="text-[11px] text-foreground truncate">{liveEvents[0]}</span>
+          {liveEvents.length > 1 && (
+            <span className="text-[10px] text-muted-foreground shrink-0">+{liveEvents.length - 1} more</span>
+          )}
+        </div>
+      )}
 
       {/* Workflow steps */}
       <h3 className="text-[13px] font-semibold text-foreground mb-3 flex items-center gap-2">
@@ -225,29 +319,32 @@ export default function RecordTabWorkflow({ recordId: _recordId }: RecordTabWork
 
       <div className="bg-card border border-border rounded-lg overflow-hidden mb-6">
         <div className="divide-y divide-border">
-          {WORKFLOW_STEPS.map((step) => {
+          {steps.map((step) => {
             const sla = slaStatus(step.duration_mins, step.sla_mins, step.status);
             const isExpanded = expandedSteps.has(step.id);
 
             return (
               <div key={step.id}>
-                {/* Main row */}
                 <div
                   className={cn(
-                    "flex items-center gap-4 px-5 py-3.5 cursor-pointer hover:bg-muted/30 transition-colors",
-                    step.notes && "cursor-pointer"
+                    "flex items-center gap-4 px-5 py-3.5 transition-colors",
+                    step.notes && "cursor-pointer hover:bg-muted/30",
+                    step.status === "in_progress" && "bg-[var(--color-lg-warning-subtle)]/30"
                   )}
                   onClick={() => step.notes && toggleStep(step.id)}
                 >
-                  {/* Status icon */}
                   <div className="w-6 h-6 flex items-center justify-center shrink-0">
                     {STEP_ICON[step.status]}
                   </div>
 
-                  {/* Step info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-[13px] font-medium text-foreground">{step.step}</p>
+                      {step.status === "in_progress" && (
+                        <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold badge-processing animate-pulse">
+                          In Progress
+                        </span>
+                      )}
                       {sla && (
                         <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold ${sla.cls}`}>
                           {sla.label}
@@ -270,7 +367,6 @@ export default function RecordTabWorkflow({ recordId: _recordId }: RecordTabWork
                     </div>
                   </div>
 
-                  {/* Right side: timestamp + task ref + expand */}
                   <div className="flex items-center gap-3 shrink-0">
                     {step.task_ref && (
                       <button
@@ -296,7 +392,6 @@ export default function RecordTabWorkflow({ recordId: _recordId }: RecordTabWork
                   </div>
                 </div>
 
-                {/* Expanded notes row */}
                 {isExpanded && step.notes && (
                   <div className="px-5 pb-3.5 pt-0 bg-muted/20 border-t border-border/50">
                     <p className="text-[12px] text-muted-foreground leading-relaxed pl-10">{step.notes}</p>
@@ -309,7 +404,7 @@ export default function RecordTabWorkflow({ recordId: _recordId }: RecordTabWork
       </div>
 
       {/* Rework history */}
-      {REWORK_HISTORY.length > 0 && (
+      {rework.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-[13px] font-semibold text-foreground flex items-center gap-2">
@@ -319,7 +414,7 @@ export default function RecordTabWorkflow({ recordId: _recordId }: RecordTabWork
                 className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
                 style={{ background: "var(--color-lg-warning-subtle)", color: "var(--color-lg-warning)" }}
               >
-                {REWORK_HISTORY.length} cycle{REWORK_HISTORY.length !== 1 ? "s" : ""}
+                {rework.length} cycle{rework.length !== 1 ? "s" : ""}
               </span>
             </h3>
             <Button
@@ -334,13 +429,12 @@ export default function RecordTabWorkflow({ recordId: _recordId }: RecordTabWork
 
           {showRework && (
             <div className="flex flex-col gap-3">
-              {REWORK_HISTORY.map(rw => (
+              {rework.map(rw => (
                 <div
                   key={rw.id}
                   className="bg-card border border-border rounded-lg overflow-hidden"
                   style={{ borderLeft: "3px solid var(--color-lg-warning)" }}
                 >
-                  {/* Header */}
                   <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/20">
                     <div className="flex items-center gap-2">
                       <span
@@ -357,13 +451,11 @@ export default function RecordTabWorkflow({ recordId: _recordId }: RecordTabWork
                     <span className="text-[11px] text-muted-foreground">{rw.declined_at}</span>
                   </div>
 
-                  {/* Decline reason */}
                   <div className="px-4 py-3">
                     <p className="text-[11px] font-medium text-muted-foreground mb-1">Decline reason</p>
                     <p className="text-[12px] text-foreground leading-relaxed">{rw.decline_reason}</p>
                   </div>
 
-                  {/* Resolution */}
                   {rw.resolution === "resubmitted" && rw.resubmitted_at && (
                     <div className="flex items-center gap-3 px-4 py-2.5 border-t border-border bg-muted/10">
                       <Shield className="w-3.5 h-3.5 shrink-0" style={{ color: "var(--color-lg-success)" }} />
