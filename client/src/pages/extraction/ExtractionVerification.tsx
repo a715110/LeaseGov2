@@ -23,6 +23,7 @@ import { useLocation, useSearch } from "wouter";
 import { toast } from 'sonner';
 import { publishEvent } from '@/lib/eventBus';
 import { useRole } from '@/contexts/RoleContext';
+import { useExtractionStore } from '@/contexts/ExtractionStoreContext';
 import { ContractCheckpointCard } from '@/components/checkpoints/ContractCheckpointCard';
 import { GracefulDegradationBanner } from '@/components/automation/GracefulDegradationBanner';
 import { useCheckpoints } from '@/hooks/useCheckpoints';
@@ -223,6 +224,9 @@ export default function ExtractionVerification() {
     return { path: '/extraction/ai', label: 'AI Workspace' };
   }, [search]);
 
+  // Gap 3 fix: read confirmedTemplate + classificationResult from ExtractionStoreContext
+  const { confirmedTemplate, classificationResult } = useExtractionStore();
+
   const _screenKey = SCREEN_KEYS.EXTRACTION_VERIFICATION;
   const [fields, setFields] = useState<VerificationField[]>(INITIAL_FIELDS);
   const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set(["core_metadata"]));
@@ -314,6 +318,16 @@ export default function ExtractionVerification() {
               <ScreenNumberBadge screenKey="extraction-verification" />
             </div>
             <p className="page-subtitle">Office-Tower-Amendment-3.pdf · JOB-2026-0442</p>
+            {confirmedTemplate && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-primary/10 text-primary text-[11px] font-semibold border border-primary/20">
+                Template: {confirmedTemplate.name} {confirmedTemplate.version}
+              </span>
+            )}
+            {classificationResult && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-muted text-muted-foreground text-[11px] font-medium border border-border">
+                Classified: {classificationResult.documentType} ({Math.round(classificationResult.confidence * 100)}%)
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -475,12 +489,13 @@ export default function ExtractionVerification() {
           </div>
         </div>
 
-        {/* Right panel — PDF viewer */}
+        {/* Right panel — PDF viewer (high-fidelity simulated document) */}
         <div className="flex flex-col" style={{ width: "50%" }}>
           <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card shrink-0">
             <div className="flex items-center gap-2">
               <FileText className="w-4 h-4 text-muted-foreground" />
               <span className="text-[12px] font-medium text-foreground">Office-Tower-Amendment-3.pdf</span>
+              <span className="text-[10px] text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded">p.1/4</span>
             </div>
             <div className="flex items-center gap-2">
               <button onClick={() => setHeatmap(v => !v)} className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-[12px] font-medium border transition-colors ${heatmap ? "border-primary bg-accent text-primary" : "border-border text-muted-foreground hover:border-primary/40"}`}>
@@ -491,16 +506,123 @@ export default function ExtractionVerification() {
               <button onClick={() => setZoom(z => Math.min(200, z + 10))} className="p-1.5 rounded hover:bg-muted text-muted-foreground"><ZoomIn className="w-3.5 h-3.5" /></button>
             </div>
           </div>
-          <div className="flex-1 flex items-center justify-center bg-muted/20 p-4 overflow-auto">
-            <div className="relative bg-white border border-border shadow-md rounded" style={{ width: `${zoom * 3.5}px`, maxWidth: "100%", minHeight: "500px", transition: "width 0.15s ease" }}>
-              {heatmap && <div className="absolute inset-0 rounded pointer-events-none" style={{ background: "linear-gradient(135deg, rgba(46,117,182,0.12) 0%, rgba(245,127,23,0.08) 60%, rgba(198,40,40,0.15) 100%)" }} />}
-              {/* Active anchor highlight */}
-              <div className="absolute border-2 rounded" style={{ top:"18%", left:"12%", width:"60%", height:"4%", borderColor:"var(--color-lg-primary-light)", background:"rgba(46,117,182,0.08)", boxShadow:"0 0 0 3px rgba(46,117,182,0.25)" }} />
-              <div className="flex items-center justify-center h-full py-16 text-muted-foreground">
-                <div className="text-center">
-                  <FileText className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                  <p className="text-[13px] font-medium">PDF Preview</p>
-                  <p className="text-[11px] mt-1 opacity-60">Renders after backend integration</p>
+          <div className="flex-1 bg-[#e8e8e8] p-4 overflow-auto">
+            {/* Simulated PDF page */}
+            <div
+              className="relative bg-white shadow-[0_2px_12px_rgba(0,0,0,0.18)] mx-auto"
+              style={{ width: `${zoom * 3.5}px`, maxWidth: '100%', minHeight: '700px', fontFamily: 'Georgia, serif', transition: 'width 0.15s ease' }}
+            >
+              {/* Heatmap overlay */}
+              {heatmap && (
+                <div className="absolute inset-0 pointer-events-none z-10" style={{ background: 'linear-gradient(135deg, rgba(46,117,182,0.10) 0%, rgba(245,127,23,0.07) 55%, rgba(198,40,40,0.12) 100%)' }} />
+              )}
+              {/* Active field anchor highlight — tracks activeFieldId */}
+              <div
+                className="absolute z-20 border-2 rounded pointer-events-none"
+                style={{
+                  top: activeFieldId === 'v7' ? '52%' : activeFieldId === 'v3' ? '32%' : activeFieldId === 'v4' ? '37%' : activeFieldId === 'v10' ? '22%' : '22%',
+                  left: '8%', width: '84%', height: '3.5%',
+                  borderColor: 'var(--color-lg-primary-light)',
+                  background: 'rgba(46,117,182,0.08)',
+                  boxShadow: '0 0 0 3px rgba(46,117,182,0.22)',
+                  transition: 'top 0.2s ease',
+                }}
+              />
+              {/* Document content */}
+              <div className="px-10 py-10 text-gray-900" style={{ fontSize: `${Math.max(8, zoom * 0.11)}px`, lineHeight: 1.6 }}>
+                {/* Header */}
+                <div className="text-center mb-6">
+                  <p className="text-[1.05em] font-bold uppercase tracking-widest mb-1">THIRD AMENDMENT TO OFFICE LEASE</p>
+                  <p className="text-[0.85em] text-gray-600">(Amendment No. 3)</p>
+                </div>
+                {/* Parties */}
+                <p className="mb-3 text-[0.9em]">
+                  This <strong>Third Amendment to Office Lease</strong> (this “Amendment”) is entered into as of
+                  {' '}<span className="bg-blue-50 border border-blue-200 px-0.5 rounded font-semibold text-blue-900">March 15, 2026</span>{' '}
+                  (the “Effective Date”), by and between:
+                </p>
+                <div className="border border-gray-200 rounded p-3 mb-4 bg-gray-50 text-[0.88em]">
+                  <p><strong>Landlord:</strong> 350 Fifth Avenue Associates LLC, a Delaware limited liability company</p>
+                  <p className="mt-1"><strong>Tenant:</strong> Meridian Capital Group, Inc., a New York corporation</p>
+                </div>
+                {/* Recitals */}
+                <p className="font-bold text-[0.9em] mb-1 uppercase tracking-wide">Recitals</p>
+                <p className="mb-2 text-[0.88em]">
+                  WHEREAS, Landlord and Tenant entered into that certain Office Lease dated January 10, 2020 (the “Original Lease”),
+                  as amended by the First Amendment dated June 1, 2021 and the Second Amendment dated March 15, 2023
+                  (collectively, the “Lease”), for premises located at:
+                </p>
+                <div className="border-l-4 border-gray-300 pl-3 mb-4 text-[0.88em] text-gray-700">
+                  <span className="bg-blue-50 border border-blue-200 px-0.5 rounded font-semibold text-blue-900">350 Fifth Ave, New York, NY 10118</span>,
+                  Suites 2400–2450, comprising approximately{' '}
+                  <span className="bg-blue-50 border border-blue-200 px-0.5 rounded font-semibold text-blue-900">24,500 rentable square feet</span>.
+                </div>
+                {/* Amendment terms */}
+                <p className="font-bold text-[0.9em] mb-2 uppercase tracking-wide">Agreement</p>
+                <p className="mb-2 text-[0.88em]"><strong>1. Defined Terms.</strong> Capitalized terms used herein and not otherwise defined shall have the meanings ascribed to them in the Lease.</p>
+                <p className="mb-2 text-[0.88em]"><strong>2. Extended Term.</strong> The Lease Term is hereby extended for an additional period commencing{' '}
+                  <span className="bg-amber-50 border border-amber-300 px-0.5 rounded font-semibold text-amber-900">April 1, 2026</span>{' '}
+                  through and including [<em className="text-red-600">Expiration Date — missing</em>].
+                </p>
+                <p className="mb-2 text-[0.88em]"><strong>3. Base Rent.</strong> Commencing April 1, 2026, the monthly Base Rent payable under the Lease shall be amended as follows:</p>
+                {/* Rent table */}
+                <table className="w-full border-collapse text-[0.85em] mb-4">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="border border-gray-300 px-2 py-1 text-left">Period</th>
+                      <th className="border border-gray-300 px-2 py-1 text-right">Monthly Base Rent</th>
+                      <th className="border border-gray-300 px-2 py-1 text-right">Annual Rate (PSF)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td className="border border-gray-300 px-2 py-1">Apr 1, 2026 – Mar 31, 2027</td>
+                      <td className="border border-gray-300 px-2 py-1 text-right font-semibold">
+                        <span className="bg-blue-50 border border-blue-200 px-0.5 rounded text-blue-900">$42,500.00</span>
+                      </td>
+                      <td className="border border-gray-300 px-2 py-1 text-right">$20.82/SF</td>
+                    </tr>
+                    <tr className="bg-gray-50">
+                      <td className="border border-gray-300 px-2 py-1">Apr 1, 2027 – Mar 31, 2028</td>
+                      <td className="border border-gray-300 px-2 py-1 text-right font-semibold">$43,775.00</td>
+                      <td className="border border-gray-300 px-2 py-1 text-right">$21.45/SF</td>
+                    </tr>
+                    <tr>
+                      <td className="border border-gray-300 px-2 py-1">Apr 1, 2028 – Expiration</td>
+                      <td className="border border-gray-300 px-2 py-1 text-right font-semibold">$45,088.25</td>
+                      <td className="border border-gray-300 px-2 py-1 text-right">$22.09/SF</td>
+                    </tr>
+                  </tbody>
+                </table>
+                <p className="mb-2 text-[0.88em]"><strong>4. Rent Escalation.</strong> Base Rent shall increase by{' '}
+                  <span className="bg-amber-50 border border-amber-300 px-0.5 rounded font-semibold text-amber-900">3% per annum</span>{' '}
+                  on each anniversary of the commencement of the Extended Term.
+                </p>
+                <p className="mb-4 text-[0.88em]"><strong>5. No Security Deposit.</strong> The parties confirm that no additional security deposit is required in connection with this Amendment.</p>
+                {/* Signature block */}
+                <div className="border-t border-gray-300 pt-4 mt-6 grid grid-cols-2 gap-6 text-[0.85em]">
+                  <div>
+                    <p className="font-bold mb-1">LANDLORD:</p>
+                    <p>350 Fifth Avenue Associates LLC</p>
+                    <div className="mt-4 border-t border-gray-400 pt-1">
+                      <p>By: ___________________________</p>
+                      <p>Name: David R. Goldstein</p>
+                      <p>Title: Managing Member</p>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="font-bold mb-1">TENANT:</p>
+                    <p>Meridian Capital Group, Inc.</p>
+                    <div className="mt-4 border-t border-gray-400 pt-1">
+                      <p>By: ___________________________</p>
+                      <p>Name: Sarah J. Chen</p>
+                      <p>Title: Chief Financial Officer</p>
+                    </div>
+                  </div>
+                </div>
+                {/* Footer */}
+                <div className="mt-8 pt-4 border-t border-gray-200 text-center text-[0.78em] text-gray-400">
+                  <p>Office-Tower-Amendment-3.pdf · Page 1 of 4 · JOB-2026-0442 · Confidential</p>
                 </div>
               </div>
             </div>
@@ -557,38 +679,41 @@ export default function ExtractionVerification() {
         </span>
         <div className="ml-auto flex items-center gap-3">
           <Button variant="outline" size="sm" onClick={() => navigate("/extraction/reprocess")}>Request Re-processing</Button>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span>
-                <Button
-                  disabled={!canSubmit}
-                  className="gap-2 h-9"
-                  onClick={() => {
-                    publishEvent({
-                      type: 'SUBMIT_FOR_REVIEW',
-                      payload: { contractRecordId },
-                      sourceRole: activeRole,
-                    });
-                    toast.success('Submitted for review — notifying Reviewer', {
-                      duration: 3000,
-                    });
-                    navigate('/approvals/queue');
-                  }}
-                >
-                  Submit for Review <ChevronRight className="w-4 h-4" />
-                </Button>
-              </span>
-            </TooltipTrigger>
-            {!canSubmit && (
-              <TooltipContent side="top" className="max-w-[260px] text-[12px]">
-                <div className="flex flex-col gap-1">
-                  {unresolvedCount > 0 && <span>• {unresolvedCount} field{unresolvedCount !== 1 ? "s" : ""} unresolved</span>}
-                  {criticalConfirmed < criticalTotal && <span>• {criticalTotal - criticalConfirmed} critical field{criticalTotal - criticalConfirmed !== 1 ? "s" : ""} not confirmed</span>}
-                  {disposedCount < totalFields && <span>• {totalFields - disposedCount} field{totalFields - disposedCount !== 1 ? "s" : ""} need disposition</span>}
-                </div>
-              </TooltipContent>
-            )}
-          </Tooltip>
+          {/* Gap 2 fix: wrap Submit button tooltip in its own TooltipProvider */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>
+                  <Button
+                    disabled={!canSubmit}
+                    className="gap-2 h-9"
+                    onClick={() => {
+                      publishEvent({
+                        type: 'SUBMIT_FOR_REVIEW',
+                        payload: { contractRecordId },
+                        sourceRole: activeRole,
+                      });
+                      toast.success('Submitted for review — notifying Reviewer', {
+                        duration: 3000,
+                      });
+                      navigate('/approvals/queue');
+                    }}
+                  >
+                    Submit for Review <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              {!canSubmit && (
+                <TooltipContent side="top" className="max-w-[260px] text-[12px]">
+                  <div className="flex flex-col gap-1">
+                    {unresolvedCount > 0 && <span>• {unresolvedCount} field{unresolvedCount !== 1 ? "s" : ""} unresolved</span>}
+                    {criticalConfirmed < criticalTotal && <span>• {criticalTotal - criticalConfirmed} critical field{criticalTotal - criticalConfirmed !== 1 ? "s" : ""} not confirmed</span>}
+                    {disposedCount < totalFields && <span>• {totalFields - disposedCount} field{totalFields - disposedCount !== 1 ? "s" : ""} need disposition</span>}
+                  </div>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </div>
     </div>
