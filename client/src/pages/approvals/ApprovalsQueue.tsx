@@ -16,7 +16,7 @@
  */
 
 import { useState, useCallback, useEffect } from "react";
-import { subscribeToEvents, getLatestEvent } from "@/lib/eventBus";
+import { subscribeToEvents, getLatestEvent, getEventHistory } from "@/lib/eventBus";
 import { useLocation } from "wouter";
 import {
   Clock, AlertTriangle, CheckCircle2, XCircle,
@@ -217,15 +217,34 @@ export default function ApprovalsQueue() {
   const _screenKey = SCREEN_KEYS.APPROVALS_QUEUE;
   const [, navigate] = useLocation();
   const [activeTab, setActiveTab] = useState<TabId>("my_reviews");
-  // Initialise tasks — apply any RECORD_APPROVED that fired before this mount
+  // Initialise tasks — replay RECORD_APPROVED and REVIEW_OPENED events that fired
+  // before this mount so badge state is correct when navigating back to the queue.
   const [tasks, setTasks] = useState<ApprovalTask[]>(() => {
+    let base: ApprovalTask[] = [...INITIAL_TASKS];
+    // Replay RECORD_APPROVED
     const approvedEvent = getLatestEvent('RECORD_APPROVED');
-    if (!approvedEvent) return INITIAL_TASKS;
-    const p = approvedEvent.payload as { task_id?: string };
-    if (!p.task_id) return INITIAL_TASKS;
-    return INITIAL_TASKS.map(t =>
-      t.id === p.task_id ? { ...t, status: 'approved' as TaskStatus } : t
-    );
+    if (approvedEvent) {
+      const p = approvedEvent.payload as { task_id?: string };
+      if (p.task_id) {
+        base = base.map(t =>
+          t.id === p.task_id ? { ...t, status: 'approved' as TaskStatus } : t
+        );
+      }
+    }
+    // FC-4 Gap 2: replay all REVIEW_OPENED events so 'opened' badge persists
+    // when the user navigates away from the queue and back.
+    const history = getEventHistory();
+    for (const event of history) {
+      if (event.type !== 'REVIEW_OPENED') continue;
+      const p = event.payload as { task_id?: string };
+      if (!p.task_id) continue;
+      base = base.map(t => {
+        if (t.id !== p.task_id) return t;
+        if (t.status !== 'pending') return t; // don't downgrade approved/rejected rows
+        return { ...t, status: 'opened' as TaskStatus, opened_at: t.opened_at ?? event.timestamp };
+      });
+    }
+    return base;
   });
   const [flashedRows, setFlashedRows] = useState<Set<string>>(new Set());
 

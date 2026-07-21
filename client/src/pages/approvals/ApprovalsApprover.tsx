@@ -18,7 +18,7 @@
  *   ContractRecord / PropertyLease (key terms), ExtractionField (is_critical, disposition)
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, useParams } from "wouter";
 import { publishEvent } from "@/lib/eventBus";
 import { useRole } from "@/contexts/RoleContext";
@@ -58,7 +58,8 @@ export default function ApprovalsApprover() {
   const [showDeclineForm, setShowDeclineForm] = useState(false);
   const [declineComments, setDeclineComments] = useState('');
 
-  // FC-9: Checkpoint wiring — read task ID from route param; fall back to navigation state, then 't1'
+  // FC-4 Gap 1: read task ID from route param (/approvals/final/:id), fall back to
+  // navigation state (passed by ApprovalsReview on approve-for-final), then 't1'.
   const params = useParams<{ id: string }>();
   const navState = (typeof window !== 'undefined' ? window.history.state : null) as { taskId?: string; contractRecordId?: string } | null;
   const contractRecordId = params.id || navState?.taskId || 't1';
@@ -69,6 +70,17 @@ export default function ApprovalsApprover() {
   const { activeCheckpoint } = useCheckpoints(contractRecordId, {
     checkpointType: 'onboarding_approval',
   });
+
+  // FC-4 Gap 1 + Gap 2: publish REVIEW_OPENED on mount so ApprovalsQueue flips
+  // the matching final-approval row from 'pending' to 'opened'.
+  useEffect(() => {
+    publishEvent({
+      type: 'REVIEW_OPENED',
+      payload: { task_id: contractRecordId },
+      sourceRole: activeRole,
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contractRecordId]);
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-6 overflow-y-auto">
