@@ -435,3 +435,15 @@ Plan written to this file. Confirmed by user. Ready to execute.
 5. BATCH_SUBMITTED must fire from Package Composition "Submit for Extraction" — NOT from upload and NOT from PipelineSubmitConfirm.
 6. Design theme: Structured Authority (navy #1F3864 sidebar, Inter body + JetBrains Mono for IDs/codes).
 7. Every page header must have `<ScreenNumberBadge screenKey={_screenKey} />`.
+
+---
+
+## SESSION 2026-07-21 — FC-1 PIPELINE GAP FIXES
+
+- [ ] Re-read relevant LeaseGov session guidance before implementation
+- [ ] Fix DECLINE_SUBMITTED restoration so declined documents reliably reappear in Table 1 even when document_ids is missing from the payload
+- [ ] Replace the Table 3 Eye icon placeholder with a real submission detail panel
+- [ ] Implement the amendment detection banner in ProcessingWorkflowDialog Step 3
+- [ ] Implement template pre-selection from upload modal contract_type
+- [ ] Run pnpm tsc --noEmit and confirm zero TypeScript errors
+- [ ] Save a new checkpoint after all four fixes are complete

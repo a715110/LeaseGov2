@@ -87,6 +87,8 @@ interface StagedDocument {
   submission_path: 'new_record' | 'existing_record' | 'unknown' | null;
   /** V3: free-text context from DocSubmitter — shown in Document Intelligence Panel */
   submitter_context_notes: string | null;
+  /** Optional upload context used to pre-select extraction templates downstream */
+  contract_type?: string | null;
   /** V3: document-level job status for Table 1 committed state */
   document_job_status: 'staged' | 'committed' | 'processing' | 'complete';
   /** Assignee override — null means system auto-routes */
@@ -116,6 +118,15 @@ interface PackageFile {
   docId: string;
   name: string;
   role: DocumentRole;
+  /** Metadata carried from StagedDocument so declined submissions can be restored accurately */
+  originalStatus?: 'valid' | 'invalid';
+  mime_type?: string;
+  file_size_bytes?: number;
+  page_count?: number | null;
+  target_record_id?: string | null;
+  submission_path?: 'new_record' | 'existing_record' | 'unknown' | null;
+  submitter_context_notes?: string | null;
+  contract_type?: string | null;
   /** Assignee carried from StagedDocument; null = auto-routed */
   assignee_id?: string | null;
 }
@@ -137,6 +148,7 @@ interface ContractPackage {
 interface Submission {
   id: string;
   batchRef?: string;          // matches batch_ref on ProcessingJob in ExtractionQueue
+  record_id?: string | null;
   packageNum: string;
   packageName?: string;
   mode: 'Package' | 'Single';
@@ -669,7 +681,24 @@ function GroupingDialog({ docs, onConfirm, onCancel }: GroupingDialogProps) {
         </div>
         <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-border bg-muted/20">
           <Button variant="outline" size="sm" onClick={onCancel} className="text-[13px]">Cancel</Button>
-          <Button size="sm" onClick={() => onConfirm(docs.map(d => ({ docId: d.id, name: d.display_name, role: roles[d.id] })))} className="text-[13px] gap-1.5">
+          <Button
+            size="sm"
+            onClick={() => onConfirm(docs.map(d => ({
+              docId: d.id,
+              name: d.display_name,
+              role: roles[d.id],
+              originalStatus: d.original_status ?? d.originalStatus ?? 'valid',
+              mime_type: d.mime_type,
+              file_size_bytes: d.file_size_bytes,
+              page_count: d.page_count,
+              target_record_id: d.target_record_id,
+              submission_path: d.submission_path,
+              submitter_context_notes: d.submitter_context_notes,
+              contract_type: d.contract_type ?? null,
+              assignee_id: d.assignee_id ?? null,
+            })))}
+            className="text-[13px] gap-1.5"
+          >
             <Package className="w-3.5 h-3.5" /> Create Package
           </Button>
         </div>
@@ -689,8 +718,44 @@ interface SubmissionDetailPanelProps {
 
 function SubmissionDetailPanel({ submission, isReadOnly, onClose, onUnsubmit }: SubmissionDetailPanelProps) {
   const [confirming, setConfirming] = useState(false);
-
+  const timelineSteps = [
+    {
+      label: 'Submitted',
+      isActive: true,
+      detail: `Submitted on ${formatDate(submission.submitDate)} by ${submission.submittedBy}`,
+    },
+    {
+      label: 'Extraction',
+      isActive: submission.status !== 'Pending',
+      detail: submission.status === 'Pending'
+        ? 'Queued for preparer intake and OCR.'
+        : submission.status === 'Declined'
+          ? 'Package entered extraction and later returned for correction.'
+          : 'Extraction and preparer processing has started.',
+    },
+    {
+      label: 'Review',
+      isActive: ['In Progress', 'Completed', 'Declined'].includes(submission.status),
+      detail: submission.status === 'In Progress'
+        ? 'Currently under reviewer / approver attention.'
+        : submission.status === 'Completed'
+          ? 'Review completed and the package advanced.'
+          : submission.status === 'Declined'
+            ? 'Review identified issues that require resubmission.'
+            : 'Not yet opened by downstream reviewers.',
+    },
+    {
+      label: 'Outcome',
+      isActive: ['Completed', 'Declined'].includes(submission.status),
+      detail: submission.status === 'Completed'
+        ? 'Processing completed with no further action required.'
+        : submission.status === 'Declined'
+          ? 'Returned to Table 1 so the submitter can correct and resubmit.'
+          : 'Awaiting a downstream decision.',
+    },
+  ];
   return (
+
     <FlagSlidingPanel open={true} onClose={onClose} title="Submission Details" subtitle={submission.packageNum} width={520}>
       <div className="space-y-5">
         {/* Status */}
@@ -728,6 +793,52 @@ function SubmissionDetailPanel({ submission, isReadOnly, onClose, onUnsubmit }: 
           </dl>
         </div>
 
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Pipeline Progress</p>
+          <div className="space-y-2.5">
+            {timelineSteps.map((step, index) => (
+              <div key={step.label} className="flex items-start gap-3 rounded-lg border border-border bg-card/70 px-3.5 py-3">
+                <div className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-semibold ${
+                  step.isActive
+                    ? 'border-primary bg-primary text-primary-foreground'
+                    : 'border-border bg-muted text-muted-foreground'
+                }`}>
+                  {index + 1}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[12px] font-semibold text-foreground">{step.label}</p>
+                  <p className="text-[12px] text-muted-foreground leading-relaxed">{step.detail}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Routing Context</p>
+          <dl className="space-y-2">
+            {[
+              { label: 'Batch Ref', value: submission.batchRef ?? '—' },
+              {
+                label: 'Current Stage',
+                value:
+                  submission.status === 'Pending'
+                    ? 'Awaiting extraction / preparer review'
+                    : submission.status === 'In Progress'
+                      ? 'Under reviewer / approver review'
+                      : submission.status === 'Completed'
+                        ? 'Completed'
+                        : 'Returned for correction',
+              },
+              { label: 'Assigned To', value: submission.assignee_id ?? 'Auto-routed' },
+              { label: 'Attempt', value: `Attempt ${submission.attemptNumber ?? 1}` },
+            ].map(({ label, value }) => (
+              <div key={label} className="flex items-start justify-between gap-4">
+                <dt className="text-[12px] text-muted-foreground shrink-0">{label}</dt>
+                <dd className="text-[12px] font-medium text-foreground text-right">{value}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
         {/* Decline History — shown only for Declined submissions */}
         {submission.status === 'Declined' && (
           <div className={`rounded-lg border p-4 space-y-3 ${
@@ -1638,12 +1749,15 @@ export default function PipelineDashboard() {
           outcome?: string;
           comments?: string;
         };
-        // If document_ids were provided, reset those specific staged docs
-        // (status, locked_for_review, target_record_id) before the submission-level restore.
-        if (payload.document_ids && payload.document_ids.length > 0) {
-          const idSet = new Set(payload.document_ids);
+        const idSet = new Set(payload.document_ids ?? []);
+        const declinedFileNames = new Set((payload.perFileReasons ?? []).map(item => item.fileName.toLowerCase()));
+        // If document_ids are missing, fall back to file-name matching so the docs
+        // still return to Table 1 and any locked rows are unlocked.
+        if (idSet.size > 0 || declinedFileNames.size > 0) {
           setStagedDocs(prev => prev.map(d => {
-            if (!idSet.has(d.id)) return d;
+            const matchesDocumentId = idSet.has(d.id);
+            const matchesFileName = idSet.size === 0 && declinedFileNames.has(d.display_name.toLowerCase());
+            if (!matchesDocumentId && !matchesFileName) return d;
             return {
               ...d,
               status: d.original_status ?? 'valid',
@@ -1659,14 +1773,16 @@ export default function PipelineDashboard() {
             (payload.submissionId && sub.packageNum  === payload.submissionId) ||
             (payload.submissionId && sub.id          === payload.submissionId) ||
             (payload.batchRef     && sub.id          === payload.batchRef)     ||
+            (payload.record_id    && sub.record_id   === payload.record_id)    ||
+            (declinedFileNames.size > 0 && sub.files.some(f => declinedFileNames.has(f.name.toLowerCase()))) ||
             // Approver decline-for-rework: match by task_id (contract record ref)
             (payload.task_id      && (sub.batchRef   === payload.task_id || sub.id === payload.task_id));
           if (!isMatch) return sub;
           // Restore the submission's documents back to Table 1 staging
           // so the submitter can correct and re-package them.
           const restoredDocs: StagedDocument[] = sub.files.map(f => {
-            const orig: 'valid' | 'invalid' =
-              (f as { originalStatus?: 'valid' | 'invalid' }).originalStatus ?? 'valid';
+            const fileMeta = f as PackageFile;
+            const orig: 'valid' | 'invalid' = fileMeta.originalStatus ?? 'valid';
             return {
               id: `restored-decline-${f.docId}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
               display_name: f.name,
@@ -1678,22 +1794,29 @@ export default function PipelineDashboard() {
                 hour: '2-digit', minute: '2-digit', hour12: false,
               }).replace(',', ''),
               uploader: sub.submittedBy,
-              mime_type: f.name.toLowerCase().endsWith('.tiff') || f.name.toLowerCase().endsWith('.tif')
-                ? 'image/tiff'
-                : 'application/pdf',
-              file_size_bytes: 0,
-              page_count: null,
+              mime_type: fileMeta.mime_type ?? (
+                f.name.toLowerCase().endsWith('.tiff') || f.name.toLowerCase().endsWith('.tif')
+                  ? 'image/tiff'
+                  : 'application/pdf'
+              ),
+              file_size_bytes: fileMeta.file_size_bytes ?? 0,
+              page_count: fileMeta.page_count ?? null,
               workspace_tag: sub.workspace,
-              target_record_id: null,
-              submission_path: null,
-              submitter_context_notes: null,
+              target_record_id: fileMeta.target_record_id ?? null,
+              submission_path: fileMeta.submission_path ?? null,
+              submitter_context_notes: fileMeta.submitter_context_notes ?? null,
+              contract_type: fileMeta.contract_type ?? null,
               document_job_status: 'staged' as const,
               locked_for_review: false,
-              assignee_id: null, // DEMO ONLY — restored from decline, auto-routed
+              assignee_id: fileMeta.assignee_id ?? sub.assignee_id ?? null,
             };
           });
-          // Prepend restored docs to Table 1
-          setStagedDocs(prev => [...restoredDocs, ...prev]);
+          // Prepend restored docs to Table 1 without duplicating already-restored rows.
+          setStagedDocs(prev => {
+            const existingKeys = new Set(prev.map(d => `${d.display_name}::${d.workspace_tag}::${d.uploader}`));
+            const uniqueRestored = restoredDocs.filter(d => !existingKeys.has(`${d.display_name}::${d.workspace_tag}::${d.uploader}`));
+            return [...uniqueRestored, ...prev];
+          });
           // Notify the Document Submitter
           const fileWord = restoredDocs.length !== 1 ? 'files' : 'file';
           // Approver decline-for-rework uses `comments` instead of `reasonLabel`
@@ -1936,6 +2059,7 @@ export default function PipelineDashboard() {
     submissionPath: 'new_record' | 'existing_record' | 'unknown' | null,
     contextNotes: string | null,
     _assigneeId: string | null, // DEMO ONLY — PRODUCTION: pass to POST /api/v1/pipeline/staged as assignee_id
+    contractType: string | null = null, // MOD-3: from New Record form; forwarded to extraction template pre-selection
   ) {
     const now = new Date();
     const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -1957,6 +2081,7 @@ export default function PipelineDashboard() {
         target_record_id: targetRecordId,
         submission_path: submissionPath,
         submitter_context_notes: contextNotes,
+        contract_type: contractType, // MOD-3: stored so GroupingDialog can carry it into PackageFile
         document_job_status: 'staged' as const,
         assignee_id: _assigneeId, // DEMO ONLY — PRODUCTION: pass to POST /api/v1/pipeline/staged
       }));

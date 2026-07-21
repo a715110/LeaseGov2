@@ -405,6 +405,8 @@ export function ProcessingWorkflowDialog({
 
           {currentStep === 3 && (
             <div className="flex flex-col gap-5">
+              {/* Amendment detection banner — shown when amendment-like files are in the batch */}
+              <AmendmentBanner amendmentFiles={amendmentFiles} step={3} />
               {/* MOD-2: existing_record comparison banner */}
               {submissionPath === 'existing_record' && (
                 <div className="flex items-start gap-2.5 rounded-lg border-l-4 border-amber-400 bg-amber-50 dark:bg-amber-950/30 px-3.5 py-3">
@@ -414,8 +416,8 @@ export function ProcessingWorkflowDialog({
                       Matched to existing record
                     </p>
                     <p className="text-[12px] text-amber-700 dark:text-amber-400 leading-relaxed">
-                      Amendment or addition detected — this document was matched to an existing record.
-                      Verify extracted values against the existing approved record fields.
+                      This document was matched to an existing record.
+                      Verify extracted values against the existing approved record fields before running extraction.
                     </p>
                   </div>
                 </div>

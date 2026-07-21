@@ -62,6 +62,8 @@ export interface UploadDialogProps {
     submissionPath: RecordDestination,
     contextNotes: string | null,
     assigneeId: string | null,
+    /** Contract type from the New Record form — used downstream to pre-select an extraction template */
+    contractType: string | null,
   ) => void;
 }
 
@@ -508,6 +510,7 @@ export function UploadDialog({ open, onClose, onConfirm, initialRecord }: Upload
       recordDest,
       contextNotes.trim() || null,
       assigneeId || null,
+      recordDest === 'new_record' ? newRecordType : null,
     );
 
     setConfirmedCount(validFiles.length);
