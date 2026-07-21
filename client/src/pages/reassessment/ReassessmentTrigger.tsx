@@ -107,7 +107,7 @@ export default function ReassessmentTrigger() {
           </p>
           <div className="flex gap-2 mt-2">
             <Button variant="outline" onClick={() => navigate("/reassessment/cases")}>View Cases</Button>
-            <Button onClick={() => navigate("/reassessment/dashboard")}>Dashboard</Button>
+            <Button onClick={() => navigate("/reassessment/cases/c1/classify")}>Proceed to Classification</Button>
           </div>
         </div>
       </div>

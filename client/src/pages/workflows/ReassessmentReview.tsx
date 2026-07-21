@@ -8,8 +8,8 @@
  * Field comparison table, sign-off checklist, approve for memo or escalate.
  * Design: Structured Authority
  */
-import { useState } from 'react';
-import { useLocation } from 'wouter';
+import { useState, useMemo } from 'react';
+import { useLocation, useSearch } from 'wouter';
 import {
   GitBranch, CheckCircle2, AlertTriangle, ChevronRight,
   Edit3, Eye, ShieldAlert, User,
@@ -20,9 +20,18 @@ import { cn } from '@/lib/utils';
 import { SCREEN_KEYS } from '@/constants/screenKeys';
 import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 
-const MOCK_CASE = {
-  case_ref: 'RC-2026-0014', contract_number: 'CR-2026-0088',
-  title: 'Office Tower — 350 Fifth Ave', ai_confidence: 94, reviewer: 'Sarah Chen',
+// TODO: Backend integration required — GET /api/reassessments/cases/:id
+const MOCK_CASES_LOOKUP: Record<string, { id: string; case_ref: string; contract_number: string; title: string; reviewer: string }> = {
+  c1:  { id: 'c1',  case_ref: 'RC-2026-0014', contract_number: 'CR-2026-0088', title: 'Office Tower — 350 Fifth Ave',   reviewer: 'Sarah Chen'    },
+  c2:  { id: 'c2',  case_ref: 'RC-2026-0013', contract_number: 'CR-2026-0072', title: 'Retail HQ — 200 Park Ave',       reviewer: 'Sarah Chen'    },
+  c3:  { id: 'c3',  case_ref: 'RC-2026-0012', contract_number: 'CR-2026-0055', title: 'Warehouse — 1 Industrial Blvd',  reviewer: 'Jordan Kim'    },
+  c4:  { id: 'c4',  case_ref: 'RC-2026-0011', contract_number: 'CR-2026-0041', title: 'Data Center — 500 Tech Park',    reviewer: 'Sarah Chen'    },
+  c5:  { id: 'c5',  case_ref: 'RC-2026-0010', contract_number: 'CR-2026-0033', title: 'Branch Office — 88 Main St',     reviewer: 'Jordan Kim'    },
+  c6:  { id: 'c6',  case_ref: 'RC-2026-0009', contract_number: 'CR-2026-0028', title: 'Parking Garage — Level B2',      reviewer: 'Sarah Chen'    },
+  c7:  { id: 'c7',  case_ref: 'RC-2026-0008', contract_number: 'CR-2026-0088', title: 'Office Tower — 350 Fifth Ave',   reviewer: 'Jordan Kim'    },
+  c8:  { id: 'c8',  case_ref: 'RC-2026-0007', contract_number: 'CR-2026-0072', title: 'Retail HQ — 200 Park Ave',       reviewer: 'Sarah Chen'    },
+  c9:  { id: 'c9',  case_ref: 'RC-2026-0006', contract_number: 'CR-2026-0055', title: 'Warehouse — 1 Industrial Blvd',  reviewer: 'Jordan Kim'    },
+  c10: { id: 'c10', case_ref: 'RC-2026-0005', contract_number: 'CR-2026-0041', title: 'Data Center — 500 Tech Park',    reviewer: 'Sarah Chen'    },
 };
 
 const CLASSIFICATION_FIELDS = [
@@ -53,6 +62,10 @@ const WORKFLOW_STEPS = [
 export default function ReassessmentReviewPage() {
   const _screenKey = SCREEN_KEYS.REASSESSMENT_REVIEW;
   const [, navigate] = useLocation();
+  const searchStr = useSearch();
+  const caseId = useMemo(() => new URLSearchParams(searchStr).get('caseId') ?? 'c1', [searchStr]);
+  const MOCK_CASE = MOCK_CASES_LOOKUP[caseId] ?? MOCK_CASES_LOOKUP['c1'];
+
   const [checked, setChecked] = useState<Record<number, boolean>>({});
   const [commentary, setCommentary] = useState('');
   const [approved, setApproved] = useState(false);
@@ -92,7 +105,7 @@ export default function ReassessmentReviewPage() {
               </div>
               <div className="flex items-center gap-2">
                 <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">Reassessment</span>
-                <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">AI Confidence: {MOCK_CASE.ai_confidence}%</span>
+                <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">AI Confidence: 94%</span>
               </div>
             </div>
           </div>

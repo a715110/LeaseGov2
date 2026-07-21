@@ -163,6 +163,7 @@ export default function ReassessmentMemo() {
           <Button variant="outline" className="gap-1.5">
             <Download className="w-4 h-4" /> Export Recalculation Package
           </Button>
+          <Button variant="outline" onClick={() => navigate(`/reassessment/cases/${MOCK_CASE.id}/package`)}>Continue to Package Preview</Button>
           <Button onClick={handleSubmit}>Submit for Approval</Button>
         </div>
       </div>

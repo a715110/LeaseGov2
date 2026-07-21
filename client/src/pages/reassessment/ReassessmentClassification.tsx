@@ -153,14 +153,19 @@ export default function ReassessmentClassification() {
 
   return (
     <div className="flex flex-col min-h-full min-w-0 bg-[var(--color-lg-page-bg)]">
-      {/* Remediation banner */}
+      {/* Concurrent case banner — clickable to navigate to ConcurrentWarn screen */}
       {MOCK_CASE.concurrent_case_ids.length > 0 && (
-        <div className="px-6 py-3 border-b flex items-center gap-3" style={{ background:"var(--color-lg-warning-subtle)", borderColor:"var(--color-lg-warning)" }}>
-          <AlertTriangle className="w-4 h-4" style={{ color:"var(--color-lg-warning)" }} />
+        <button
+          className="px-6 py-3 border-b flex items-center gap-3 w-full text-left hover:opacity-90 transition-opacity"
+          style={{ background:"var(--color-lg-warning-subtle)", borderColor:"var(--color-lg-warning)" }}
+          onClick={() => navigate(`/reassessment/cases/${MOCK_CASE.id}/concurrent`)}
+        >
+          <AlertTriangle className="w-4 h-4 shrink-0" style={{ color:"var(--color-lg-warning)" }} />
           <span className="text-[13px] font-medium" style={{ color:"var(--color-lg-warning)" }}>
             {MOCK_CASE.concurrent_case_ids.length} concurrent case(s) detected — see Concurrent Case Warning
           </span>
-        </div>
+          <ChevronRight className="w-4 h-4 ml-auto" style={{ color:"var(--color-lg-warning)" }} />
+        </button>
       )}
 
       <div className="page-header">

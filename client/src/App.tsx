@@ -473,7 +473,7 @@ function Router() {
           <ReassessmentCaseList />
         </ScreenGate>
       </Route>
-      <Route path="/reassessment/concurrent">
+      <Route path="/reassessment/cases/:id/concurrent">
         <ScreenGate screenKey={SCREEN_KEYS.REASSESSMENT_CONCURRENT_WARN} fallback={<NotFound />}>
           <ReassessmentConcurrentWarn />
         </ScreenGate>

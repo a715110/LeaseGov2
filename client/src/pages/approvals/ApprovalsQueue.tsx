@@ -58,16 +58,18 @@ interface ApprovalTask {
   rework_iteration: number;
   /** Assigned reviewer/approver id — maps to MOCK_REVIEWERS */
   reviewer_id?: string;
+  /** For reassessment_case tasks: the case ID to pass as ?caseId= query param */
+  case_id?: string;
 }
 
 // TODO: Backend integration required — GET /api/approvals/tasks
 const INITIAL_TASKS: ApprovalTask[] = [
   { id:"t1",  task_reference:"AT-2026-0041", subject_type:"contract_record",   subject_label:"Office Tower — 350 Fifth Ave",         approval_stage:"review",          status:"pending",           submitted_by:"J. Martinez", submitted_at:"2026-05-16T08:00:00Z", opened_at:null,                      recall_available:true,  priority:"high",      sla_deadline_at:"2026-05-18T17:00:00Z", rework_iteration:0, reviewer_id:"user-rev-001" },
   { id:"t2",  task_reference:"AT-2026-0040", subject_type:"contract_record",   subject_label:"Retail HQ — 1200 Market St",            approval_stage:"review",          status:"opened",            submitted_by:"S. Patel",    submitted_at:"2026-05-15T14:20:00Z", opened_at:"2026-05-15T15:00:00Z",    recall_available:false, priority:"standard",  sla_deadline_at:"2026-05-20T17:00:00Z", rework_iteration:0, reviewer_id:"user-rev-002" },
-  { id:"t3",  task_reference:"AT-2026-0039", subject_type:"reassessment_case", subject_label:"Warehouse Lease — Scope Increase",      approval_stage:"final_approval",  status:"pending",           submitted_by:"A. Chen",     submitted_at:"2026-05-14T09:30:00Z", opened_at:null,                      recall_available:true,  priority:"escalated", sla_deadline_at:"2026-05-17T17:00:00Z", rework_iteration:0, reviewer_id:"user-apr-001" },
+  { id:"t3",  task_reference:"AT-2026-0039", subject_type:"reassessment_case", subject_label:"Warehouse Lease — Scope Increase",      approval_stage:"final_approval",  status:"pending",           submitted_by:"A. Chen",     submitted_at:"2026-05-14T09:30:00Z", opened_at:null,                      recall_available:true,  priority:"escalated", sla_deadline_at:"2026-05-17T17:00:00Z", rework_iteration:0, reviewer_id:"user-apr-001", case_id:"c3" },
   { id:"t4",  task_reference:"AT-2026-0038", subject_type:"contract_record",   subject_label:"Ground Lease — Civic Center",           approval_stage:"review",          status:"rework_in_progress",submitted_by:"J. Martinez", submitted_at:"2026-05-12T11:00:00Z", opened_at:"2026-05-12T11:30:00Z",    recall_available:false, priority:"high",      sla_deadline_at:"2026-05-16T17:00:00Z", rework_iteration:1, reviewer_id:"user-rev-003" },
   { id:"t5",  task_reference:"AT-2026-0037", subject_type:"contract_record",   subject_label:"Industrial Park — Unit 7",              approval_stage:"final_approval",  status:"pending",           submitted_by:"S. Patel",    submitted_at:"2026-05-16T07:00:00Z", opened_at:null,                      recall_available:true,  priority:"standard",  sla_deadline_at:"2026-05-21T17:00:00Z", rework_iteration:0, reviewer_id:"user-apr-002" },
-  { id:"t6",  task_reference:"AT-2026-0036", subject_type:"reassessment_case", subject_label:"Tech Campus — Rent Modification",       approval_stage:"review",          status:"pending",           submitted_by:"A. Chen",     submitted_at:"2026-05-15T16:00:00Z", opened_at:null,                      recall_available:true,  priority:"standard",  sla_deadline_at:"2026-05-22T17:00:00Z", rework_iteration:0, reviewer_id:"user-rev-004" },
+  { id:"t6",  task_reference:"AT-2026-0036", subject_type:"reassessment_case", subject_label:"Tech Campus — Rent Modification",       approval_stage:"review",          status:"pending",           submitted_by:"A. Chen",     submitted_at:"2026-05-15T16:00:00Z", opened_at:null,                      recall_available:true,  priority:"standard",  sla_deadline_at:"2026-05-22T17:00:00Z", rework_iteration:0, reviewer_id:"user-rev-004", case_id:"c6" },
   { id:"t7",  task_reference:"AT-2026-0035", subject_type:"contract_record",   subject_label:"Suburban Office — Suite 400",           approval_stage:"review",          status:"resubmitted",       submitted_by:"J. Martinez", submitted_at:"2026-05-16T06:00:00Z", opened_at:null,                      recall_available:true,  priority:"high",      sla_deadline_at:"2026-05-19T17:00:00Z", rework_iteration:2, reviewer_id:"user-rev-001" },
   { id:"t8",  task_reference:"AT-2026-0034", subject_type:"contract_record",   subject_label:"Downtown Retail — Corner Unit",         approval_stage:"final_approval",  status:"approved",          submitted_by:"S. Patel",    submitted_at:"2026-05-10T09:00:00Z", opened_at:"2026-05-10T10:00:00Z",    recall_available:false, priority:"standard",  sla_deadline_at:null,                   rework_iteration:0, reviewer_id:"user-apr-003" },
 ];
@@ -641,7 +643,15 @@ export default function ApprovalsQueue() {
                       <Button
                         size="sm"
                         className="h-7 gap-1 text-[12px]"
-                        onClick={() => navigate(task.approval_stage === "final_approval" ? `/approvals/final/${task.id}` : `/approvals/review/${task.id}`)}
+                        onClick={() => {
+                          if (task.subject_type === "reassessment_case" && task.case_id) {
+                            navigate(task.approval_stage === "final_approval"
+                              ? `/workflows/reassessment/approval?caseId=${task.case_id}`
+                              : `/workflows/reassessment/review?caseId=${task.case_id}`);
+                          } else {
+                            navigate(task.approval_stage === "final_approval" ? `/approvals/final/${task.id}` : `/approvals/review/${task.id}`);
+                          }
+                        }}
                       >
                         Open <ChevronRight className="w-3.5 h-3.5" />
                       </Button>
