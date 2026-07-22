@@ -31,6 +31,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useMultiAgentSimulation, type SimActivityCard } from '@/lib/agentSimulation'
 import { useLocation } from 'wouter'
 import {
   Bot, AlertTriangle, Clock, CheckCircle2, Pause,
@@ -206,6 +207,17 @@ const AGENT_TYPE_LABELS: Record<string, string> = {
   document_intake: 'Intake',
   ocr: 'OCR',
   extraction: 'Extraction',
+  document_extraction: 'Extraction',
+  document_classification: 'Classification',
+  export_mapping: 'Export Mapping',
+  critical_date_monitor: 'Critical Dates',
+  policy_compliance: 'Policy Compliance',
+  trigger_detection: 'Trigger Detection',
+  financial_remeasurement: 'Remeasurement',
+  memo_generation: 'Memo Generation',
+  portfolio_risk: 'Portfolio Risk',
+  export_reconciliation: 'Reconciliation',
+  survey_intelligence: 'Survey Intelligence',
   workflow_orchestration: 'Orchestration',
   reassessment: 'Reassessment',
   compliance: 'Compliance',
@@ -440,13 +452,35 @@ function ActivityFeed({ tasks }: { tasks: AgentTaskCard[] }) {
   )
 }
 
+// ─── Adapter: SimActivityCard → AgentTaskCard ─────────────────────────────────
+function simCardToTaskCard(c: SimActivityCard): AgentTaskCard {
+  return {
+    id: c.id,
+    agent_type: c.agent_type,
+    workflow_id: `WF-SIM-${c.id.slice(-6).toUpperCase()}`,
+    contract_id: c.contract_id,
+    contract_label: c.contract_label,
+    status: c.status,
+    current_step: c.current_step,
+    started_at: c.started_at,
+    created_at: new Date(Date.now() - 600000).toISOString(),
+    duration: `${Math.floor(c.progress_pct / 10)}m ${c.progress_pct % 10 * 6}s`,
+    exceptions: [],
+    decisions: c.decisions,
+  }
+}
+
 // ─── Main screen ──────────────────────────────────────────────────────────────
 export default function AgentActivityMonitor() {
   const { activeRole } = useRole()
   const allowedRoles = ['lease_admin', 'controller', 'preparer', 'reviewer', 'approver']
   if (!allowedRoles.includes(activeRole)) return <NotFound />
 
-  const [tasks, setTasks] = useState<AgentTaskCard[]>(getMockTasks())
+  // Live simulation — all 11 agent scenarios cycling through the state machine
+  const { cards: simCards } = useMultiAgentSimulation('demo')
+  const liveTasks = simCards.map(simCardToTaskCard)
+
+  const [overrides, setOverrides] = useState<Record<string, AgentStatus>>({})
   const [agentTypeFilter, setAgentTypeFilter] = useState('all')
   const [lastRefresh, setLastRefresh] = useState(new Date())
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -454,21 +488,22 @@ export default function AgentActivityMonitor() {
   const prevCountsRef = useRef<Record<string, number>>({})
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  // ── 15-second auto-refresh with cleanup on unmount ────────────────────────
+  // Merge live simulation cards with any manual overrides (intervene/resume)
+  const tasks: AgentTaskCard[] = liveTasks.map(t =>
+    overrides[t.id] ? { ...t, status: overrides[t.id] } : t
+  )
+
+  // ── Refresh: just re-stamps lastRefresh; simulation drives real state changes
   const doRefresh = useCallback(() => {
     setIsRefreshing(true)
-    // TODO: Backend integration required — GET /agents/tasks
-    // Replace with: const data = await listAgentTasks({ tenant_id: currentTenant })
     setTimeout(() => {
-      const newTasks = getMockTasks()
-      setTasks(newTasks)
       setLastRefresh(new Date())
       setIsRefreshing(false)
 
       // Pulse badges if counts changed
       const newCounts: Record<string, number> = {}
       COLUMNS.forEach(col => {
-        newCounts[col.key] = newTasks.filter(t => t.status === col.key).length
+        newCounts[col.key] = tasks.filter(t => t.status === col.key).length
       })
       const changed = COLUMNS.some(col => newCounts[col.key] !== (prevCountsRef.current[col.key] ?? -1))
       if (changed) {
@@ -477,7 +512,7 @@ export default function AgentActivityMonitor() {
       }
       prevCountsRef.current = newCounts
     }, 300)
-  }, [])
+  }, [tasks])
 
   useEffect(() => {
     intervalRef.current = setInterval(doRefresh, 15_000)
@@ -489,14 +524,13 @@ export default function AgentActivityMonitor() {
   // ── Task actions ──────────────────────────────────────────────────────────
   function handleIntervene(id: string) {
     // TODO: Backend integration required — POST /agents/tasks/{id}/intervene
-    // Sets AgentTask.status → paused_by_human
-    setTasks(prev => prev.map(t => t.id === id ? { ...t, status: 'paused_by_human' as AgentStatus } : t))
+    setOverrides(prev => ({ ...prev, [id]: 'paused_by_human' }))
     toast.success('Agent paused', { description: 'AgentTask.status → paused_by_human' })
   }
 
   function handleResume(id: string) {
     // TODO: Backend integration required — POST /agents/tasks/{id}/resume
-    setTasks(prev => prev.map(t => t.id === id ? { ...t, status: 'running' as AgentStatus } : t))
+    setOverrides(prev => { const n = { ...prev }; delete n[id]; return n })
     toast.success('Agent resumed')
   }
 
