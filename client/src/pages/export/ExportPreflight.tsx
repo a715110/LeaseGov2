@@ -82,7 +82,7 @@ function buildInitialSteps(taskId: string, recordId: string): PreflightStep[] {
       title:"Record status is approved",
       description:"ContractRecord.status must be 'approved' before export can proceed",
       status:"pass",
-      detail:`${PREFLIGHT_TASK_META[taskId]?.record_id ?? 'CR-2026-0041'} status: approved`,
+      detail:`${recordId} status: approved`,
     },
   ];
 }
@@ -155,7 +155,7 @@ export default function ExportPreflight() {
         {/* Task context */}
         <div className="bg-card border border-border rounded-lg px-5 py-3 flex items-center gap-6 text-[12px]">
           <div><span className="text-muted-foreground">Task: </span><span className="font-mono font-semibold text-foreground">{taskMeta.task_ref}</span></div>
-          <div><span className="text-muted-foreground">Record: </span><span className="font-mono font-semibold text-foreground">{taskMeta.record_id}</span></div>
+          <div><span className="text-muted-foreground">Record: </span><span className="font-mono font-semibold text-foreground">{recordId}</span></div>
           <div><span className="text-muted-foreground">Template: </span><span className="font-medium text-foreground">{taskMeta.template_name}</span></div>
           <div className="ml-auto">
             {hasFailures
