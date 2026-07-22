@@ -263,7 +263,10 @@ export default function ExportUploadTask() {
         <div className="px-6 py-8">
           <p className="text-[13px] text-muted-foreground mb-4">The previous task has been retained for audit purposes. You may create a new Upload Task for this record.</p>
           {/* TODO: Backend integration required — POST /api/export/tasks (creates new task for same record) */}
-          <Button onClick={() => advanceStatus("initialized")}>Restart Task</Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => advanceStatus("initialized")}>Restart Task</Button>
+            <Button onClick={() => navigate(`/export/templates?record=${task.record_id}`)}>Start New Task</Button>
+          </div>
         </div>
       </div>
     );
