@@ -29,28 +29,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
 
 import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
-type AutoLevel = "autonomous" | "collaborative" | "manual";
+import { MOCK_REASSESSMENT_CASES, FALLBACK_REASSESSMENT_CASE, type AutoLevel } from '@/lib/mockReassessmentData';
 type ClassResult = "reassessment" | "separate_contract" | "modification_not_separate" | null;
 
 // TODO: Backend integration required — GET /api/reassessments/cases/:id
-// Shared lookup so navigating from any case row shows correct context
-const MOCK_CASES_LOOKUP: Record<string, {
-  id: string; case_ref: string; contract_number: string; title: string;
-  trigger_type: string; trigger_date: string; path_type: string;
-  concurrent_case_ids: string[]; automation_level: AutoLevel; contract_record_id: string;
-}> = {
-  c1:  { id:"c1",  case_ref:"RC-2026-0014", contract_number:"CR-2026-0088", title:"Office Tower — 350 Fifth Ave",   trigger_type:"mod_term",      trigger_date:"2026-05-10", path_type:"modification", concurrent_case_ids:[],         automation_level:"collaborative", contract_record_id:"r1" },
-  c2:  { id:"c2",  case_ref:"RC-2026-0013", contract_number:"CR-2026-0072", title:"Retail HQ — 200 Park Ave",       trigger_type:"opt_assess",    trigger_date:"2026-05-12", path_type:"reassessment", concurrent_case_ids:[],         automation_level:"collaborative", contract_record_id:"r1" },
-  c3:  { id:"c3",  case_ref:"RC-2026-0012", contract_number:"CR-2026-0055", title:"Warehouse — 1 Industrial Blvd",  trigger_type:"opt_assess",    trigger_date:"2026-05-08", path_type:"reassessment", concurrent_case_ids:[],         automation_level:"manual",        contract_record_id:"r1" },
-  c4:  { id:"c4",  case_ref:"RC-2026-0011", contract_number:"CR-2026-0041", title:"Data Center — 500 Tech Park",    trigger_type:"mod_rent",      trigger_date:"2026-05-14", path_type:"modification", concurrent_case_ids:[],         automation_level:"manual",        contract_record_id:"r1" },
-  c5:  { id:"c5",  case_ref:"RC-2026-0010", contract_number:"CR-2026-0033", title:"Branch Office — 88 Main St",     trigger_type:"mod_scope_inc", trigger_date:"2026-04-20", path_type:"modification", concurrent_case_ids:[],         automation_level:"collaborative", contract_record_id:"r1" },
-  c6:  { id:"c6",  case_ref:"RC-2026-0009", contract_number:"CR-2026-0028", title:"Parking Garage — Level B2",      trigger_type:"compound",      trigger_date:"2026-04-15", path_type:"modification", concurrent_case_ids:["c1","c2"], automation_level:"collaborative", contract_record_id:"r1" },
-  c7:  { id:"c7",  case_ref:"RC-2026-0008", contract_number:"CR-2026-0088", title:"Office Tower — 350 Fifth Ave",   trigger_type:"opt_assess",    trigger_date:"2026-04-10", path_type:"reassessment", concurrent_case_ids:[],         automation_level:"manual",        contract_record_id:"r1" },
-  c8:  { id:"c8",  case_ref:"RC-2026-0007", contract_number:"CR-2026-0072", title:"Retail HQ — 200 Park Ave",       trigger_type:"mod_index",     trigger_date:"2026-04-05", path_type:"modification", concurrent_case_ids:[],         automation_level:"collaborative", contract_record_id:"r1" },
-  c9:  { id:"c9",  case_ref:"RC-2026-0006", contract_number:"CR-2026-0055", title:"Warehouse — 1 Industrial Blvd",  trigger_type:"class_reass",   trigger_date:"2026-03-20", path_type:"reassessment", concurrent_case_ids:[],         automation_level:"manual",        contract_record_id:"r1" },
-  c10: { id:"c10", case_ref:"RC-2026-0005", contract_number:"CR-2026-0041", title:"Data Center — 500 Tech Park",    trigger_type:"opt_assess",    trigger_date:"2026-03-15", path_type:"reassessment", concurrent_case_ids:[],         automation_level:"manual",        contract_record_id:"r1" },
-};
-const FALLBACK_CASE = MOCK_CASES_LOOKUP["c2"];
+// Data sourced from shared mockReassessmentData module
+const FALLBACK_CASE = FALLBACK_REASSESSMENT_CASE;
 
 const MOD_TYPES = [
   { value:"scope_increase",   label:"Scope Increase" },
@@ -74,13 +58,13 @@ export default function ReassessmentClassification() {
   const [, navigate] = useLocation();
   const params = useParams<{ id: string }>();
   // Resolve the case from the URL param; fall back to c2 for direct navigation
-  const MOCK_CASE = MOCK_CASES_LOOKUP[params.id ?? ""] ?? FALLBACK_CASE;
+  const MOCK_CASE = MOCK_REASSESSMENT_CASES[params.id ?? ""] ?? FALLBACK_CASE;
 
-  const autoLevel: AutoLevel = MOCK_CASE.automation_level;
+  const autoLevel = MOCK_CASE.automation_level;
 
   // FC-9: Map reassessment AutoLevel to AutomationPolicyBadge level
   const contractRecordId = MOCK_CASE.contract_record_id ?? 'r1';
-  const badgeLevel = autoLevel === 'autonomous' ? 'full_autonomous' : autoLevel === 'collaborative' ? 'collaborative' : 'full_manual';
+  const badgeLevel = autoLevel === 'full_autonomous' ? 'full_autonomous' : autoLevel === 'collaborative' ? 'collaborative' : 'full_manual';
   const { activeCheckpoint } = useCheckpoints(contractRecordId, { checkpointType: 'classification_confirm' });
 
   // Step state

@@ -28,22 +28,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
 
 import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
-type AutoLevel = "autonomous" | "collaborative" | "manual";
+import { MOCK_REASSESSMENT_CASES, FALLBACK_REASSESSMENT_CASE } from '@/lib/mockReassessmentData';
 type Determination = "reasonably_certain" | "not_reasonably_certain" | null;
 
 // TODO: Backend integration required — GET /api/reassessments/cases/:id
-const MOCK_CASES_LOOKUP: Record<string, { id:string; case_ref:string; contract_number:string; title:string; option_type:string; option_exercise_date:string; financial_impact_amount:number; automation_level:AutoLevel; contract_record_id:string }> = {
-  c1:  { id:"c1",  case_ref:"RC-2026-0014", contract_number:"CR-2026-0088", title:"Office Tower — 350 Fifth Ave",   option_type:"renewal",     option_exercise_date:"2027-06-30", financial_impact_amount:2800000_00, automation_level:"collaborative", contract_record_id:"r1" },
-  c2:  { id:"c2",  case_ref:"RC-2026-0013", contract_number:"CR-2026-0072", title:"Retail HQ — 200 Park Ave",       option_type:"purchase",    option_exercise_date:"2027-09-30", financial_impact_amount:8500000_00, automation_level:"collaborative", contract_record_id:"r2" },
-  c3:  { id:"c3",  case_ref:"RC-2026-0012", contract_number:"CR-2026-0055", title:"Warehouse — 1 Industrial Blvd",  option_type:"renewal",     option_exercise_date:"2027-03-31", financial_impact_amount:4500000_00, automation_level:"collaborative", contract_record_id:"r3" },
-  c4:  { id:"c4",  case_ref:"RC-2026-0011", contract_number:"CR-2026-0041", title:"Data Center — 500 Tech Park",    option_type:"renewal",     option_exercise_date:"2027-12-31", financial_impact_amount:1200000_00, automation_level:"manual",        contract_record_id:"r4" },
-  c5:  { id:"c5",  case_ref:"RC-2026-0010", contract_number:"CR-2026-0033", title:"Branch Office — 88 Main St",     option_type:"termination", option_exercise_date:"2026-12-31", financial_impact_amount:  650000_00, automation_level:"collaborative", contract_record_id:"r5" },
-  c6:  { id:"c6",  case_ref:"RC-2026-0009", contract_number:"CR-2026-0028", title:"Parking Garage — Level B2",      option_type:"renewal",     option_exercise_date:"2027-06-30", financial_impact_amount:  900000_00, automation_level:"collaborative", contract_record_id:"r6" },
-  c7:  { id:"c7",  case_ref:"RC-2026-0008", contract_number:"CR-2026-0088", title:"Office Tower — 350 Fifth Ave",   option_type:"renewal",     option_exercise_date:"2027-01-31", financial_impact_amount:3100000_00, automation_level:"manual",        contract_record_id:"r1" },
-  c8:  { id:"c8",  case_ref:"RC-2026-0007", contract_number:"CR-2026-0072", title:"Retail HQ — 200 Park Ave",       option_type:"purchase",    option_exercise_date:"2027-03-31", financial_impact_amount:7200000_00, automation_level:"collaborative", contract_record_id:"r2" },
-  c9:  { id:"c9",  case_ref:"RC-2026-0006", contract_number:"CR-2026-0055", title:"Warehouse — 1 Industrial Blvd",  option_type:"renewal",     option_exercise_date:"2026-09-30", financial_impact_amount:  420000_00, automation_level:"manual",        contract_record_id:"r3" },
-  c10: { id:"c10", case_ref:"RC-2026-0005", contract_number:"CR-2026-0041", title:"Data Center — 500 Tech Park",    option_type:"renewal",     option_exercise_date:"2026-06-30", financial_impact_amount:1800000_00, automation_level:"manual",        contract_record_id:"r4" },
-};
+// Data sourced from shared mockReassessmentData module
 
 // Prior assessment mock
 const PRIOR_ASSESSMENT = {
@@ -107,10 +96,10 @@ export default function ReassessmentAssessment() {
   const _screenKey = SCREEN_KEYS.REASSESSMENT_ASSESSMENT;
   const [, navigate] = useLocation();
   const params = useParams<{ id: string }>();
-  const MOCK_CASE = MOCK_CASES_LOOKUP[params.id ?? ""] ?? MOCK_CASES_LOOKUP["c3"];
+  const MOCK_CASE = MOCK_REASSESSMENT_CASES[params.id ?? ""] ?? FALLBACK_REASSESSMENT_CASE;
 
-  const autoLevel: AutoLevel = MOCK_CASE.automation_level;
-  const badgeLevel = autoLevel === 'autonomous' ? 'full_autonomous' : autoLevel === 'collaborative' ? 'collaborative' : 'full_manual';
+  const autoLevel = MOCK_CASE.automation_level;
+  const badgeLevel = autoLevel === 'full_autonomous' ? 'full_autonomous' : autoLevel === 'collaborative' ? 'collaborative' : 'full_manual';
   const contractRecordId = MOCK_CASE.contract_record_id;
   const { activeCheckpoint: _checkpoint } = useCheckpoints(contractRecordId, { checkpointType: 'assessment_confirm' });
 

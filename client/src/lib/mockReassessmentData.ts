@@ -1,131 +1,217 @@
 /**
  * mockReassessmentData.ts — Shared FC-6 mock data
+ * Single source of truth for all reassessment case lookups used across:
  *
- * Single source of truth for reassessment case lookup used by:
- *   - /workflows/reassessment/update   (ReassessmentUpdate)
- *   - /workflows/reassessment/analysis (ReassessmentAnalysis)
- *   - /workflows/reassessment/review   (ReassessmentReview)
- *   - /workflows/reassessment/approval (ReassessmentApproval)
+ *   Case-level screens (use :id path param):
+ *     ReassessmentClassification  → uses classify fields
+ *     ReassessmentAssessment      → uses assess fields
+ *     ReassessmentAnalysis        → uses analysis fields
+ *     ReassessmentConcurrentWarn  → uses concurrent fields
  *
- * TODO: Replace with backend call — GET /api/reassessments/cases/:id
+ *   Workflow screens (use ?caseId= query param):
+ *     ReassessmentUpdate, ReassessmentAnalysis (workflow),
+ *     ReassessmentReview, ReassessmentApproval
  *
- * All case IDs (c1–c10) align with the MOCK_CASES_LOOKUP defined in
- * the case-level screens (ReassessmentClassification, ReassessmentAssessment,
- * ReassessmentAnalysis, ReassessmentConcurrentWarn) so navigation state
- * is consistent end-to-end.
+ * TODO: Replace with backend calls — GET /api/reassessments/cases/:id
  */
 
-export interface ReassessmentCaseSummary {
+// ─── Shared types ────────────────────────────────────────────────────────────
+
+export type AutoLevel = 'full_autonomous' | 'collaborative' | 'manual';
+
+// ─── Full case record (superset of all per-screen fields) ────────────────────
+
+export interface ReassessmentCase {
+  // Identity
   id: string;
   case_ref: string;
   contract_number: string;
   title: string;
   workspace: string;
-  /** Analyst / preparer assigned to this case */
+
+  // Classification fields
+  trigger_type: string;
+  trigger_date: string;
+  path_type: string;
+  concurrent_case_ids: string[];
+  automation_level: AutoLevel;
+  contract_record_id: string;
+
+  // Assessment fields
+  option_type: string;
+  option_exercise_date: string;
+  /** Stored in cents — divide by 100 for display */
+  financial_impact_amount: number;
+
+  // Analysis (case-level) fields
+  is_remediation: boolean;
+
+  // Workflow screen fields
   analyst: string;
-  /** Reviewer assigned to this case */
   reviewer: string;
-  /** Approver / controller assigned to this case */
   approver: string;
-  /** AI confidence score (0–100) */
+  /** AI confidence score 0–100 */
   ai_confidence: number;
-  /** Memo reference once generated */
   memo_ref: string;
-  /** User who submitted for approval */
   submitted_by: string;
-  /** ISO-like display string for submission timestamp */
   submitted_at: string;
-  /** Current term end date (display string) */
   current_term_end: string;
-  /** Monthly payment (display string) */
   monthly_payment: string;
-  /** Current lease liability (display string) */
   lease_liability: string;
 }
 
-// c1–c10 must stay in sync with the case-level screen lookups
-export const MOCK_REASSESSMENT_CASES: Record<string, ReassessmentCaseSummary> = {
+// ─── Canonical lookup (c1–c10) ───────────────────────────────────────────────
+
+export const MOCK_REASSESSMENT_CASES: Record<string, ReassessmentCase> = {
   c1: {
     id: 'c1', case_ref: 'RC-2026-0014', contract_number: 'CR-2026-0088',
     title: 'Office Tower — 350 Fifth Ave', workspace: 'Corporate Real Estate',
-    analyst: 'Jordan Kim', reviewer: 'Sarah Chen', approver: 'Michael Torres',
-    ai_confidence: 96, memo_ref: 'MEMO-2026-0088-R1',
-    submitted_by: 'Sarah Chen', submitted_at: '2026-05-15 14:32',
+    trigger_type: 'mod_term',      trigger_date: '2026-05-10', path_type: 'modification',
+    concurrent_case_ids: [],       automation_level: 'collaborative', contract_record_id: 'r1',
+    option_type: 'renewal',        option_exercise_date: '2027-06-30', financial_impact_amount: 2800000_00,
+    is_remediation: false,
+    analyst: 'Jordan Kim',         reviewer: 'Sarah Chen',   approver: 'Michael Torres',
+    ai_confidence: 96,             memo_ref: 'MEMO-2026-0088-R1',
+    submitted_by: 'Sarah Chen',    submitted_at: '2026-05-15 14:32',
     current_term_end: '2028-06-30', monthly_payment: '$85,000', lease_liability: '$4,250,000',
   },
   c2: {
     id: 'c2', case_ref: 'RC-2026-0013', contract_number: 'CR-2026-0072',
     title: 'Retail HQ — 200 Park Ave', workspace: 'Retail Portfolio',
-    analyst: 'Jordan Kim', reviewer: 'Sarah Chen', approver: 'Michael Torres',
-    ai_confidence: 91, memo_ref: 'MEMO-2026-0072-R1',
-    submitted_by: 'Jordan Kim', submitted_at: '2026-05-14 11:20',
+    trigger_type: 'opt_assess',    trigger_date: '2026-05-12', path_type: 'reassessment',
+    concurrent_case_ids: [],       automation_level: 'collaborative', contract_record_id: 'r1',
+    option_type: 'purchase',       option_exercise_date: '2027-09-30', financial_impact_amount: 8500000_00,
+    is_remediation: false,
+    analyst: 'Jordan Kim',         reviewer: 'Sarah Chen',   approver: 'Michael Torres',
+    ai_confidence: 91,             memo_ref: 'MEMO-2026-0072-R1',
+    submitted_by: 'Jordan Kim',    submitted_at: '2026-05-14 11:20',
     current_term_end: '2027-12-31', monthly_payment: '$62,000', lease_liability: '$3,100,000',
   },
   c3: {
     id: 'c3', case_ref: 'RC-2026-0012', contract_number: 'CR-2026-0055',
     title: 'Warehouse — 1 Industrial Blvd', workspace: 'Industrial Assets',
-    analyst: 'Sarah Chen', reviewer: 'Jordan Kim', approver: 'Michael Torres',
-    ai_confidence: 88, memo_ref: 'MEMO-2026-0055-R1',
-    submitted_by: 'Jordan Kim', submitted_at: '2026-05-13 09:45',
+    trigger_type: 'opt_assess',    trigger_date: '2026-05-08', path_type: 'reassessment',
+    concurrent_case_ids: [],       automation_level: 'manual',        contract_record_id: 'r1',
+    option_type: 'renewal',        option_exercise_date: '2027-03-31', financial_impact_amount: 4500000_00,
+    is_remediation: false,
+    analyst: 'Sarah Chen',         reviewer: 'Jordan Kim',   approver: 'Michael Torres',
+    ai_confidence: 88,             memo_ref: 'MEMO-2026-0055-R1',
+    submitted_by: 'Jordan Kim',    submitted_at: '2026-05-13 09:45',
     current_term_end: '2029-03-31', monthly_payment: '$41,500', lease_liability: '$2,075,000',
   },
   c4: {
     id: 'c4', case_ref: 'RC-2026-0011', contract_number: 'CR-2026-0041',
     title: 'Data Center — 500 Tech Park', workspace: 'Technology Assets',
-    analyst: 'Jordan Kim', reviewer: 'Sarah Chen', approver: 'Michael Torres',
-    ai_confidence: 93, memo_ref: 'MEMO-2026-0041-R1',
-    submitted_by: 'Sarah Chen', submitted_at: '2026-05-12 16:10',
+    trigger_type: 'mod_rent',      trigger_date: '2026-05-14', path_type: 'modification',
+    concurrent_case_ids: [],       automation_level: 'manual',        contract_record_id: 'r1',
+    option_type: 'renewal',        option_exercise_date: '2027-12-31', financial_impact_amount: 1200000_00,
+    is_remediation: false,
+    analyst: 'Jordan Kim',         reviewer: 'Sarah Chen',   approver: 'Michael Torres',
+    ai_confidence: 93,             memo_ref: 'MEMO-2026-0041-R1',
+    submitted_by: 'Sarah Chen',    submitted_at: '2026-05-12 16:10',
     current_term_end: '2030-09-30', monthly_payment: '$125,000', lease_liability: '$7,500,000',
   },
   c5: {
     id: 'c5', case_ref: 'RC-2026-0010', contract_number: 'CR-2026-0033',
     title: 'Branch Office — 88 Main St', workspace: 'Branch Network',
-    analyst: 'Sarah Chen', reviewer: 'Jordan Kim', approver: 'Michael Torres',
-    ai_confidence: 95, memo_ref: 'MEMO-2026-0033-R1',
-    submitted_by: 'Jordan Kim', submitted_at: '2026-05-11 14:55',
+    trigger_type: 'mod_scope_inc', trigger_date: '2026-04-20', path_type: 'modification',
+    concurrent_case_ids: [],       automation_level: 'collaborative', contract_record_id: 'r1',
+    option_type: 'termination',    option_exercise_date: '2026-12-31', financial_impact_amount: 650000_00,
+    is_remediation: false,
+    analyst: 'Sarah Chen',         reviewer: 'Jordan Kim',   approver: 'Michael Torres',
+    ai_confidence: 95,             memo_ref: 'MEMO-2026-0033-R1',
+    submitted_by: 'Jordan Kim',    submitted_at: '2026-05-11 14:55',
     current_term_end: '2027-06-30', monthly_payment: '$28,000', lease_liability: '$1,120,000',
   },
   c6: {
     id: 'c6', case_ref: 'RC-2026-0009', contract_number: 'CR-2026-0028',
     title: 'Parking Garage — Level B2', workspace: 'Facilities',
-    analyst: 'Jordan Kim', reviewer: 'Sarah Chen', approver: 'Michael Torres',
-    ai_confidence: 87, memo_ref: 'MEMO-2026-0028-R1',
-    submitted_by: 'Sarah Chen', submitted_at: '2026-05-10 10:30',
+    trigger_type: 'compound',      trigger_date: '2026-04-15', path_type: 'modification',
+    concurrent_case_ids: ['c1', 'c2'], automation_level: 'collaborative', contract_record_id: 'r1',
+    option_type: 'renewal',        option_exercise_date: '2027-06-30', financial_impact_amount: 900000_00,
+    is_remediation: true,
+    analyst: 'Jordan Kim',         reviewer: 'Sarah Chen',   approver: 'Michael Torres',
+    ai_confidence: 87,             memo_ref: 'MEMO-2026-0028-R1',
+    submitted_by: 'Sarah Chen',    submitted_at: '2026-05-10 10:30',
     current_term_end: '2026-12-31', monthly_payment: '$18,500', lease_liability: '$555,000',
   },
   c7: {
     id: 'c7', case_ref: 'RC-2026-0008', contract_number: 'CR-2026-0088',
     title: 'Office Tower — 350 Fifth Ave', workspace: 'Corporate Real Estate',
-    analyst: 'Sarah Chen', reviewer: 'Jordan Kim', approver: 'Michael Torres',
-    ai_confidence: 96, memo_ref: 'MEMO-2026-0088-R2',
-    submitted_by: 'Jordan Kim', submitted_at: '2026-05-09 15:22',
+    trigger_type: 'opt_assess',    trigger_date: '2026-04-10', path_type: 'reassessment',
+    concurrent_case_ids: [],       automation_level: 'manual',        contract_record_id: 'r1',
+    option_type: 'renewal',        option_exercise_date: '2027-01-31', financial_impact_amount: 3100000_00,
+    is_remediation: false,
+    analyst: 'Sarah Chen',         reviewer: 'Jordan Kim',   approver: 'Michael Torres',
+    ai_confidence: 96,             memo_ref: 'MEMO-2026-0088-R2',
+    submitted_by: 'Jordan Kim',    submitted_at: '2026-05-09 15:22',
     current_term_end: '2028-06-30', monthly_payment: '$85,000', lease_liability: '$4,250,000',
   },
   c8: {
     id: 'c8', case_ref: 'RC-2026-0007', contract_number: 'CR-2026-0072',
     title: 'Retail HQ — 200 Park Ave', workspace: 'Retail Portfolio',
-    analyst: 'Jordan Kim', reviewer: 'Sarah Chen', approver: 'Michael Torres',
-    ai_confidence: 90, memo_ref: 'MEMO-2026-0072-R2',
-    submitted_by: 'Sarah Chen', submitted_at: '2026-05-08 13:40',
+    trigger_type: 'mod_index',     trigger_date: '2026-04-05', path_type: 'modification',
+    concurrent_case_ids: [],       automation_level: 'collaborative', contract_record_id: 'r1',
+    option_type: 'purchase',       option_exercise_date: '2027-03-31', financial_impact_amount: 7200000_00,
+    is_remediation: false,
+    analyst: 'Jordan Kim',         reviewer: 'Sarah Chen',   approver: 'Michael Torres',
+    ai_confidence: 90,             memo_ref: 'MEMO-2026-0072-R2',
+    submitted_by: 'Sarah Chen',    submitted_at: '2026-05-08 13:40',
     current_term_end: '2027-12-31', monthly_payment: '$62,000', lease_liability: '$3,100,000',
   },
   c9: {
     id: 'c9', case_ref: 'RC-2026-0006', contract_number: 'CR-2026-0055',
     title: 'Warehouse — 1 Industrial Blvd', workspace: 'Industrial Assets',
-    analyst: 'Sarah Chen', reviewer: 'Jordan Kim', approver: 'Michael Torres',
-    ai_confidence: 89, memo_ref: 'MEMO-2026-0055-R2',
-    submitted_by: 'Jordan Kim', submitted_at: '2026-05-07 11:15',
+    trigger_type: 'class_reass',   trigger_date: '2026-03-20', path_type: 'reassessment',
+    concurrent_case_ids: [],       automation_level: 'manual',        contract_record_id: 'r1',
+    option_type: 'renewal',        option_exercise_date: '2026-09-30', financial_impact_amount: 420000_00,
+    is_remediation: false,
+    analyst: 'Sarah Chen',         reviewer: 'Jordan Kim',   approver: 'Michael Torres',
+    ai_confidence: 89,             memo_ref: 'MEMO-2026-0055-R2',
+    submitted_by: 'Jordan Kim',    submitted_at: '2026-05-07 11:15',
     current_term_end: '2029-03-31', monthly_payment: '$41,500', lease_liability: '$2,075,000',
   },
   c10: {
     id: 'c10', case_ref: 'RC-2026-0005', contract_number: 'CR-2026-0041',
     title: 'Data Center — 500 Tech Park', workspace: 'Technology Assets',
-    analyst: 'Jordan Kim', reviewer: 'Sarah Chen', approver: 'Michael Torres',
-    ai_confidence: 94, memo_ref: 'MEMO-2026-0041-R2',
-    submitted_by: 'Sarah Chen', submitted_at: '2026-05-06 09:00',
+    trigger_type: 'opt_assess',    trigger_date: '2026-03-15', path_type: 'reassessment',
+    concurrent_case_ids: [],       automation_level: 'manual',        contract_record_id: 'r1',
+    option_type: 'renewal',        option_exercise_date: '2026-06-30', financial_impact_amount: 1800000_00,
+    is_remediation: false,
+    analyst: 'Jordan Kim',         reviewer: 'Sarah Chen',   approver: 'Michael Torres',
+    ai_confidence: 94,             memo_ref: 'MEMO-2026-0041-R2',
+    submitted_by: 'Sarah Chen',    submitted_at: '2026-05-06 09:00',
     current_term_end: '2030-09-30', monthly_payment: '$125,000', lease_liability: '$7,500,000',
   },
 };
 
 /** Fallback used when a caseId is absent or unrecognised */
 export const FALLBACK_REASSESSMENT_CASE = MOCK_REASSESSMENT_CASES['c1'];
+
+// ─── Status-aware routing helper ─────────────────────────────────────────────
+/**
+ * Resolve the correct destination URL for a case's Open action.
+ * Workflow screens receive ?caseId= so they can look up case data from
+ * MOCK_REASSESSMENT_CASES.
+ * Case-level screens (/reassessment/cases/:id/*) use the :id path param.
+ *
+ * Used by: ReassessmentCaseList, ReassessmentDashboard, ApprovalsQueue
+ */
+export function resolveReassessmentUrl(caseId: string, status: string): string {
+  switch (status) {
+    // Workflow screens — pass caseId as query param
+    case 'pending_review':        return `/workflows/reassessment/review?caseId=${caseId}`;
+    case 'pending_approval':      return `/workflows/reassessment/approval?caseId=${caseId}`;
+    case 'analysis_in_progress':
+    case 'analysis_pending':      return `/workflows/reassessment/analysis?caseId=${caseId}`;
+    case 'initiated':             return `/workflows/reassessment/update?caseId=${caseId}`;
+    // Case-level screens — use :id param in path
+    case 'memo_draft':            return `/reassessment/cases/${caseId}/memo`;
+    case 'assessment_pending':
+    case 'assessment_review':     return `/reassessment/cases/${caseId}/assess`;
+    case 'remediation':           return `/reassessment/cases/${caseId}/remediation`;
+    case 'classification_pending':
+    case 'classification_review':
+    default:                      return `/reassessment/cases/${caseId}/classify`;
+  }
+}

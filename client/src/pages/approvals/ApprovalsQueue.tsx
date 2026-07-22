@@ -60,6 +60,8 @@ interface ApprovalTask {
   reviewer_id?: string;
   /** For reassessment_case tasks: the case ID to pass as ?caseId= query param */
   case_id?: string;
+  /** Optional status hint used to resolve the correct destination URL for special case types (remediation, project_review) */
+  case_status?: string;
 }
 
 // TODO: Backend integration required — GET /api/approvals/tasks
@@ -72,6 +74,10 @@ const INITIAL_TASKS: ApprovalTask[] = [
   { id:"t6",  task_reference:"AT-2026-0036", subject_type:"reassessment_case", subject_label:"Tech Campus — Rent Modification",       approval_stage:"review",          status:"pending",           submitted_by:"A. Chen",     submitted_at:"2026-05-15T16:00:00Z", opened_at:null,                      recall_available:true,  priority:"standard",  sla_deadline_at:"2026-05-22T17:00:00Z", rework_iteration:0, reviewer_id:"user-rev-004", case_id:"c6" },
   { id:"t7",  task_reference:"AT-2026-0035", subject_type:"contract_record",   subject_label:"Suburban Office — Suite 400",           approval_stage:"review",          status:"resubmitted",       submitted_by:"J. Martinez", submitted_at:"2026-05-16T06:00:00Z", opened_at:null,                      recall_available:true,  priority:"high",      sla_deadline_at:"2026-05-19T17:00:00Z", rework_iteration:2, reviewer_id:"user-rev-001" },
   { id:"t8",  task_reference:"AT-2026-0034", subject_type:"contract_record",   subject_label:"Downtown Retail — Corner Unit",         approval_stage:"final_approval",  status:"approved",          submitted_by:"S. Patel",    submitted_at:"2026-05-10T09:00:00Z", opened_at:"2026-05-10T10:00:00Z",    recall_available:false, priority:"standard",  sla_deadline_at:null,                   rework_iteration:0, reviewer_id:"user-apr-003" },
+  // Remediation case — routes to /reassessment/cases/:id/remediation
+  { id:"t9",  task_reference:"AT-2026-0033", subject_type:"reassessment_case", subject_label:"Parking Garage — Remediation Review",    approval_stage:"review",          status:"pending",           submitted_by:"A. Chen",     submitted_at:"2026-05-13T10:00:00Z", opened_at:null,                      recall_available:true,  priority:"escalated", sla_deadline_at:"2026-05-18T17:00:00Z", rework_iteration:0, reviewer_id:"user-rev-005", case_id:"c6", case_status:"remediation" },
+  // Contextual project case — routes to /reassessment/projects/:id
+  { id:"t10", task_reference:"AT-2026-0032", subject_type:"reassessment_case", subject_label:"Office Tower — Project Context Review",  approval_stage:"review",          status:"pending",           submitted_by:"J. Martinez", submitted_at:"2026-05-14T14:00:00Z", opened_at:null,                      recall_available:true,  priority:"standard",  sla_deadline_at:"2026-05-21T17:00:00Z", rework_iteration:0, reviewer_id:"user-rev-006", case_id:"c7", case_status:"project_review" },
 ];
 
 const CURRENT_USER = "Current User";
@@ -652,9 +658,16 @@ export default function ApprovalsQueue() {
                               });
                               return;
                             }
-                            navigate(task.approval_stage === "final_approval"
-                              ? `/workflows/reassessment/approval?caseId=${task.case_id}`
-                              : `/workflows/reassessment/review?caseId=${task.case_id}`);
+                            // Route to the correct screen based on case_status hint
+                            if (task.case_status === "remediation") {
+                              navigate(`/reassessment/cases/${task.case_id}/remediation`);
+                            } else if (task.case_status === "project_review") {
+                              navigate(`/reassessment/projects/${task.case_id}`);
+                            } else {
+                              navigate(task.approval_stage === "final_approval"
+                                ? `/workflows/reassessment/approval?caseId=${task.case_id}`
+                                : `/workflows/reassessment/review?caseId=${task.case_id}`);
+                            }
                           } else {
                             navigate(task.approval_stage === "final_approval" ? `/approvals/final/${task.id}` : `/approvals/review/${task.id}`);
                           }

@@ -25,19 +25,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
 
 import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
+import { MOCK_REASSESSMENT_CASES, FALLBACK_REASSESSMENT_CASE } from '@/lib/mockReassessmentData';
 // TODO: Backend integration required — GET /api/reassessments/cases/:id/analysis
-const MOCK_CASES_LOOKUP: Record<string, { id:string; case_ref:string; contract_number:string; title:string; path_type:string; is_remediation:boolean }> = {
-  c1:  { id:"c1",  case_ref:"RC-2026-0014", contract_number:"CR-2026-0088", title:"Office Tower — 350 Fifth Ave",   path_type:"modification", is_remediation:false },
-  c2:  { id:"c2",  case_ref:"RC-2026-0013", contract_number:"CR-2026-0072", title:"Retail HQ — 200 Park Ave",       path_type:"reassessment", is_remediation:false },
-  c3:  { id:"c3",  case_ref:"RC-2026-0012", contract_number:"CR-2026-0055", title:"Warehouse — 1 Industrial Blvd",  path_type:"reassessment", is_remediation:false },
-  c4:  { id:"c4",  case_ref:"RC-2026-0011", contract_number:"CR-2026-0041", title:"Data Center — 500 Tech Park",    path_type:"modification", is_remediation:false },
-  c5:  { id:"c5",  case_ref:"RC-2026-0010", contract_number:"CR-2026-0033", title:"Branch Office — 88 Main St",     path_type:"modification", is_remediation:false },
-  c6:  { id:"c6",  case_ref:"RC-2026-0009", contract_number:"CR-2026-0028", title:"Parking Garage — Level B2",      path_type:"modification", is_remediation:true  },
-  c7:  { id:"c7",  case_ref:"RC-2026-0008", contract_number:"CR-2026-0088", title:"Office Tower — 350 Fifth Ave",   path_type:"reassessment", is_remediation:false },
-  c8:  { id:"c8",  case_ref:"RC-2026-0007", contract_number:"CR-2026-0072", title:"Retail HQ — 200 Park Ave",       path_type:"modification", is_remediation:false },
-  c9:  { id:"c9",  case_ref:"RC-2026-0006", contract_number:"CR-2026-0055", title:"Warehouse — 1 Industrial Blvd",  path_type:"reassessment", is_remediation:false },
-  c10: { id:"c10", case_ref:"RC-2026-0005", contract_number:"CR-2026-0041", title:"Data Center — 500 Tech Park",    path_type:"reassessment", is_remediation:false },
-};
+// Data sourced from shared mockReassessmentData module
 
 const BEFORE_AFTER = {
   lease_term_months:    { before: 60,           after: 84,           label:"Lease Term (months)" },
@@ -68,7 +58,7 @@ export default function ReassessmentAnalysis() {
   const _screenKey = SCREEN_KEYS.REASSESSMENT_ANALYSIS;
   const [, navigate] = useLocation();
   const params = useParams<{ id: string }>();
-  const MOCK_CASE = MOCK_CASES_LOOKUP[params.id ?? ""] ?? MOCK_CASES_LOOKUP["c7"];
+  const MOCK_CASE = MOCK_REASSESSMENT_CASES[params.id ?? ""] ?? FALLBACK_REASSESSMENT_CASE;
 
   const [activeTab, setActiveTab] = useState<"analysis" | "memo">("analysis");
   const [memoType, setMemoType] = useState<"action" | "no_action">("action");
