@@ -36,6 +36,7 @@ const ROLE_BADGE_COLOR: Record<UserRole, string> = {
   business_submitter: 'badge-muted',
   auditor:            'badge-processing',
   lease_admin:        'badge-valid',
+  super_admin:        'badge-valid',
 };
 
 export default function PlatformNotAuthorized() {

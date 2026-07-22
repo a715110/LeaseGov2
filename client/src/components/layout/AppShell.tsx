@@ -81,6 +81,7 @@ const ALL_ROLES: UserRole[] = [
   'business_submitter',
   'auditor',
   'lease_admin',
+  'super_admin',
 ]
 
 // ─── Static MVP nav items (used until registry-driven nav is wired) ───────────

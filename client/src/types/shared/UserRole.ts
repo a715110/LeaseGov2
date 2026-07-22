@@ -18,7 +18,8 @@ export type UserRole =
   | 'controller'
   | 'business_submitter'
   | 'auditor'
-  | 'lease_admin';
+  | 'lease_admin'
+  | 'super_admin';
 
 /** Human-readable label for each role. */
 export const ROLE_LABELS: Record<UserRole, string> = {
@@ -31,6 +32,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   business_submitter: 'Business Submitter',
   auditor:            'Auditor',
   lease_admin:        'Lease Admin',
+  super_admin:        'Super Admin',
 };
 
 /** Accent colour for each role — used by the demo role switcher and event bus. */
@@ -44,6 +46,7 @@ export const ROLE_COLORS: Record<UserRole, string> = {
   business_submitter: '#ec4899',
   auditor:            '#6b7280',
   lease_admin:        '#1F3864',
+  super_admin:        '#0f172a',
 };
 
 /** @deprecated Use ROLE_LABELS instead. Kept for backward compatibility. */

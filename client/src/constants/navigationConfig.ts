@@ -68,7 +68,8 @@ export const NAV_GROUPS: NavGroupConfig[] = [
   },
   {
     key: 'superadmin', label: 'SuperAdmin', icon: 'Shield', sortOrder: 10, phase: 'mvp',
-    // No allowedRoles — visible to all (gated separately by ScreenGate)
+    // Only visible when the demo role is set to super_admin
+    allowedRoles: ['super_admin'],
   },
 ]
 
