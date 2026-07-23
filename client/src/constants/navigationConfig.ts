@@ -36,7 +36,7 @@ export const NAV_GROUPS: NavGroupConfig[] = [
   },
   {
     key: 'extraction', label: 'Extraction', icon: 'Scan', sortOrder: 2, phase: 'mvp',
-    allowedRoles: ['preparer', 'reviewer', 'auditor', 'lease_admin'],
+    allowedRoles: ['preparer', 'auditor', 'lease_admin'],
   },
   {
     key: 'packages', label: 'Packages', icon: 'Layers', sortOrder: 3, phase: 'mvp',

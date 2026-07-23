@@ -687,7 +687,7 @@ export default function AppShell({
                       {!sidebarCollapsed && (
                         <>
                           <span className="flex-1 text-left font-semibold text-[10px] uppercase tracking-widest truncate">
-                            {group.label}
+                            {group.key === 'approvals' && activeRole === 'reviewer' ? 'Reviews' : group.label}
                           </span>
                           <GroupBadge count={badgeCount} />
                           {isExpanded
@@ -700,7 +700,7 @@ export default function AppShell({
                   </TooltipTrigger>
                   {sidebarCollapsed && (
                     <TooltipContent side="right" className="text-xs">
-                      {group.label}
+                      {group.key === 'approvals' && activeRole === 'reviewer' ? 'Reviews' : group.label}
                       {badgeCount > 0 && ` (${badgeCount})`}
                     </TooltipContent>
                   )}
