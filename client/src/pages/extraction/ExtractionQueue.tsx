@@ -850,8 +850,22 @@ export default function ExtractionQueue() {
   const _screenKey = SCREEN_KEYS.EXTRACTION_QUEUE;
   const [, navigate] = useLocation();
   const [activeTab, setActiveTab] = useState('all');
-  const [jobs, setJobs] = useState<ProcessingJob[]>(MOCK_JOBS);
-  const [selectedJob, setSelectedJob] = useState<ProcessingJob | null>(MOCK_JOBS[0]);
+  // DEMO ONLY: Restore any dynamically-added jobs (submitted batches) that survived
+  // a previous mount. MOCK_JOBS are the static seed; extra jobs are persisted in
+  // sessionStorage so they survive navigation away and back.
+  // PRODUCTION: remove — jobs come from GET /api/v1/extraction/queue on every mount.
+  const EXTRA_JOBS_KEY = 'leasegov_extraction_extra_jobs';
+  const [jobs, setJobs] = useState<ProcessingJob[]>(() => {
+    try {
+      const raw = sessionStorage.getItem('leasegov_extraction_extra_jobs');
+      if (raw) {
+        const extra: ProcessingJob[] = JSON.parse(raw);
+        if (extra.length > 0) return [...extra, ...MOCK_JOBS];
+      }
+    } catch { /* ignore */ }
+    return MOCK_JOBS;
+  });
+  const [selectedJob, setSelectedJob] = useState<ProcessingJob | null>(null);
   // Batch-level decline dialog state
   // declineBatch = { batchRef, jobs[] } for the batch being declined
   const [declineBatch, setDeclineBatch] = useState<{ batchRef: string; jobs: ProcessingJob[] } | null>(null);
@@ -966,6 +980,37 @@ export default function ExtractionQueue() {
       if (event.type !== 'BATCH_SUBMITTED') return;
       setJobs(prev => [batchEventToJob(event), ...prev]);
     });
+    return () => unsub();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // DEMO ONLY: Persist dynamically-added (non-seed) jobs so they survive navigation
+  // away and back. We identify extra jobs as those whose id starts with 'job-' (the
+  // prefix used by batchEventToJob) rather than the static MOCK_JOBS ids ('j1'–'j6').
+  // PRODUCTION: remove — backend is the source of truth; no client-side persistence needed.
+  const MOCK_JOB_IDS = new Set(MOCK_JOBS.map(j => j.id));
+  useEffect(() => {
+    const extra = jobs.filter(j => !MOCK_JOB_IDS.has(j.id));
+    try {
+      if (extra.length > 0) {
+        sessionStorage.setItem(EXTRA_JOBS_KEY, JSON.stringify(extra));
+      } else {
+        sessionStorage.removeItem(EXTRA_JOBS_KEY);
+      }
+    } catch { /* quota exceeded — ignore */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobs]);
+
+  // DEMO ONLY: Reset jobs to seed data when the demo is reset.
+  // PRODUCTION: remove — demo infrastructure not needed.
+  useEffect(() => {
+    const unsub = subscribeToEvents((event) => {
+      if (event.type !== 'DEMO_RESET') return;
+      sessionStorage.removeItem(EXTRA_JOBS_KEY);
+      sessionStorage.removeItem(PENDING_EXTRACTION_JOBS_KEY);
+      setJobs(MOCK_JOBS);
+      setSelectedJob(null);
+    }, ['DEMO_RESET']);
     return () => unsub();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
