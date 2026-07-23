@@ -29,9 +29,12 @@ import { useLocation, useParams } from "wouter";
 import {
   FileText, Plus, Flag, ChevronRight, Info, Tag,
   CheckCircle2, AlertTriangle, Clock, MoreHorizontal, ArrowRight, AlertCircle,
-  Eye, ClipboardCheck, Lock
+  Eye, ClipboardCheck, Lock, MessageSquare, ChevronDown, ChevronUp,
+  ThumbsUp, ThumbsDown, AlertOctagon, X
 } from "lucide-react";
 import { useRole } from "@/contexts/RoleContext";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
@@ -193,7 +196,9 @@ export default function PackagesComposition() {
   //   Reviewer               → read-only; action bar shows "Review Package"
   //   All others             → read-only
   const isReviewer = activeRole === 'reviewer';
+  const isApprover = activeRole === 'approver';
   const canEdit = activeRole === 'preparer' || activeRole === 'lease_admin';
+  const isReadOnly = !canEdit;
   const params = useParams<{ contractId: string }>();
   // Resolve the package from the route param; fall back to the default mock if unknown
   const contractId = params.contractId ?? FALLBACK_PACKAGE_ID;
@@ -204,7 +209,50 @@ export default function PackagesComposition() {
 
   // Change Role dialog
   const [changeRoleDoc, setChangeRoleDoc] = useState<PackageDoc | null>(null);
-  const [pendingRole, setPendingRole] = useState<DocumentRole | "">("");
+  const [pendingRole, setPendingRole] = useState<DocumentRole | "">("")
+
+  // ── Reviewer annotation panel ─────────────────────────────────────────────
+  const [annotationOpen, setAnnotationOpen] = useState(true);
+  const [annotationComment, setAnnotationComment] = useState("");
+  const [flaggedDocIds, setFlaggedDocIds] = useState<Set<string>>(new Set());
+  const [annotationsSubmitted, setAnnotationsSubmitted] = useState(false);
+
+  function toggleFlagDoc(docId: string) {
+    setFlaggedDocIds(prev => {
+      const next = new Set(prev);
+      if (next.has(docId)) next.delete(docId); else next.add(docId);
+      return next;
+    });
+  }
+
+  function handleSubmitAnnotations() {
+    const flagCount = flaggedDocIds.size;
+    const hasComment = annotationComment.trim().length > 0;
+    if (!hasComment && flagCount === 0) {
+      toast.warning("Add at least one comment or flag a document before submitting.");
+      return;
+    }
+    setAnnotationsSubmitted(true);
+    toast.success("Annotations saved", {
+      description: `${flagCount} document${flagCount !== 1 ? 's' : ''} flagged for rework${hasComment ? ' · General comment recorded' : ''}.`,
+      duration: 5000,
+    });
+  }
+
+  // ── Approver confirm dialog ───────────────────────────────────────────────
+  const [approverAction, setApproverAction] = useState<'approve' | 'reject' | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+
+  function handleApproverConfirm() {
+    if (approverAction === 'approve') {
+      toast.success("Package approved", { description: `${pkg.id} — ${pkg.record_label} has been approved.`, duration: 6000 });
+    } else {
+      toast.error("Package rejected", { description: rejectReason.trim() || "No reason provided.", duration: 6000 });
+    }
+    setApproverAction(null);
+    setRejectReason("");
+    navigate("/approvals/queue");
+  };
 
   // ── BR2: Auto-detect multiple base contracts → raise blocking flag ─────────
   useEffect(() => {
@@ -291,7 +339,7 @@ export default function PackagesComposition() {
   }
 
   return (
-    <div className="flex flex-col min-h-full min-w-0 bg-[var(--color-lg-page-bg)]">
+    <div className="flex min-h-full min-w-0 bg-[var(--color-lg-page-bg)]">
       <div className="page-header">
         <div>
           <div className="flex items-center gap-2 mb-1">
@@ -310,6 +358,10 @@ export default function PackagesComposition() {
           {isReviewer ? (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-semibold bg-blue-100 text-blue-800 border border-blue-200">
               <Eye className="w-3.5 h-3.5" /> Reviewer View — Read Only
+            </span>
+          ) : isApprover ? (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-semibold bg-purple-100 text-purple-800 border border-purple-200">
+              <ThumbsUp className="w-3.5 h-3.5" /> Approver View
             </span>
           ) : canEdit ? (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-semibold bg-[var(--color-lg-accent-subtle)] text-[var(--color-lg-info)] border border-blue-200">
@@ -359,6 +411,25 @@ export default function PackagesComposition() {
             >
               <ClipboardCheck className="w-4 h-4" /> Review Package <ChevronRight className="w-4 h-4" />
             </Button>
+          ) : isApprover ? (
+            // Approver: Approve + Reject buttons
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 border-[var(--color-lg-error)] text-[var(--color-lg-error)] hover:bg-[var(--color-lg-error-subtle)]"
+                onClick={() => setApproverAction('reject')}
+              >
+                <ThumbsDown className="w-3.5 h-3.5" /> Reject
+              </Button>
+              <Button
+                size="sm"
+                className="gap-1.5 bg-[var(--color-lg-success)] hover:bg-[var(--color-lg-success)]/90 text-white"
+                onClick={() => setApproverAction('approve')}
+              >
+                <ThumbsUp className="w-3.5 h-3.5" /> Approve
+              </Button>
+            </>
           ) : canEdit ? (
             // Preparer: "Proceed to Approval" — disabled while blocking flags exist
             <Tooltip>
@@ -379,7 +450,11 @@ export default function PackagesComposition() {
         </div>
       </div>
 
-      <div className="flex-1 px-6 py-5 flex flex-col gap-5">
+      {/* Main content + optional annotation side panel */}
+      <div className="flex flex-1 min-h-0 min-w-0">
+
+        {/* Main scrollable content column */}
+        <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-5">
 
         {/* BR2: Multiple base contracts blocking alert */}
         {hasMultipleBase && (
@@ -457,8 +532,13 @@ export default function PackagesComposition() {
 
         {/* Document table */}
         <div className="bg-card border border-border rounded-lg overflow-hidden">
-          <div className="px-5 py-3.5 border-b border-border">
+          <div className="px-5 py-3.5 border-b border-border flex items-center justify-between">
             <h2 className="text-[13px] font-semibold text-foreground">Documents</h2>
+            {isReadOnly && (
+              <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                <Lock className="w-3 h-3" /> Read-only view
+              </span>
+            )}
           </div>
           <table className="data-table w-full text-[13px]">
             <thead>
@@ -508,30 +588,40 @@ export default function PackagesComposition() {
                     </td>
                     <td className="text-muted-foreground text-[12px]">{doc.file_size}</td>
                     <td className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
-                            <MoreHorizontal className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="text-[13px]">
-                          <DropdownMenuItem onClick={() => navigate("/extraction/verify")}>View Extraction</DropdownMenuItem>
-                          {/* BR5: Change Role / Remove — Preparer / Lease Admin only */}
-                          {canEdit && (
-                            <>
-                              <DropdownMenuItem onClick={() => { setChangeRoleDoc(doc); setPendingRole(doc.document_role); }}>
-                                Change Role
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="text-destructive"
-                                onClick={() => handleRemove(doc)}
-                              >
-                                Remove from Package
-                              </DropdownMenuItem>
-                            </>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      {canEdit ? (
+                        // Preparer / Lease Admin: full action dropdown
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                              <MoreHorizontal className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="text-[13px]">
+                            <DropdownMenuItem onClick={() => navigate("/extraction/verify")}>View Extraction</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => { setChangeRoleDoc(doc); setPendingRole(doc.document_role); }}>
+                              Change Role
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={() => handleRemove(doc)}
+                            >
+                              Remove from Package
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      ) : (
+                        // Read-only roles: lock icon with tooltip
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-flex items-center justify-center h-7 w-7 cursor-default">
+                              <Lock className="w-3.5 h-3.5 text-muted-foreground/50" />
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent side="left" className="text-[12px]">
+                            Actions not available in read-only view
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
                     </td>
                   </tr>
                 );
@@ -539,7 +629,134 @@ export default function PackagesComposition() {
             </tbody>
           </table>
         </div>
-      </div>
+        </div>{/* end main scroll area */}
+
+        {/* ── Reviewer annotation side panel ───────────────────────────────── */}
+        {isReviewer && (
+          <div
+            className="shrink-0 border-l border-border bg-card flex flex-col transition-all duration-300"
+            style={{ width: annotationOpen ? 320 : 48 }}
+          >
+            {/* Panel header / toggle */}
+            <button
+              className="flex items-center gap-2 px-3 py-3 border-b border-border w-full text-left hover:bg-muted/50 transition-colors"
+              onClick={() => setAnnotationOpen(v => !v)}
+            >
+              <MessageSquare className="w-4 h-4 text-[var(--color-lg-info)] shrink-0" />
+              {annotationOpen && (
+                <span className="flex-1 text-[13px] font-semibold text-foreground">Review Annotations</span>
+              )}
+              {annotationOpen
+                ? <ChevronDown className="w-4 h-4 text-muted-foreground ml-auto" />
+                : <ChevronUp className="w-4 h-4 text-muted-foreground" />
+              }
+            </button>
+
+            {annotationOpen && (
+              <div className="flex flex-col gap-4 p-4 flex-1 overflow-y-auto">
+
+                {annotationsSubmitted && (
+                  <div className="flex items-start gap-2 px-3 py-2 rounded text-[12px] bg-[var(--color-lg-success-subtle)] text-[var(--color-lg-success)] border border-[var(--color-lg-success)]/30">
+                    <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                    Annotations saved. You can update and re-submit.
+                  </div>
+                )}
+
+                {/* Per-document flag checkboxes */}
+                <div>
+                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Flag for Rework</p>
+                  <div className="flex flex-col gap-2">
+                    {sortedDocs.map(doc => (
+                      <label key={doc.id} className="flex items-start gap-2 cursor-pointer group">
+                        <Checkbox
+                          checked={flaggedDocIds.has(doc.id)}
+                          onCheckedChange={() => toggleFlagDoc(doc.id)}
+                          className="mt-0.5 shrink-0"
+                        />
+                        <span className={`text-[12px] leading-snug select-none ${
+                          flaggedDocIds.has(doc.id) ? 'text-[var(--color-lg-error)] font-medium' : 'text-foreground group-hover:text-foreground'
+                        }`}>
+                          {doc.name.length > 36 ? doc.name.slice(0, 33) + '…' : doc.name}
+                          <span className="ml-1 text-muted-foreground font-normal">({ROLE_LABELS[doc.document_role]})</span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* General comment */}
+                <div>
+                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">General Comment</p>
+                  <Textarea
+                    placeholder="Add observations, concerns, or notes for the preparer…"
+                    value={annotationComment}
+                    onChange={e => setAnnotationComment(e.target.value)}
+                    className="text-[13px] min-h-[100px] resize-none"
+                  />
+                </div>
+
+                <Button
+                  size="sm"
+                  className="w-full gap-1.5"
+                  onClick={handleSubmitAnnotations}
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  {annotationsSubmitted ? 'Update Annotations' : 'Submit Annotations'}
+                </Button>
+
+                {flaggedDocIds.size > 0 && (
+                  <p className="text-[11px] text-[var(--color-lg-error)] text-center">
+                    {flaggedDocIds.size} document{flaggedDocIds.size !== 1 ? 's' : ''} flagged for rework
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+      </div>{/* end flex row */}
+
+      {/* ── Approver Confirm Dialog ───────────────────────────────────────── */}
+      <Dialog open={!!approverAction} onOpenChange={open => { if (!open) { setApproverAction(null); setRejectReason(""); } }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {approverAction === 'approve'
+                ? <><ThumbsUp className="w-4 h-4 text-[var(--color-lg-success)]" /> Approve Package</>
+                : <><AlertOctagon className="w-4 h-4 text-[var(--color-lg-error)]" /> Reject Package</>
+              }
+            </DialogTitle>
+            <DialogDescription className="text-[13px]">
+              {approverAction === 'approve'
+                ? `Approving ${pkg.id} will advance it to the Record stage. This action cannot be undone.`
+                : `Rejecting ${pkg.id} will return it to the Preparer for rework.`
+              }
+            </DialogDescription>
+          </DialogHeader>
+          {approverAction === 'reject' && (
+            <div className="py-2">
+              <label className="text-[12px] font-medium text-muted-foreground block mb-1.5">Rejection Reason</label>
+              <Textarea
+                placeholder="Describe what needs to be corrected…"
+                value={rejectReason}
+                onChange={e => setRejectReason(e.target.value)}
+                className="text-[13px] min-h-[80px] resize-none"
+              />
+            </div>
+          )}
+          <DialogFooter className="gap-2">
+            <Button variant="outline" size="sm" onClick={() => { setApproverAction(null); setRejectReason(""); }}>Cancel</Button>
+            <Button
+              size="sm"
+              className={approverAction === 'approve' ? 'bg-[var(--color-lg-success)] hover:bg-[var(--color-lg-success)]/90 text-white' : ''}
+              variant={approverAction === 'reject' ? 'destructive' : 'default'}
+              onClick={handleApproverConfirm}
+            >
+              {approverAction === 'approve' ? 'Confirm Approval' : 'Confirm Rejection'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Change Role Dialog */}
       <Dialog open={!!changeRoleDoc} onOpenChange={open => { if (!open) { setChangeRoleDoc(null); setPendingRole(""); } }}>
