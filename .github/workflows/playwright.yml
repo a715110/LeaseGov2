@@ -1,0 +1,97 @@
+name: LeaseGov E2E Tests
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Playwright E2E (${{ matrix.session }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    strategy:
+      fail-fast: false
+      matrix:
+        session:
+          - session-1-pipeline
+          - session-2-extraction
+          - session-3-review-approval
+          - session-4-records-packages
+          - session-5-export
+          - session-6-reassessment
+          - session-7-admin
+          - session-8-equipment
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '10'
+
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Build project
+        run: pnpm build
+
+      - name: Start dev server
+        run: pnpm dev &
+        env:
+          NODE_ENV: test
+
+      - name: Wait for dev server to be ready
+        run: |
+          echo "Waiting for dev server on port 3000..."
+          timeout 60 bash -c 'until curl -sf http://localhost:3000 > /dev/null; do sleep 2; done'
+          echo "Dev server is ready."
+
+      - name: Run Playwright tests — ${{ matrix.session }}
+        run: |
+          npx playwright test e2e/${{ matrix.session }}.spec.ts \
+            --reporter=html,github \
+            --output=test-results/${{ matrix.session }}
+        env:
+          CI: true
+          PLAYWRIGHT_BASE_URL: http://localhost:3000
+
+      - name: Upload Playwright HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ matrix.session }}
+          path: playwright-report/
+          retention-days: 14
+
+      - name: Upload test results (traces/screenshots on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.session }}
+          path: test-results/${{ matrix.session }}/
+          retention-days: 7
