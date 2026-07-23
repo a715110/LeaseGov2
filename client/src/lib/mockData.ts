@@ -5,11 +5,13 @@
  * Reference: IMPLEMENTATION_PROMPT_INTAKE_GOVERNANCE_V3.md
  *
  * Exports:
- *   MOCK_CONTRACT_RECORDS — 4 seed ContractRecords (Acme Corp, Globex LLC, Initech, Office Tower Partners)
- *   MOCK_PACKAGES         — 2 seed ContractPackages (PKG-2026-001 submitted, PKG-2026-002 assembly)
- *   MOCK_WORKSPACES       — workspace list for upload modal dropdown
- *   MOCK_ASSIGNEES        — users with Preparer / Lease Admin role for routing context
+ *   MOCK_CONTRACT_RECORDS   — 4 seed ContractRecords (Acme Corp, Globex LLC, Initech, Office Tower Partners)
+ *   MOCK_PACKAGES           — 2 seed ContractPackages (PKG-2026-001 submitted, PKG-2026-002 assembly)
+ *   MOCK_WORKSPACES         — workspace list for upload modal dropdown
+ *   MOCK_ASSIGNEES          — users with Preparer / Lease Admin role for routing context
+ *   MOCK_EQUIPMENT_RECORDS  — 3 seed EquipmentLease records (IT Hardware, Manufacturing, Vehicles)
  */
+import type { EquipmentLease } from '@/types/contracts/equipmentLease/EquipmentLease'
 
 // ─── ContractRecord ───────────────────────────────────────────────────────────
 
@@ -32,6 +34,7 @@ export interface ContractRecord {
   address: string;
   status: ContractRecordStatus;
   classification: ContractClassification;
+  contract_type?: 'property_lease' | 'equipment_lease' | 'service_contract';
 }
 
 /**
@@ -48,6 +51,7 @@ export const MOCK_CONTRACT_RECORDS: ContractRecord[] = [
     address: '123 Main St, New York NY 10001',
     status: 'approved',
     classification: 'operating_lease',
+    contract_type: 'property_lease',
   },
   {
     id: 'mock-record-002',
@@ -56,6 +60,7 @@ export const MOCK_CONTRACT_RECORDS: ContractRecord[] = [
     address: '456 Oak Ave, Chicago IL 60601',
     status: 'under_review',
     classification: 'finance_lease',
+    contract_type: 'property_lease',
   },
   {
     id: 'mock-record-003',
@@ -64,6 +69,7 @@ export const MOCK_CONTRACT_RECORDS: ContractRecord[] = [
     address: '789 Pine Rd, Austin TX 78701',
     status: 'draft',
     classification: 'operating_lease',
+    contract_type: 'property_lease',
   },
   {
     // FC-3 BR1: Office Tower — 350 Fifth Ave (maps to PKG-2026-0041 in PackagesComposition)
@@ -73,6 +79,7 @@ export const MOCK_CONTRACT_RECORDS: ContractRecord[] = [
     address: '350 Fifth Ave, New York NY 10118',
     status: 'under_review',
     classification: 'operating_lease',
+    contract_type: 'property_lease',
   },
 ];
 
@@ -335,3 +342,152 @@ export const ROLE_PILL_COLOR: Record<DocumentRole, string> = {
   'Supporting':    'bg-slate-100 text-slate-700 border border-slate-200',
   'Unassigned':    'bg-slate-50 text-slate-400 border border-slate-200',
 };
+
+// ─── Equipment Lease Mock Records ─────────────────────────────────────────────
+// Equipment Lease Prompt 1 of 5 — Part 1B
+// Three seed records covering IT Hardware (operating), Manufacturing (finance),
+// and Vehicles (operating). IDs: eq-001, eq-002, eq-003.
+
+export const MOCK_EQUIPMENT_RECORDS: EquipmentLease[] = [
+  {
+    id: 'eq-001',
+    contractNumber: 'EQ-2026-0001',
+    contract_type: 'equipment_lease',
+    status: 'approved',
+    lock_status: 'unlocked',
+    workspace: 'Corporate IT',
+    equipment_type: 'Enterprise Server Array',
+    equipment_category: 'it_hardware',
+    manufacturer: 'Dell Technologies',
+    model: 'PowerEdge R750 (×12 units)',
+    serial_number: 'DELL-SRV-2024-0088 through 0099',
+    asset_tag: 'IT-2024-SRV-088',
+    quantity: 12,
+    installation_location: 'Data Center, Floor B2, Rack 14-25',
+    counterparty: 'Dell Financial Services LLC',
+    commencement_date: '2024-01-15',
+    expiration_date: '2029-01-14',
+    base_lease_term_months: 60,
+    monthly_payment: 18400,
+    payment_frequency: 'monthly',
+    fair_value_at_commencement: 960000,
+    residual_value_guarantee: 48000,
+    purchase_option_price: 96000,
+    purchase_option_exercise_date: '2029-01-14',
+    purchase_option_reasonably_certain: false,
+    condition_at_commencement: 'New — manufacturer warranty active',
+    return_conditions: 'Original working condition, all components present, factory reset required',
+    maintenance_responsibility: 'lessor',
+    permitted_modifications: 'RAM upgrades permitted with written consent',
+    useful_life_months: 84,
+    lessee_useful_life_coverage_pct: 71.4,
+    ownership_transfer_at_end: false,
+    specialized_nature: false,
+    lease_classification: 'operating',
+    classification_rationale:
+      'Term covers 71% of useful life (below 75% threshold). PV of payments $882,000 = 91.9% of fair value — this criterion is met. However, no ownership transfer, purchase option not reasonably certain, and equipment not specialized. Classification: Operating under ASC 842-10-25-2.',
+    discount_rate: 0.0425,
+    present_value_of_payments: 882000,
+    pv_as_pct_of_fair_value: 91.9,
+    rou_asset_balance: 847200,
+    lease_liability_balance: 851400,
+  },
+  {
+    id: 'eq-002',
+    contractNumber: 'EQ-2026-0002',
+    contract_type: 'equipment_lease',
+    status: 'approved',
+    lock_status: 'unlocked',
+    workspace: 'Operations',
+    equipment_type: 'CNC Machining Center',
+    equipment_category: 'manufacturing',
+    manufacturer: 'Haas Automation',
+    model: 'VF-4SS Vertical Machining Center',
+    serial_number: 'HAAS-VF4SS-2023-1142',
+    asset_tag: 'MFG-2023-CNC-001',
+    quantity: 1,
+    installation_location: 'Manufacturing Plant, Building C, Bay 7',
+    counterparty: 'Haas Financial Services',
+    commencement_date: '2023-07-01',
+    expiration_date: '2030-06-30',
+    base_lease_term_months: 84,
+    monthly_payment: 11200,
+    payment_frequency: 'monthly',
+    fair_value_at_commencement: 875000,
+    residual_value_guarantee: null,
+    purchase_option_price: 87500,
+    purchase_option_exercise_date: '2030-06-30',
+    purchase_option_reasonably_certain: true,
+    condition_at_commencement: 'New — commissioning completed July 2023',
+    return_conditions:
+      'Full deinstallation at lessee expense. Machine must pass Haas factory acceptance test.',
+    maintenance_responsibility: 'lessee',
+    permitted_modifications: null,
+    useful_life_months: 120,
+    lessee_useful_life_coverage_pct: 70.0,
+    ownership_transfer_at_end: false,
+    specialized_nature: true,
+    lease_classification: 'finance',
+    classification_rationale:
+      "Purchase option price of $87,500 is significantly below expected fair value at exercise (~$220,000). Lessee is reasonably certain to exercise. Finance lease under ASC 842-10-25-2(b). Additionally, machine is specialized for lessee's manufacturing process with no practical alternative use to lessor.",
+    discount_rate: 0.051,
+    present_value_of_payments: 793000,
+    pv_as_pct_of_fair_value: 90.6,
+    rou_asset_balance: 718400,
+    lease_liability_balance: 724100,
+  },
+  {
+    id: 'eq-003',
+    contractNumber: 'EQ-2026-0003',
+    contract_type: 'equipment_lease',
+    status: 'under_review',
+    lock_status: 'pending_review',
+    workspace: 'Fleet Management',
+    equipment_type: 'Commercial Vehicle Fleet',
+    equipment_category: 'vehicles',
+    manufacturer: 'Ford Motor Company',
+    model: 'Transit 350 Cargo Van (×8 vehicles)',
+    serial_number: 'Multiple — see Schedule A',
+    asset_tag: 'FLT-2025-VAN-001 through 008',
+    quantity: 8,
+    installation_location: 'Distribution Center, 789 Pine Rd, Austin TX 78701',
+    counterparty: 'Ford Motor Credit Company',
+    commencement_date: '2025-03-01',
+    expiration_date: '2028-02-28',
+    base_lease_term_months: 36,
+    monthly_payment: 6840,
+    payment_frequency: 'monthly',
+    fair_value_at_commencement: 416000,
+    residual_value_guarantee: 83200,
+    purchase_option_price: null,
+    purchase_option_exercise_date: null,
+    purchase_option_reasonably_certain: null,
+    condition_at_commencement: 'New — 2025 model year',
+    return_conditions:
+      'Maximum 45,000 miles per vehicle. Excess mileage charged at $0.22/mile. Normal wear and tear accepted.',
+    maintenance_responsibility: 'lessee',
+    permitted_modifications:
+      'Racking and shelving installation permitted. Must be removed at return.',
+    usage_limits: '45,000 miles per vehicle over 36-month term',
+    variable_payment_rate: 0.22,
+    excess_usage_rate: 0.22,
+    useful_life_months: 96,
+    lessee_useful_life_coverage_pct: 37.5,
+    ownership_transfer_at_end: false,
+    specialized_nature: false,
+    lease_classification: 'operating',
+    classification_rationale:
+      'Term covers only 37.5% of useful life. No purchase option. No ownership transfer. RVG of $83,200 (20% of fair value) does not indicate finance lease. Operating lease under ASC 842.',
+    discount_rate: 0.0475,
+    present_value_of_payments: 226800,
+    pv_as_pct_of_fair_value: 54.5,
+    rou_asset_balance: 198400,
+    lease_liability_balance: 204100,
+  },
+]
+
+/** Look up an EquipmentLease record by its id */
+export function findEquipmentRecord(id: string | null): EquipmentLease | undefined {
+  if (!id) return undefined
+  return MOCK_EQUIPMENT_RECORDS.find(r => r.id === id)
+}
