@@ -17,6 +17,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { subscribeToEvents, getLatestEvent, getEventHistory, PENDING_REVIEW_EVENTS_KEY } from "@/lib/eventBus";
+import { useRole } from "@/contexts/RoleContext";
 import type { DemoEvent } from "@/lib/types";
 import { useLocation } from "wouter";
 import {
@@ -69,14 +70,14 @@ interface ApprovalTask {
 
 // TODO: Backend integration required — GET /api/approvals/tasks
 const INITIAL_TASKS: ApprovalTask[] = [
-  { id:"t1",  task_reference:"AT-2026-0041", subject_type:"contract_record",   subject_label:"Office Tower — 350 Fifth Ave",         approval_stage:"review",          status:"pending",           submitted_by:"J. Martinez", submitted_at:"2026-05-16T08:00:00Z", opened_at:null,                      recall_available:true,  priority:"high",      sla_deadline_at:"2026-05-18T17:00:00Z", rework_iteration:0, reviewer_id:"user-rev-001" },
-  { id:"t2",  task_reference:"AT-2026-0040", subject_type:"contract_record",   subject_label:"Retail HQ — 1200 Market St",            approval_stage:"review",          status:"opened",            submitted_by:"S. Patel",    submitted_at:"2026-05-15T14:20:00Z", opened_at:"2026-05-15T15:00:00Z",    recall_available:false, priority:"standard",  sla_deadline_at:"2026-05-20T17:00:00Z", rework_iteration:0, reviewer_id:"user-rev-002" },
+  { id:"t1",  task_reference:"AT-2026-0041", subject_type:"contract_record",   subject_label:"Office Tower — 350 Fifth Ave",         approval_stage:"review",          status:"pending",           submitted_by:"J. Martinez", submitted_at:"2026-05-16T08:00:00Z", opened_at:null,                      recall_available:true,  priority:"high",      sla_deadline_at:"2026-05-18T17:00:00Z", rework_iteration:0, reviewer_id:"user-rev-001", package_id:"PKG-2026-0041" },
+  { id:"t2",  task_reference:"AT-2026-0040", subject_type:"contract_record",   subject_label:"Retail HQ — 1200 Market St",            approval_stage:"review",          status:"opened",            submitted_by:"S. Patel",    submitted_at:"2026-05-15T14:20:00Z", opened_at:"2026-05-15T15:00:00Z",    recall_available:false, priority:"standard",  sla_deadline_at:"2026-05-20T17:00:00Z", rework_iteration:0, reviewer_id:"user-rev-002", package_id:"PKG-2026-0042" },
   { id:"t3",  task_reference:"AT-2026-0039", subject_type:"reassessment_case", subject_label:"Warehouse Lease — Scope Increase",      approval_stage:"final_approval",  status:"pending",           submitted_by:"A. Chen",     submitted_at:"2026-05-14T09:30:00Z", opened_at:null,                      recall_available:true,  priority:"escalated", sla_deadline_at:"2026-05-17T17:00:00Z", rework_iteration:0, reviewer_id:"user-apr-001", case_id:"c3" },
-  { id:"t4",  task_reference:"AT-2026-0038", subject_type:"contract_record",   subject_label:"Ground Lease — Civic Center",           approval_stage:"review",          status:"rework_in_progress",submitted_by:"J. Martinez", submitted_at:"2026-05-12T11:00:00Z", opened_at:"2026-05-12T11:30:00Z",    recall_available:false, priority:"high",      sla_deadline_at:"2026-05-16T17:00:00Z", rework_iteration:1, reviewer_id:"user-rev-003" },
-  { id:"t5",  task_reference:"AT-2026-0037", subject_type:"contract_record",   subject_label:"Industrial Park — Unit 7",              approval_stage:"final_approval",  status:"pending",           submitted_by:"S. Patel",    submitted_at:"2026-05-16T07:00:00Z", opened_at:null,                      recall_available:true,  priority:"standard",  sla_deadline_at:"2026-05-21T17:00:00Z", rework_iteration:0, reviewer_id:"user-apr-002" },
+  { id:"t4",  task_reference:"AT-2026-0038", subject_type:"contract_record",   subject_label:"Ground Lease — Civic Center",           approval_stage:"review",          status:"rework_in_progress",submitted_by:"J. Martinez", submitted_at:"2026-05-12T11:00:00Z", opened_at:"2026-05-12T11:30:00Z",    recall_available:false, priority:"high",      sla_deadline_at:"2026-05-16T17:00:00Z", rework_iteration:1, reviewer_id:"user-rev-003", package_id:"PKG-2026-0043" },
+  { id:"t5",  task_reference:"AT-2026-0037", subject_type:"contract_record",   subject_label:"Industrial Park — Unit 7",              approval_stage:"final_approval",  status:"pending",           submitted_by:"S. Patel",    submitted_at:"2026-05-16T07:00:00Z", opened_at:null,                      recall_available:true,  priority:"standard",  sla_deadline_at:"2026-05-21T17:00:00Z", rework_iteration:0, reviewer_id:"user-apr-002", package_id:"PKG-2026-0044" },
   { id:"t6",  task_reference:"AT-2026-0036", subject_type:"reassessment_case", subject_label:"Tech Campus — Rent Modification",       approval_stage:"review",          status:"pending",           submitted_by:"A. Chen",     submitted_at:"2026-05-15T16:00:00Z", opened_at:null,                      recall_available:true,  priority:"standard",  sla_deadline_at:"2026-05-22T17:00:00Z", rework_iteration:0, reviewer_id:"user-rev-004", case_id:"c6" },
-  { id:"t7",  task_reference:"AT-2026-0035", subject_type:"contract_record",   subject_label:"Suburban Office — Suite 400",           approval_stage:"review",          status:"resubmitted",       submitted_by:"J. Martinez", submitted_at:"2026-05-16T06:00:00Z", opened_at:null,                      recall_available:true,  priority:"high",      sla_deadline_at:"2026-05-19T17:00:00Z", rework_iteration:2, reviewer_id:"user-rev-001" },
-  { id:"t8",  task_reference:"AT-2026-0034", subject_type:"contract_record",   subject_label:"Downtown Retail — Corner Unit",         approval_stage:"final_approval",  status:"approved",          submitted_by:"S. Patel",    submitted_at:"2026-05-10T09:00:00Z", opened_at:"2026-05-10T10:00:00Z",    recall_available:false, priority:"standard",  sla_deadline_at:null,                   rework_iteration:0, reviewer_id:"user-apr-003" },
+  { id:"t7",  task_reference:"AT-2026-0035", subject_type:"contract_record",   subject_label:"Suburban Office — Suite 400",           approval_stage:"review",          status:"resubmitted",       submitted_by:"J. Martinez", submitted_at:"2026-05-16T06:00:00Z", opened_at:null,                      recall_available:true,  priority:"high",      sla_deadline_at:"2026-05-19T17:00:00Z", rework_iteration:2, reviewer_id:"user-rev-001", package_id:"PKG-2026-0045" },
+  { id:"t8",  task_reference:"AT-2026-0034", subject_type:"contract_record",   subject_label:"Downtown Retail — Corner Unit",         approval_stage:"final_approval",  status:"approved",          submitted_by:"S. Patel",    submitted_at:"2026-05-10T09:00:00Z", opened_at:"2026-05-10T10:00:00Z",    recall_available:false, priority:"standard",  sla_deadline_at:null,                   rework_iteration:0, reviewer_id:"user-apr-003", package_id:"PKG-2026-0046" },
   // Remediation case — routes to /reassessment/cases/:id/remediation
   { id:"t9",  task_reference:"AT-2026-0033", subject_type:"reassessment_case", subject_label:"Parking Garage — Remediation Review",    approval_stage:"review",          status:"pending",           submitted_by:"A. Chen",     submitted_at:"2026-05-13T10:00:00Z", opened_at:null,                      recall_available:true,  priority:"escalated", sla_deadline_at:"2026-05-18T17:00:00Z", rework_iteration:0, reviewer_id:"user-rev-005", case_id:"c6", case_status:"remediation" },
   // Contextual project case — routes to /reassessment/projects/:id
@@ -227,6 +228,9 @@ function canReassign(task: ApprovalTask): boolean {
 export default function ApprovalsQueue() {
   const _screenKey = SCREEN_KEYS.APPROVALS_QUEUE;
   const [, navigate] = useLocation();
+  const { activeRole } = useRole();
+  const isReviewer = activeRole === 'reviewer';
+  const isApprover = activeRole === 'approver';
   const [activeTab, setActiveTab] = useState<TabId>("my_reviews");
   // Initialise tasks — replay RECORD_APPROVED and REVIEW_OPENED events that fired
   // before this mount so badge state is correct when navigating back to the queue.
@@ -501,7 +505,9 @@ export default function ApprovalsQueue() {
       <div className="page-header">
         <div>
           <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="page-title">Approval Queue</h1>
+            <h1 className="page-title">
+              {isReviewer ? 'Review Queue' : isApprover ? 'Approval Queue' : 'Approval Queue'}
+            </h1>
             <ScreenNumberBadge screenKey="approvals-queue" />
           </div>
           <p className="page-subtitle">Review and approve contract records and reassessment cases</p>
