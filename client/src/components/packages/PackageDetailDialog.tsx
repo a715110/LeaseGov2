@@ -5,6 +5,12 @@
  * former /packages/:id standalone page. Opens as a full-height Sheet from
  * ApprovalsQueue, ApprovalsReview, and any other caller that has a package ID.
  *
+ * Tabs:
+ *   1. Package — document timeline, completeness bar, document table
+ *   2. Document Detail — mirrors DocumentIntelligencePanel: Doc Preview,
+ *      Metadata, Validation Results, Submitter's Instructions, Status History
+ *      (activated by clicking a document row or the "Detail" button)
+ *
  * Props:
  *   open        — controlled open state
  *   onClose     — called when the dialog should close
@@ -19,7 +25,8 @@ import {
   FileText, Plus, Flag, ChevronRight, Info, Tag,
   CheckCircle2, AlertTriangle, Clock, MoreHorizontal, ArrowRight, AlertCircle,
   Eye, ClipboardCheck, Lock, MessageSquare, ChevronDown, ChevronUp,
-  ThumbsUp, ThumbsDown, AlertOctagon, X
+  ThumbsUp, ThumbsDown, AlertOctagon, X, Layers, User, Hash, Search,
+  XCircle,
 } from "lucide-react";
 import { useRole } from "@/contexts/RoleContext";
 import { Textarea } from "@/components/ui/textarea";
@@ -37,6 +44,11 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
+import {
+  findContractRecord,
+  CONTRACT_RECORD_STATUS_BADGE,
+  CONTRACT_RECORD_STATUS_LABEL,
+} from "@/lib/mockData";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type DocumentRole = "base_contract" | "amendment" | "addendum" | "exhibit" | "schedule" | "notice" | "supporting";
@@ -156,6 +168,50 @@ const EXT_CONFIG: Record<ExtractionStatus, { label:string; cls:string; icon:Reac
   failed:      { label:"Failed",      cls:"badge-invalid",    icon:<AlertTriangle className="w-3.5 h-3.5" /> },
 };
 
+// ── Helpers ────────────────────────────────────────────────────────────────────
+function formatBytes(bytes: number): string {
+  if (bytes < 1_000_000) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / 1_000_000).toFixed(1)} MB`;
+}
+
+function parseSizeToBytes(sizeStr: string): number {
+  const match = sizeStr.match(/([\d.]+)\s*(MB|KB)/i);
+  if (!match) return 0;
+  const val = parseFloat(match[1]);
+  return match[2].toUpperCase() === 'MB' ? val * 1_000_000 : val * 1024;
+}
+
+interface ValidationCheck {
+  label: string;
+  passed: boolean;
+  detail: string;
+}
+
+function deriveValidationChecks(doc: PackageDoc): ValidationCheck[] {
+  const failed = doc.extraction_status === 'failed';
+  return [
+    { label: 'Format Check',    passed: true,   detail: 'Extension accepted' },
+    { label: 'Size Check',      passed: true,   detail: `${doc.file_size} — within limit` },
+    { label: 'Duplicate Check', passed: true,   detail: 'No duplicate found' },
+    { label: 'File Integrity',  passed: !failed, detail: failed ? 'Extraction failed — file may be corrupt' : 'File header valid' },
+  ];
+}
+
+interface TimelineStep { label: string; done: boolean; date?: string; }
+
+function deriveTimeline(doc: PackageDoc): TimelineStep[] {
+  const isComplete = doc.extraction_status === 'complete';
+  const isFailed   = doc.extraction_status === 'failed';
+  const inProgress = doc.extraction_status === 'in_progress';
+  return [
+    { label: 'Uploaded',   done: true,                        date: doc.effective_date },
+    { label: 'Validated',  done: true,                        date: doc.effective_date },
+    { label: 'Packaged',   done: true },
+    { label: 'Extracting', done: isComplete || isFailed || inProgress },
+    { label: 'Complete',   done: isComplete },
+  ];
+}
+
 // ── Sub-components ─────────────────────────────────────────────────────────────
 function TimelineNode({ doc, isLast }: { doc: PackageDoc; isLast: boolean }) {
   const isBase = doc.document_role === "base_contract";
@@ -176,6 +232,151 @@ function TimelineNode({ doc, isLast }: { doc: PackageDoc; isLast: boolean }) {
           <ArrowRight className="w-3.5 h-3.5 text-[var(--color-lg-primary-light)]/60 -ml-1" />
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Document Detail Tab content ────────────────────────────────────────────────
+function DocumentDetailTab({ doc }: { doc: PackageDoc }) {
+  const mimeLabel = 'PDF';
+  const pageCount = 4;
+  const previewPages = Array.from({ length: Math.min(pageCount, 6) }, (_, i) => i + 1);
+  const validationChecks = deriveValidationChecks(doc);
+  const timeline = deriveTimeline(doc);
+  const targetRecord = findContractRecord(null); // packages don't have a staged record target
+  const sizeBytes = parseSizeToBytes(doc.file_size);
+  const extCfg = EXT_CONFIG[doc.extraction_status];
+  const isFailed = doc.extraction_status === 'failed';
+
+  // Mock submitter instructions for base contracts
+  const submitterNotes = doc.document_role === 'base_contract'
+    ? 'Original executed lease agreement. Please ensure all exhibits are included in the package before proceeding to extraction.'
+    : null;
+
+  return (
+    <div className="flex flex-col gap-5 px-6 py-5">
+
+      {/* ── Document Preview ── */}
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+          Document Preview · {pageCount} pages
+        </p>
+        <div className="grid grid-cols-3 gap-2">
+          {previewPages.map(page => (
+            <div
+              key={page}
+              className="aspect-[3/4] rounded-md bg-muted border border-border flex items-end justify-center pb-1.5 relative overflow-hidden"
+            >
+              {/* Paper lines decoration */}
+              <div className="absolute inset-x-3 top-3 flex flex-col gap-1.5">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="h-px bg-muted-foreground/15 rounded-full" />
+                ))}
+              </div>
+              <span className="text-[10px] text-muted-foreground/60 font-mono relative z-10">{page}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Metadata ── */}
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">Metadata</p>
+        <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
+          {[
+            { icon: <Layers className="w-3.5 h-3.5" />, label: 'File Size',    value: doc.file_size },
+            { icon: <FileText className="w-3.5 h-3.5" />, label: 'Pages',      value: String(pageCount) },
+            { icon: <Tag className="w-3.5 h-3.5" />, label: 'Document Role',   value: ROLE_LABELS[doc.document_role] },
+            { icon: <User className="w-3.5 h-3.5" />, label: 'Effective Date', value: doc.effective_date },
+            { icon: <Hash className="w-3.5 h-3.5" />, label: 'Format',        value: mimeLabel },
+          ].map(item => (
+            <div key={item.label} className="flex flex-col gap-0.5">
+              <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                {item.icon} {item.label}
+              </span>
+              <span className="text-[12px] font-medium text-foreground">{item.value}</span>
+            </div>
+          ))}
+          {/* Extraction status */}
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+              <Search className="w-3.5 h-3.5" /> Extraction
+            </span>
+            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold w-fit ${extCfg.cls}`}>
+              {extCfg.icon} {extCfg.label}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Validation Results ── */}
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">Validation Results</p>
+        <div className="flex flex-col gap-1.5">
+          {validationChecks.map(check => (
+            <div key={check.label} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-card border border-border">
+              {check.passed
+                ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                : <XCircle className="w-4 h-4 text-red-600 shrink-0" />
+              }
+              <div className="flex-1 min-w-0">
+                <span className={`text-[12px] font-medium ${check.passed ? 'text-foreground' : 'text-red-700'}`}>
+                  {check.label}
+                </span>
+                <p className="text-[11px] text-muted-foreground truncate">{check.detail}</p>
+              </div>
+              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                check.passed
+                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                  : 'bg-red-50 text-red-700 border border-red-200'
+              }`}>
+                {check.passed ? 'Pass' : 'Fail'}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Submitter's Instructions ── */}
+      {submitterNotes && (
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+            Submitter's Instructions
+          </p>
+          <div className="px-3 py-3 rounded-lg bg-accent border border-border text-[12px] text-foreground leading-relaxed">
+            {submitterNotes}
+          </div>
+        </div>
+      )}
+
+      {/* ── Status History ── */}
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">Status History</p>
+        <div className="flex flex-col gap-0">
+          {timeline.map((step, i) => (
+            <div key={step.label} className="flex items-start gap-3">
+              <div className="flex flex-col items-center shrink-0 mt-0.5">
+                <div className={`w-2.5 h-2.5 rounded-full border-2 ${
+                  step.done
+                    ? 'bg-primary border-primary'
+                    : 'bg-background border-muted-foreground/30'
+                }`} />
+                {i < timeline.length - 1 && (
+                  <div className={`w-px flex-1 min-h-[20px] ${step.done ? 'bg-primary/30' : 'bg-muted-foreground/15'}`} />
+                )}
+              </div>
+              <div className="pb-3">
+                <p className={`text-[12px] font-medium ${step.done ? 'text-foreground' : 'text-muted-foreground/50'}`}>
+                  {step.label}
+                </p>
+                {step.date && (
+                  <p className="text-[11px] text-muted-foreground">{step.date}</p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -215,17 +416,28 @@ export function PackageDetailDialog({
   const [pkg,  setPkg]  = useState(resolved.pkg);
   const [docs, setDocs] = useState<PackageDoc[]>(resolved.docs);
 
+  // Tab state: 'package' | 'document-detail'
+  type TabId = 'package' | 'document-detail';
+  const [activeTab, setActiveTab] = useState<TabId>('package');
+  const [detailDoc, setDetailDoc] = useState<PackageDoc | null>(null);
+
+  function openDocDetail(doc: PackageDoc) {
+    setDetailDoc(doc);
+    setActiveTab('document-detail');
+  }
+
   // Re-sync when packageId prop changes
   useEffect(() => {
     const r = PACKAGES_BY_ID[resolvedId] ?? PACKAGES_BY_ID[FALLBACK_PACKAGE_ID];
     setPkg(r.pkg);
     setDocs(r.docs);
-    // Reset annotation state on package change
     setAnnotationComment("");
     setFlaggedDocIds(new Set());
     setAnnotationsSubmitted(false);
     setApproverAction(null);
     setRejectReason("");
+    setActiveTab('package');
+    setDetailDoc(null);
   }, [resolvedId]);
 
   // Change Role dialog
@@ -345,6 +557,12 @@ export function PackageDetailDialog({
     triggerReassembly("document_removed", "Document Removed", beforeDocs, updatedDocs);
   }
 
+  // ── Tab bar ────────────────────────────────────────────────────────────────
+  const tabs: Array<{ id: TabId; label: string }> = [
+    { id: 'package',         label: 'Package' },
+    { id: 'document-detail', label: detailDoc ? `Document Detail — ${detailDoc.name.length > 30 ? detailDoc.name.slice(0, 27) + '…' : detailDoc.name}` : 'Document Detail' },
+  ];
+
   return (
     <>
       <Sheet open={open} onOpenChange={v => { if (!v) onClose(); }}>
@@ -353,7 +571,7 @@ export function PackageDetailDialog({
           className="w-full sm:max-w-4xl p-0 flex flex-col overflow-hidden"
           style={{ maxWidth: "min(90vw, 1100px)" }}
         >
-          {/* ── Dialog header (mirrors page-header) ─────────────────────── */}
+          {/* ── Dialog header ─────────────────────────────────────────────── */}
           <SheetHeader className="shrink-0 px-6 py-4 border-b border-border bg-[var(--color-lg-page-bg)]">
             <div className="flex items-center justify-between gap-4 flex-wrap">
               <div>
@@ -465,167 +683,246 @@ export function PackageDetailDialog({
                 </Button>
               </div>
             </div>
+
+            {/* ── Tab bar ─────────────────────────────────────────────────── */}
+            <div className="flex items-center gap-0 mt-3 border-b border-border -mx-6 px-6">
+              {tabs.map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`relative px-4 py-2 text-[13px] font-medium transition-colors whitespace-nowrap ${
+                    activeTab === tab.id
+                      ? 'text-[var(--color-lg-primary)] border-b-2 border-[var(--color-lg-primary)] -mb-px'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+              {activeTab === 'document-detail' && detailDoc && (
+                <button
+                  onClick={() => { setActiveTab('package'); setDetailDoc(null); }}
+                  className="ml-auto mr-0 flex items-center gap-1 px-3 py-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <X className="w-3 h-3" /> Clear
+                </button>
+              )}
+            </div>
           </SheetHeader>
 
           {/* ── Main content area ────────────────────────────────────────── */}
           <div className="flex flex-1 min-h-0 min-w-0 overflow-hidden">
 
-            {/* Scrollable content column */}
-            <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-5 bg-[var(--color-lg-page-bg)]">
+            {/* ── Package tab ──────────────────────────────────────────── */}
+            {activeTab === 'package' && (
+              <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-5 bg-[var(--color-lg-page-bg)]">
 
-              {/* BR2: Multiple base contracts blocking alert */}
-              {hasMultipleBase && (
-                <div className="flex items-start gap-3 px-4 py-3 rounded-lg border text-[13px]"
-                  style={{ background:"var(--color-lg-error-subtle)", borderColor:"var(--color-lg-error)", borderLeftWidth:"4px" }}>
-                  <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" style={{ color:"var(--color-lg-error)" }} />
-                  <div className="flex-1">
-                    <span className="font-semibold" style={{ color:"var(--color-lg-error)" }}>Multiple Base Contracts detected — blocking flag raised.</span>
-                    <span className="text-muted-foreground ml-1">Only one Base Contract is allowed per package. Found {baseContracts.length}. Reclassify the duplicate to resolve this flag.</span>
-                    {canEdit && (
-                      <div className="flex flex-wrap gap-2 mt-2.5">
-                        {baseContracts.map((dupeDoc, idx) => (
-                          <button key={dupeDoc.id}
-                            onClick={() => { setChangeRoleDoc(dupeDoc); setPendingRole(dupeDoc.document_role); }}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded border text-[11px] font-semibold transition-colors"
-                            style={{ borderColor:"var(--color-lg-error)", color:"var(--color-lg-error)", background:"transparent" }}
-                            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "var(--color-lg-error-subtle)"; }}
-                            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
-                          >
-                            <Tag className="w-3 h-3" />
-                            Reclassify {idx === 0 ? "first" : "duplicate"}: {dupeDoc.name.length > 28 ? dupeDoc.name.slice(0, 25) + "…" : dupeDoc.name}
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                {/* BR2: Multiple base contracts blocking alert */}
+                {hasMultipleBase && (
+                  <div className="flex items-start gap-3 px-4 py-3 rounded-lg border text-[13px]"
+                    style={{ background:"var(--color-lg-error-subtle)", borderColor:"var(--color-lg-error)", borderLeftWidth:"4px" }}>
+                    <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" style={{ color:"var(--color-lg-error)" }} />
+                    <div className="flex-1">
+                      <span className="font-semibold" style={{ color:"var(--color-lg-error)" }}>Multiple Base Contracts detected — blocking flag raised.</span>
+                      <span className="text-muted-foreground ml-1">Only one Base Contract is allowed per package. Found {baseContracts.length}. Reclassify the duplicate to resolve this flag.</span>
+                      {canEdit && (
+                        <div className="flex flex-wrap gap-2 mt-2.5">
+                          {baseContracts.map((dupeDoc, idx) => (
+                            <button key={dupeDoc.id}
+                              onClick={() => { setChangeRoleDoc(dupeDoc); setPendingRole(dupeDoc.document_role); }}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded border text-[11px] font-semibold transition-colors"
+                              style={{ borderColor:"var(--color-lg-error)", color:"var(--color-lg-error)", background:"transparent" }}
+                              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "var(--color-lg-error-subtle)"; }}
+                              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
+                            >
+                              <Tag className="w-3 h-3" />
+                              Reclassify {idx === 0 ? "first" : "duplicate"}: {dupeDoc.name.length > 28 ? dupeDoc.name.slice(0, 25) + "…" : dupeDoc.name}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Auto-promotion badge */}
+                {pkg.auto_promoted && (
+                  <div className="flex items-start gap-3 px-4 py-3 rounded-lg border border-blue-200 text-[13px]" style={{ background:"var(--color-lg-accent-subtle)" }}>
+                    <Info className="w-4 h-4 mt-0.5 shrink-0 text-[var(--color-lg-info)]" />
+                    <span className="text-[var(--color-lg-info)]">
+                      <strong>Package auto-created</strong> when a second document was associated with this contract record on{" "}
+                      {new Date(pkg.promotion_triggered_at).toLocaleDateString("en-US", { month:"short", day:"numeric", year:"numeric" })}.
+                    </span>
+                  </div>
+                )}
+
+                {/* Completeness bar */}
+                <div className="bg-card border border-border rounded-lg px-5 py-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[13px] font-semibold text-foreground">Extraction Completeness</span>
+                    <span className="text-[13px] font-bold" style={{ color: completeness === 100 ? "var(--color-lg-success)" : "var(--color-lg-warning)" }}>
+                      {completeness}%
+                    </span>
+                  </div>
+                  <div className="h-2 bg-muted rounded overflow-hidden">
+                    <div className="h-full rounded transition-all" style={{ width:`${completeness}%`, backgroundColor: completeness === 100 ? "var(--color-lg-success)" : "var(--color-lg-primary-light)" }} />
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-1.5">
+                    {docs.filter(d => d.extraction_status === "complete").length} of {docs.length} documents fully extracted
+                  </p>
+                </div>
+
+                {/* Horizontal timeline */}
+                <div className="bg-card border border-border rounded-lg px-6 py-5">
+                  <h2 className="text-[13px] font-semibold text-foreground mb-4">Document Timeline</h2>
+                  <div className="flex items-start overflow-x-auto pb-2">
+                    {sortedDocs.map((doc, i) => <TimelineNode key={doc.id} doc={doc} isLast={i === sortedDocs.length - 1} />)}
                   </div>
                 </div>
-              )}
 
-              {/* Auto-promotion badge */}
-              {pkg.auto_promoted && (
-                <div className="flex items-start gap-3 px-4 py-3 rounded-lg border border-blue-200 text-[13px]" style={{ background:"var(--color-lg-accent-subtle)" }}>
-                  <Info className="w-4 h-4 mt-0.5 shrink-0 text-[var(--color-lg-info)]" />
-                  <span className="text-[var(--color-lg-info)]">
-                    <strong>Package auto-created</strong> when a second document was associated with this contract record on{" "}
-                    {new Date(pkg.promotion_triggered_at).toLocaleDateString("en-US", { month:"short", day:"numeric", year:"numeric" })}.
-                  </span>
-                </div>
-              )}
-
-              {/* Completeness bar */}
-              <div className="bg-card border border-border rounded-lg px-5 py-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[13px] font-semibold text-foreground">Extraction Completeness</span>
-                  <span className="text-[13px] font-bold" style={{ color: completeness === 100 ? "var(--color-lg-success)" : "var(--color-lg-warning)" }}>
-                    {completeness}%
-                  </span>
-                </div>
-                <div className="h-2 bg-muted rounded overflow-hidden">
-                  <div className="h-full rounded transition-all" style={{ width:`${completeness}%`, backgroundColor: completeness === 100 ? "var(--color-lg-success)" : "var(--color-lg-primary-light)" }} />
-                </div>
-                <p className="text-[11px] text-muted-foreground mt-1.5">
-                  {docs.filter(d => d.extraction_status === "complete").length} of {docs.length} documents fully extracted
-                </p>
-              </div>
-
-              {/* Horizontal timeline */}
-              <div className="bg-card border border-border rounded-lg px-6 py-5">
-                <h2 className="text-[13px] font-semibold text-foreground mb-4">Document Timeline</h2>
-                <div className="flex items-start overflow-x-auto pb-2">
-                  {sortedDocs.map((doc, i) => <TimelineNode key={doc.id} doc={doc} isLast={i === sortedDocs.length - 1} />)}
-                </div>
-              </div>
-
-              {/* Document table */}
-              <div className="bg-card border border-border rounded-lg overflow-hidden">
-                <div className="px-5 py-3.5 border-b border-border flex items-center justify-between">
-                  <h2 className="text-[13px] font-semibold text-foreground">Documents</h2>
-                  {isReadOnly && (
-                    <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-                      <Lock className="w-3 h-3" /> Read-only view
-                    </span>
-                  )}
-                </div>
-                <table className="data-table w-full text-[13px]">
-                  <thead>
-                    <tr>
-                      <th className="text-left">#</th>
-                      <th className="text-left">Document Name</th>
-                      <th className="text-left">Role</th>
-                      <th className="text-left">Effective Date</th>
-                      <th className="text-left">Extraction</th>
-                      <th className="text-left">Size</th>
-                      <th className="text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sortedDocs.map(doc => {
-                      const extCfg = EXT_CONFIG[doc.extraction_status];
-                      const isDuplicateBase = doc.document_role === "base_contract" && hasMultipleBase;
-                      return (
-                        <tr key={doc.id} className={isDuplicateBase ? "bg-[var(--color-lg-error-subtle)]/40" : ""}>
-                          <td className="font-mono text-[12px] text-muted-foreground">{doc.chronological_order}</td>
-                          <td>
-                            <div className="flex items-center gap-2">
-                              <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
-                              <span className="font-medium text-foreground truncate max-w-[260px]">{doc.name}</span>
-                              {isDuplicateBase && (
+                {/* Document table */}
+                <div className="bg-card border border-border rounded-lg overflow-hidden">
+                  <div className="px-5 py-3.5 border-b border-border flex items-center justify-between">
+                    <h2 className="text-[13px] font-semibold text-foreground">Documents</h2>
+                    <div className="flex items-center gap-3">
+                      {isReadOnly && (
+                        <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                          <Lock className="w-3 h-3" /> Read-only view
+                        </span>
+                      )}
+                      <span className="text-[11px] text-muted-foreground italic">Click a row to view Document Detail</span>
+                    </div>
+                  </div>
+                  <table className="data-table w-full text-[13px]">
+                    <thead>
+                      <tr>
+                        <th className="text-left">#</th>
+                        <th className="text-left">Document Name</th>
+                        <th className="text-left">Role</th>
+                        <th className="text-left">Effective Date</th>
+                        <th className="text-left">Extraction</th>
+                        <th className="text-left">Size</th>
+                        <th className="text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sortedDocs.map(doc => {
+                        const extCfg = EXT_CONFIG[doc.extraction_status];
+                        const isDuplicateBase = doc.document_role === "base_contract" && hasMultipleBase;
+                        const isDetailActive = detailDoc?.id === doc.id && (activeTab as string) === 'document-detail';
+                        return (
+                          <tr
+                            key={doc.id}
+                            className={`cursor-pointer transition-colors ${
+                              isDuplicateBase
+                                ? "bg-[var(--color-lg-error-subtle)]/40 hover:bg-[var(--color-lg-error-subtle)]/60"
+                                : isDetailActive
+                                  ? "bg-primary/8 hover:bg-primary/10"
+                                  : "hover:bg-muted/30"
+                            }`}
+                            onClick={() => openDocDetail(doc)}
+                          >
+                            <td className="font-mono text-[12px] text-muted-foreground">{doc.chronological_order}</td>
+                            <td>
+                              <div className="flex items-center gap-2">
+                                <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
+                                <span className="font-medium text-foreground truncate max-w-[260px]">{doc.name}</span>
+                                {isDuplicateBase && (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <AlertCircle className="w-3.5 h-3.5 shrink-0 cursor-help" style={{ color:"var(--color-lg-error)" }} />
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" className="text-[12px]">Duplicate Base Contract — reclassify or remove</TooltipContent>
+                                  </Tooltip>
+                                )}
+                              </div>
+                            </td>
+                            <td>
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold ${ROLE_BADGE_CLASSES[doc.document_role]}`}>
+                                {ROLE_LABELS[doc.document_role]}
+                              </span>
+                            </td>
+                            <td className="text-muted-foreground">{doc.effective_date}</td>
+                            <td>
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold ${extCfg.cls}`}>
+                                {extCfg.icon} {extCfg.label}
+                              </span>
+                            </td>
+                            <td className="text-muted-foreground text-[12px]">{doc.file_size}</td>
+                            <td className="text-right" onClick={e => e.stopPropagation()}>
+                              {canEdit ? (
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                                      <MoreHorizontal className="w-4 h-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="text-[13px]">
+                                    <DropdownMenuItem onClick={() => openDocDetail(doc)}>View Document Detail</DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => { onClose(); navigate("/extraction/verify"); }}>View Extraction</DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => { setChangeRoleDoc(doc); setPendingRole(doc.document_role); }}>Change Role</DropdownMenuItem>
+                                    <DropdownMenuItem className="text-destructive" onClick={() => handleRemove(doc)}>Remove from Package</DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              ) : (
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <AlertCircle className="w-3.5 h-3.5 shrink-0 cursor-help" style={{ color:"var(--color-lg-error)" }} />
+                                    <span className="inline-flex items-center justify-center h-7 w-7 cursor-default">
+                                      <Lock className="w-3.5 h-3.5 text-muted-foreground/50" />
+                                    </span>
                                   </TooltipTrigger>
-                                  <TooltipContent side="top" className="text-[12px]">Duplicate Base Contract — reclassify or remove</TooltipContent>
+                                  <TooltipContent side="left" className="text-[12px]">Actions not available in read-only view</TooltipContent>
                                 </Tooltip>
                               )}
-                            </div>
-                          </td>
-                          <td>
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold ${ROLE_BADGE_CLASSES[doc.document_role]}`}>
-                              {ROLE_LABELS[doc.document_role]}
-                            </span>
-                          </td>
-                          <td className="text-muted-foreground">{doc.effective_date}</td>
-                          <td>
-                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold ${extCfg.cls}`}>
-                              {extCfg.icon} {extCfg.label}
-                            </span>
-                          </td>
-                          <td className="text-muted-foreground text-[12px]">{doc.file_size}</td>
-                          <td className="text-right">
-                            {canEdit ? (
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
-                                    <MoreHorizontal className="w-4 h-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="text-[13px]">
-                                  <DropdownMenuItem onClick={() => { onClose(); navigate("/extraction/verify"); }}>View Extraction</DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => { setChangeRoleDoc(doc); setPendingRole(doc.document_role); }}>Change Role</DropdownMenuItem>
-                                  <DropdownMenuItem className="text-destructive" onClick={() => handleRemove(doc)}>Remove from Package</DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            ) : (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span className="inline-flex items-center justify-center h-7 w-7 cursor-default">
-                                    <Lock className="w-3.5 h-3.5 text-muted-foreground/50" />
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent side="left" className="text-[12px]">Actions not available in read-only view</TooltipContent>
-                              </Tooltip>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* ── Document Detail tab ──────────────────────────────────── */}
+            {activeTab === 'document-detail' && (
+              <div className="flex-1 overflow-y-auto bg-[var(--color-lg-page-bg)]">
+                {detailDoc ? (
+                  <>
+                    {/* Document selector strip */}
+                    <div className="px-6 py-3 border-b border-border bg-card flex items-center gap-2 flex-wrap">
+                      <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mr-1">Viewing:</span>
+                      {sortedDocs.map(d => (
+                        <button
+                          key={d.id}
+                          onClick={() => setDetailDoc(d)}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-medium transition-colors border ${
+                            detailDoc.id === d.id
+                              ? 'bg-[var(--color-lg-primary)] text-white border-[var(--color-lg-primary)]'
+                              : 'bg-background text-foreground border-border hover:bg-muted'
+                          }`}
+                        >
+                          <span className="font-mono">{d.chronological_order}.</span>
+                          {d.name.length > 22 ? d.name.slice(0, 19) + '…' : d.name}
+                        </button>
+                      ))}
+                    </div>
+                    <DocumentDetailTab doc={detailDoc} />
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground">
+                    <FileText className="w-10 h-10 opacity-30" />
+                    <p className="text-[13px]">Click a document row in the Package tab to view its detail here.</p>
+                    <Button variant="outline" size="sm" onClick={() => setActiveTab('package')}>
+                      Go to Package tab
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* ── Reviewer annotation side panel ───────────────────────── */}
-            {isReviewer && (
+            {isReviewer && activeTab === 'package' && (
               <div
                 className="shrink-0 border-l border-border bg-card flex flex-col transition-all duration-300"
                 style={{ width: annotationOpen ? 320 : 48 }}
@@ -714,6 +1011,39 @@ export function PackageDetailDialog({
         </SheetContent>
       </Sheet>
 
+      {/* ── Change Role dialog ───────────────────────────────────────────── */}
+      <Dialog open={!!changeRoleDoc} onOpenChange={open => { if (!open) { setChangeRoleDoc(null); setPendingRole(""); } }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Tag className="w-4 h-4" /> Change Document Role
+            </DialogTitle>
+            <DialogDescription className="text-[13px]">
+              Reclassify "{changeRoleDoc?.name}" to a different role. This will trigger a package re-assembly.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <label className="text-[12px] font-medium text-muted-foreground block mb-1.5">New Role</label>
+            <Select value={pendingRole} onValueChange={v => setPendingRole(v as DocumentRole)}>
+              <SelectTrigger className="text-[13px]">
+                <SelectValue placeholder="Select role…" />
+              </SelectTrigger>
+              <SelectContent>
+                {ALL_ROLES.map(r => (
+                  <SelectItem key={r} value={r} className="text-[13px]">{ROLE_LABELS[r]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" size="sm" onClick={() => { setChangeRoleDoc(null); setPendingRole(""); }}>Cancel</Button>
+            <Button size="sm" disabled={!pendingRole || pendingRole === changeRoleDoc?.document_role} onClick={handleChangeRole}>
+              Apply & Re-assemble
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* ── Approver Confirm Dialog ──────────────────────────────────────── */}
       <Dialog open={!!approverAction} onOpenChange={open => { if (!open) { setApproverAction(null); setRejectReason(""); } }}>
         <DialogContent className="max-w-sm">
@@ -750,54 +1080,6 @@ export function PackageDetailDialog({
               onClick={handleApproverConfirm}
             >
               {approverAction === 'approve' ? 'Confirm Approval' : 'Confirm Rejection'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ── Change Role Dialog ───────────────────────────────────────────── */}
-      <Dialog open={!!changeRoleDoc} onOpenChange={open => { if (!open) { setChangeRoleDoc(null); setPendingRole(""); } }}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Change Document Role</DialogTitle>
-            <DialogDescription className="text-[13px]">
-              Reclassifying this document will trigger package re-assembly and re-evaluate all flags.
-            </DialogDescription>
-          </DialogHeader>
-          {changeRoleDoc && (
-            <div className="flex flex-col gap-4 py-2">
-              <div className="flex items-center gap-2 px-3 py-2 rounded bg-muted text-[13px]">
-                <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
-                <span className="font-medium truncate">{changeRoleDoc.name}</span>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[12px] font-medium text-muted-foreground">New Role</label>
-                <Select value={pendingRole} onValueChange={v => setPendingRole(v as DocumentRole)}>
-                  <SelectTrigger className="text-[13px]"><SelectValue placeholder="Select a role…" /></SelectTrigger>
-                  <SelectContent>
-                    {ALL_ROLES.map(r => (
-                      <SelectItem key={r} value={r} className="text-[13px]">
-                        {ROLE_LABELS[r]}{r === changeRoleDoc.document_role && <span className="ml-2 text-muted-foreground">(current)</span>}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              {pendingRole === "base_contract" && changeRoleDoc.document_role !== "base_contract" && hasMultipleBase && (
-                <div className="flex items-start gap-2 px-3 py-2 rounded text-[12px]" style={{ background:"var(--color-lg-error-subtle)", color:"var(--color-lg-error)" }}>
-                  <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                  A Base Contract already exists. Changing to Base Contract will raise a blocking flag.
-                </div>
-              )}
-            </div>
-          )}
-          <DialogFooter className="gap-2">
-            <Button variant="outline" size="sm" onClick={() => { setChangeRoleDoc(null); setPendingRole(""); }}>Cancel</Button>
-            <Button size="sm"
-              disabled={!pendingRole || pendingRole === changeRoleDoc?.document_role}
-              onClick={handleChangeRole}
-            >
-              Confirm &amp; Re-Assemble
             </Button>
           </DialogFooter>
         </DialogContent>
