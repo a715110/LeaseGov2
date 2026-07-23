@@ -729,7 +729,7 @@ export default function AppShell({
                             style={active ? { background: 'rgba(255,255,255,0.18)', boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.10)' } : undefined}
                             aria-current={active ? 'page' : undefined}
                           >
-                            {item.label}
+                            {item.path === ROUTE_PATHS.approvalsQueue && activeRole === 'reviewer' ? 'Review Queue' : item.label}
                           </Link>
                         </li>
                       )
