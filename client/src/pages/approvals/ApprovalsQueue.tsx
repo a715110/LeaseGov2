@@ -16,7 +16,7 @@
  */
 
 import { useState, useCallback, useEffect } from "react";
-import { subscribeToEvents, getLatestEvent, getEventHistory, PENDING_REVIEW_EVENTS_KEY } from "@/lib/eventBus";
+import { subscribeToEvents, getLatestEvent, getEventHistory, publishEvent, PENDING_REVIEW_EVENTS_KEY } from "@/lib/eventBus";
 import { useRole } from "@/contexts/RoleContext";
 import type { DemoEvent } from "@/lib/types";
 import { useLocation } from "wouter";
@@ -624,7 +624,10 @@ export default function ApprovalsQueue() {
                   <td>
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <p className="font-medium text-foreground">{task.subject_label}</p>
+                        <p
+                          className={task.subject_type === 'contract_record' && task.package_id ? 'font-medium text-foreground cursor-pointer hover:text-[var(--color-lg-accent)] hover:underline underline-offset-2 transition-colors' : 'font-medium text-foreground'}
+                          onClick={task.subject_type === 'contract_record' && task.package_id ? (e) => { e.stopPropagation(); setPackageDialogId(task.package_id!); } : undefined}
+                        >{task.subject_label}</p>
                         {task.subject_type === 'contract_record' && task.package_id && (
                           <Tooltip>
                             <TooltipTrigger asChild>
@@ -888,6 +891,37 @@ export default function ApprovalsQueue() {
           setPackageDialogId(null);
         }}
         onRejected={(_pkgId, _reason) => {
+          setPackageDialogId(null);
+        }}
+        onReviewComplete={(pkgId) => {
+          // Advance the linked task to 'reviewed' status
+          const linkedTask = tasks.find(t => t.package_id === pkgId);
+          if (linkedTask) {
+            setTasks(prev => prev.map(t =>
+              t.id === linkedTask.id
+                ? { ...t, status: 'reviewed' as TaskStatus, opened_at: t.opened_at ?? new Date().toISOString() }
+                : t
+            ));
+            // Fire SUBMIT_FOR_REVIEW toward Approver queue
+            publishEvent({
+              type: 'SUBMIT_FOR_REVIEW',
+              sourceRole: 'reviewer',
+              payload: {
+                contractRecordId: linkedTask.id,
+                batchRef: linkedTask.task_reference,
+                label: linkedTask.subject_label,
+                packageId: pkgId,
+                fileCount: 1,
+                workspace: 'Reviewed',
+                submittedBy: 'Reviewer',
+                forApproval: true,
+              },
+            });
+            toast.success(`${linkedTask.task_reference} sent for approval`, {
+              description: `${linkedTask.subject_label} has been reviewed and forwarded to the Approver queue.`,
+              duration: 6000,
+            });
+          }
           setPackageDialogId(null);
         }}
       />

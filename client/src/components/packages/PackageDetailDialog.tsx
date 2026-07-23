@@ -187,6 +187,8 @@ interface PackageDetailDialogProps {
   packageId?: string;
   onApproved?: (packageId: string) => void;
   onRejected?: (packageId: string, reason: string) => void;
+  /** Called when Reviewer clicks "Review Package" — advances task to reviewed state */
+  onReviewComplete?: (packageId: string) => void;
 }
 
 export function PackageDetailDialog({
@@ -195,6 +197,7 @@ export function PackageDetailDialog({
   packageId,
   onApproved,
   onRejected,
+  onReviewComplete,
 }: PackageDetailDialogProps) {
   const [, navigate] = useLocation();
   const { activeRole } = useRole();
@@ -409,7 +412,14 @@ export function PackageDetailDialog({
 
                 {/* Primary CTA — differs by role */}
                 {isReviewer ? (
-                  <Button className="gap-1.5" onClick={() => { onClose(); navigate("/approvals/queue"); }}>
+                  <Button className="gap-1.5" onClick={() => {
+                    if (onReviewComplete && pkg) {
+                      onReviewComplete(pkg.id);
+                    } else {
+                      onClose();
+                      navigate("/approvals/queue");
+                    }
+                  }}>
                     <ClipboardCheck className="w-4 h-4" />
                     Review Package
                     {annotationsSubmitted && flaggedDocIds.size > 0 && (
@@ -677,6 +687,30 @@ export function PackageDetailDialog({
               </div>
             )}
           </div>
+
+          {/* ── Sticky bottom action bar — Approver only ─────────────────── */}
+          {isApprover && pkg && (
+            <div className="flex-shrink-0 border-t bg-background px-6 py-3 flex items-center justify-between gap-3">
+              <p className="text-[12px] text-muted-foreground">
+                <span className="font-medium text-foreground">{pkg.record_label}</span>
+                {' · '}{pkg.id}{' · '}{pkg.document_count} document{pkg.document_count !== 1 ? 's' : ''}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm"
+                  className="gap-1.5 border-[var(--color-lg-error)] text-[var(--color-lg-error)] hover:bg-[var(--color-lg-error-subtle)]"
+                  onClick={() => setApproverAction('reject')}
+                >
+                  <ThumbsDown className="w-3.5 h-3.5" /> Reject
+                </Button>
+                <Button size="sm"
+                  className="gap-1.5 bg-[var(--color-lg-success)] hover:bg-[var(--color-lg-success)]/90 text-white"
+                  onClick={() => setApproverAction('approve')}
+                >
+                  <ThumbsUp className="w-3.5 h-3.5" /> Approve
+                </Button>
+              </div>
+            </div>
+          )}
         </SheetContent>
       </Sheet>
 
