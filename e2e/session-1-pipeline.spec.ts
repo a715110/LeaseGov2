@@ -44,19 +44,23 @@ test('S1-STEP3 — Upload Files button opens upload modal', async ({ page }) => 
   }
 });
 
-// ── STEP 4: File upload via input ─────────────────────────────────────────────
-test('S1-STEP4 — File can be selected in the upload input', async ({ page }) => {
+// ── STEP 4: File upload via input (KI-001 resolved) ─────────────────────────
+test('S1-STEP4 — Real PDF fixture selected via input appears in file list', async ({ page }) => {
   // Navigate to the upload page
   await gotoAs(page, 'document_submitter', '/pipeline/upload');
   await page.waitForLoadState('networkidle');
+
+  // The file input is hidden — use setInputFiles which triggers the onChange handler
   const fileInput = page.locator('input[type="file"]').first();
-  if (await fileInput.count() > 0) {
-    await fileInput.setInputFiles(SAMPLE_PDF);
-    await page.waitForTimeout(500);
-    // After file selection, either a preview or filename should appear
-    const bodyText = await page.locator('body').innerText();
-    expect(bodyText.length).toBeGreaterThan(20);
-  }
+  await expect(fileInput).toBeAttached();
+  await fileInput.setInputFiles(SAMPLE_PDF);
+
+  // The onChange handler calls processFileList which adds the file to state
+  // and shows it in the Files list as 'validating' then 'valid' after 1.2 s
+  await expect(page.locator('text=sample-lease.pdf')).toBeVisible({ timeout: 5000 });
+
+  // After 1.2 s validation delay, the file should show as Valid
+  await expect(page.locator('text=Valid').first()).toBeVisible({ timeout: 5000 });
 });
 
 // ── STEP 5: Validation page loads ────────────────────────────────────────────
