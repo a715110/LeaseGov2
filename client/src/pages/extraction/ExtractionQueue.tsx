@@ -67,6 +67,8 @@ interface ProcessingJob {
   assignee_id?: string;
   /** Contract type inferred from filename or set by preparer */
   contract_type?: 'property_lease' | 'equipment_lease';
+  /** ISO timestamp set when the preparer completes all 5 workflow steps */
+  completed_at?: string;
   /** Equipment pre-screen fields (populated for equipment_lease jobs) */
   eq_prescreen?: {
     asset_type?: string;
@@ -1677,6 +1679,26 @@ export default function ExtractionQueue() {
           onComplete={(files) => {
             // Store amendment files so they can be forwarded to /extraction/ai via nav state
             setPendingAmendmentFiles(files);
+            // Mark the processed job as ocr_complete so the queue row reflects completion.
+            // PRODUCTION: replace with: await api.patch(`/api/v1/extraction/jobs/${workflowJob?.id}`, { status: 'ocr_complete' })
+            if (workflowJob) {
+              const completedId = workflowJob.id;
+              setJobs(prev => prev.map(j =>
+                j.id === completedId
+                  ? { ...j, status: 'ocr_complete' as JobStatus, completed_at: new Date().toISOString() }
+                  : j
+              ));
+              // Also update selectedJob panel if it is showing this job
+              setSelectedJob(prev =>
+                prev && prev.id === completedId
+                  ? { ...prev, status: 'ocr_complete' as JobStatus, completed_at: new Date().toISOString() }
+                  : prev
+              );
+              toast.success(`${workflowJob.display_id} extraction complete`, {
+                description: 'All 5 steps verified — status updated to OCR Complete.',
+                duration: 5000,
+              });
+            }
           }}
         />
         {/* Batch-level Decline Package dialog — package-level with per-file reason rows */}
