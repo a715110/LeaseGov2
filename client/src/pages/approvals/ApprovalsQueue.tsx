@@ -22,7 +22,7 @@ import type { DemoEvent } from "@/lib/types";
 import { useLocation } from "wouter";
 import {
   Clock, AlertTriangle, CheckCircle2, XCircle,
-  ChevronRight, RotateCcw, AlertCircle, Filter, UserCog, ExternalLink
+  ChevronRight, RotateCcw, AlertCircle, Filter, UserCog, ExternalLink, Eye
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -623,7 +623,23 @@ export default function ApprovalsQueue() {
                   <td><TypeBadge subject_type={task.subject_type} /></td>
                   <td>
                     <div>
-                      <p className="font-medium text-foreground">{task.subject_label}</p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="font-medium text-foreground">{task.subject_label}</p>
+                        {task.subject_type === 'contract_record' && task.package_id && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                className="inline-flex items-center justify-center w-5 h-5 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
+                                onClick={(e) => { e.stopPropagation(); setPackageDialogId(task.package_id!); }}
+                                aria-label="View package detail"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent className="text-[12px]">View package detail</TooltipContent>
+                          </Tooltip>
+                        )}
+                      </div>
                       {task.rework_iteration > 0 && (
                         <span className="badge-warning inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold mt-0.5">
                           <RotateCcw className="w-3 h-3" /> Rework #{task.rework_iteration}
