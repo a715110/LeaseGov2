@@ -26,7 +26,7 @@ import {
   CheckCircle2, AlertTriangle, Clock, MoreHorizontal, ArrowRight, AlertCircle,
   Eye, ClipboardCheck, Lock, MessageSquare, ChevronDown, ChevronUp,
   ThumbsUp, ThumbsDown, AlertOctagon, X, Layers, User, Hash, Search,
-  XCircle,
+  XCircle, Download, ChevronLeft,
 } from "lucide-react";
 import { useRole } from "@/contexts/RoleContext";
 import { Textarea } from "@/components/ui/textarea";
@@ -424,6 +424,40 @@ export function PackageDetailDialog({
   function openDocDetail(doc: PackageDoc) {
     setDetailDoc(doc);
     setActiveTab('document-detail');
+  }
+
+  // ── Prev / Next navigation in Document Detail tab ─────────────────────────
+  function navigateDetail(direction: 'prev' | 'next') {
+    if (!detailDoc) return;
+    const idx = sortedDocs.findIndex(d => d.id === detailDoc.id);
+    if (idx === -1) return;
+    const nextIdx = direction === 'prev' ? idx - 1 : idx + 1;
+    if (nextIdx >= 0 && nextIdx < sortedDocs.length) {
+      setDetailDoc(sortedDocs[nextIdx]);
+    }
+  }
+
+  // ── Download current document + metadata as JSON ──────────────────────────
+  function handleDownloadDocument(doc: PackageDoc) {
+    const payload = {
+      document_name: doc.name,
+      document_role: ROLE_LABELS[doc.document_role],
+      effective_date: doc.effective_date,
+      file_size: doc.file_size,
+      extraction_status: EXT_CONFIG[doc.extraction_status].label,
+      chronological_order: doc.chronological_order,
+      package_id: pkg.id,
+      record_label: pkg.record_label,
+      exported_at: new Date().toISOString(),
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${doc.name.replace(/\.pdf$/i, '')}_metadata.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Metadata exported', { description: `${doc.name} — metadata JSON downloaded.`, duration: 4000 });
   }
 
   // Re-sync when packageId prop changes
@@ -889,23 +923,63 @@ export function PackageDetailDialog({
               <div className="flex-1 overflow-y-auto bg-[var(--color-lg-page-bg)]">
                 {detailDoc ? (
                   <>
-                    {/* Document selector strip */}
-                    <div className="px-6 py-3 border-b border-border bg-card flex items-center gap-2 flex-wrap">
-                      <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mr-1">Viewing:</span>
-                      {sortedDocs.map(d => (
-                        <button
-                          key={d.id}
-                          onClick={() => setDetailDoc(d)}
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-medium transition-colors border ${
-                            detailDoc.id === d.id
-                              ? 'bg-[var(--color-lg-primary)] text-white border-[var(--color-lg-primary)]'
-                              : 'bg-background text-foreground border-border hover:bg-muted'
-                          }`}
+                    {/* Document selector strip + Prev/Next + Download */}
+                    <div className="px-4 py-2.5 border-b border-border bg-card flex items-center gap-2 flex-wrap">
+                      {/* Prev / Next */}
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Button
+                          variant="outline" size="sm"
+                          className="h-7 w-7 p-0"
+                          disabled={sortedDocs.findIndex(d => d.id === detailDoc.id) === 0}
+                          onClick={() => navigateDetail('prev')}
+                          title="Previous document"
                         >
-                          <span className="font-mono">{d.chronological_order}.</span>
-                          {d.name.length > 22 ? d.name.slice(0, 19) + '…' : d.name}
-                        </button>
-                      ))}
+                          <ChevronLeft className="w-3.5 h-3.5" />
+                        </Button>
+                        <span className="text-[11px] text-muted-foreground font-mono px-1">
+                          {sortedDocs.findIndex(d => d.id === detailDoc.id) + 1} / {sortedDocs.length}
+                        </span>
+                        <Button
+                          variant="outline" size="sm"
+                          className="h-7 w-7 p-0"
+                          disabled={sortedDocs.findIndex(d => d.id === detailDoc.id) === sortedDocs.length - 1}
+                          onClick={() => navigateDetail('next')}
+                          title="Next document"
+                        >
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+
+                      <div className="h-4 w-px bg-border shrink-0" />
+
+                      {/* Selector pills */}
+                      <div className="flex items-center gap-1.5 flex-wrap flex-1 min-w-0">
+                        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide shrink-0">Viewing:</span>
+                        {sortedDocs.map(d => (
+                          <button
+                            key={d.id}
+                            onClick={() => setDetailDoc(d)}
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium transition-colors border ${
+                              detailDoc.id === d.id
+                                ? 'bg-[var(--color-lg-primary)] text-white border-[var(--color-lg-primary)]'
+                                : 'bg-background text-foreground border-border hover:bg-muted'
+                            }`}
+                          >
+                            <span className="font-mono">{d.chronological_order}.</span>
+                            {d.name.length > 20 ? d.name.slice(0, 17) + '…' : d.name}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Download button */}
+                      <Button
+                        variant="outline" size="sm"
+                        className="gap-1.5 shrink-0 h-7 text-[12px]"
+                        onClick={() => handleDownloadDocument(detailDoc)}
+                        title="Download document metadata as JSON"
+                      >
+                        <Download className="w-3.5 h-3.5" /> Download
+                      </Button>
                     </div>
                     <DocumentDetailTab doc={detailDoc} />
                   </>
@@ -922,7 +996,7 @@ export function PackageDetailDialog({
             )}
 
             {/* ── Reviewer annotation side panel ───────────────────────── */}
-            {isReviewer && activeTab === 'package' && (
+            {isReviewer && (activeTab === 'package' || activeTab === 'document-detail') && (
               <div
                 className="shrink-0 border-l border-border bg-card flex flex-col transition-all duration-300"
                 style={{ width: annotationOpen ? 320 : 48 }}
