@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
 
 import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
+import { useRoleLabel } from '@/hooks/useRoleLabel';
 // TODO: Backend integration required — GET /api/export/templates
 const MOCK_TEMPLATES = [
   {
@@ -177,6 +178,7 @@ const STATUS_LABEL: Record<string, string> = {
 export default function ExportTemplateSelection() {
   const _screenKey = SCREEN_KEYS.EXPORT_TEMPLATE_SELECTION;
   const [, navigate] = useLocation();
+  const { getLabel } = useRoleLabel();
   const searchStr = useSearch();
   const [selected, setSelected] = useState<string | null>(null);
 
@@ -203,7 +205,7 @@ export default function ExportTemplateSelection() {
       <div className="page-header">
         <div>
           <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="page-title">Select Export Template</h1>
+            <h1 className="page-title">{getLabel('/export/templates', 'Select Export Template')}</h1>
             <ScreenNumberBadge screenKey="export-template-selection" />
           </div>
           <p className="page-subtitle">Choose the template that matches this contract record type</p>

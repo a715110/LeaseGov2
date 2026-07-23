@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
 
 import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
+import { useRoleLabel } from '@/hooks/useRoleLabel';
 // TODO: Backend integration required — GET /api/records/dashboard-summary
 const SUMMARY_CARDS = [
   { label:"Total Active",        value:247, icon:<FileText className="w-5 h-5" />,      color:"var(--color-lg-primary)",  bg:"var(--color-lg-accent-subtle)" },
@@ -73,13 +74,14 @@ const STATUS_LABEL: Record<string, string> = {
 export default function RecordsDashboard() {
   const _screenKey = SCREEN_KEYS.RECORDS_DASHBOARD;
   const [, navigate] = useLocation();
+  const { getLabel } = useRoleLabel();
 
   return (
     <div className="flex flex-col min-h-full min-w-0 bg-[var(--color-lg-page-bg)]">
       <div className="page-header">
         <div>
           <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="page-title">Contract Records</h1>
+            <h1 className="page-title">{getLabel('/records', 'Contract Records')}</h1>
             <ScreenNumberBadge screenKey="records-dashboard" />
           </div>
           <p className="page-subtitle">Portfolio overview and recent activity</p>

@@ -20,6 +20,7 @@ import { SCREEN_KEYS } from "@/constants/screenKeys";
 
 import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 import { resolveReassessmentUrl } from '@/lib/mockReassessmentData';
+import { useRoleLabel } from '@/hooks/useRoleLabel';
 // TODO: Backend integration required — GET /api/reassessments/dashboard-summary
 const SUMMARY = {
   open_cases:              12,
@@ -76,6 +77,7 @@ function SummaryCard({ label, value, icon, color, bg, border, onClick }: Summary
 
 export default function ReassessmentDashboard() {
   const _screenKey = SCREEN_KEYS.REASSESSMENT_DASHBOARD;
+  const { getLabel } = useRoleLabel();
   const [, navigate] = useLocation();
 
   return (
@@ -107,7 +109,7 @@ export default function ReassessmentDashboard() {
       <div className="page-header">
         <div>
           <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="page-title">Reassessment Dashboard</h1>
+            <h1 className="page-title">{getLabel('/reassessment/dashboard', 'Reassessment Dashboard')}</h1>
             <ScreenNumberBadge screenKey="reassessment-dashboard" />
           </div>
           <p className="page-subtitle">Monitor and manage all reassessment and modification cases</p>

@@ -13,6 +13,7 @@
  * rendered in foreground weight.
  */
 import { useLocation, Link } from 'wouter';
+import { useRoleLabel } from '@/hooks/useRoleLabel';
 
 interface Crumb {
   label: string;
@@ -291,7 +292,14 @@ function buildCrumbs(location: string): Crumb[] {
 
 export function Breadcrumb() {
   const [location] = useLocation();
-  const crumbs = buildCrumbs(location);
+  const { getLabel } = useRoleLabel();
+  const crumbs = buildCrumbs(location).map(crumb => ({
+    ...crumb,
+    // Resolve role-aware label: try the crumb's href first, then the label itself as a key
+    label: crumb.href
+      ? getLabel(crumb.href, crumb.label)
+      : getLabel(location.split('?')[0], crumb.label),
+  }));
 
   if (crumbs.length === 0) return null;
 

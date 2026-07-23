@@ -231,6 +231,7 @@ export default function ApprovalsQueue() {
   const { activeRole } = useRole();
   const isReviewer = activeRole === 'reviewer';
   const isApprover = activeRole === 'approver';
+  const isAuditor  = activeRole === 'auditor';
   const [activeTab, setActiveTab] = useState<TabId>("my_reviews");
   // Initialise tasks — replay RECORD_APPROVED and REVIEW_OPENED events that fired
   // before this mount so badge state is correct when navigating back to the queue.
@@ -710,6 +711,8 @@ export default function ApprovalsQueue() {
                       <Button
                         size="sm"
                         className="h-7 gap-1 text-[12px]"
+                        disabled={isAuditor}
+                        title={isAuditor ? 'Read-only in Audit view' : undefined}
                         onClick={() => {
                           if (task.subject_type === "reassessment_case") {
                             if (!task.case_id) {

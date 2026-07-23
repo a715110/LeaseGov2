@@ -10,7 +10,8 @@
  */
 
 import { useState, useEffect } from "react";
-import { useLocation } from "wouter";
+import { useLocation } from 'wouter'
+import { useRoleLabel } from '@/hooks/useRoleLabel'
 import {
   Search, Filter, ChevronDown, ChevronUp, ChevronRight,
   Star, StarOff, SortAsc, SortDesc, Plus, BookmarkCheck,
@@ -290,6 +291,8 @@ function buildWatchlistRows(): WatchlistSummaryRow[] {
 export default function RecordsSearch() {
   const _screenKey = SCREEN_KEYS.RECORDS_SEARCH;
   const [, navigate] = useLocation();
+  const { getLabel, activeRole } = useRoleLabel();
+  const isAuditor = activeRole === 'auditor';
   const _watchlistedParam = new URLSearchParams(window.location.search).get('watchlisted') === 'true';
   const [activeView, setActiveView] = useState<"all" | "watchlist">(_watchlistedParam ? "watchlist" : "all");
   const [watchlistRows, setWatchlistRows] = useState<WatchlistSummaryRow[]>([]);
@@ -358,7 +361,7 @@ export default function RecordsSearch() {
       <div className="page-header">
         <div>
           <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="page-title">Contract Records</h1>
+            <h1 className="page-title">{getLabel('/records', 'Contract Records')}</h1>
             <ScreenNumberBadge screenKey="records-search" />
           </div>
           <p className="page-subtitle">
@@ -393,7 +396,7 @@ export default function RecordsSearch() {
               )}
             </button>
           </div>
-          <Button size="sm" className="gap-1.5" onClick={() => navigate("/pipeline/new-record")}>
+          <Button size="sm" className="gap-1.5" onClick={() => navigate("/pipeline/new-record")} disabled={isAuditor} title={isAuditor ? 'Read-only in Audit view' : undefined}>
             <Plus className="w-3.5 h-3.5" /> New Record
           </Button>
         </div>

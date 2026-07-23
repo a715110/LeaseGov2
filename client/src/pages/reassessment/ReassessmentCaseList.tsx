@@ -32,6 +32,7 @@ import { toast } from "sonner";
 import { SCREEN_KEYS } from "@/constants/screenKeys";
 
 import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
+import { useRoleLabel } from '@/hooks/useRoleLabel';
 // TODO: Backend integration required — GET /api/reassessments/cases
 const MOCK_CASES: {
   id: string; case_ref: string; contract: string; title: string;
@@ -141,6 +142,8 @@ function resolveOpenUrl(c: { id: string; status: string }): string {
 export default function ReassessmentCaseList() {
   const _screenKey = SCREEN_KEYS.REASSESSMENT_CASE_LIST;
   const [, navigate] = useLocation();
+  const { getLabel, activeRole } = useRoleLabel();
+  const isAuditor = activeRole === 'auditor';
 
   const [activeTab, setActiveTab] = useState("all");
   const [search, setSearch] = useState("");
@@ -178,12 +181,12 @@ export default function ReassessmentCaseList() {
       <div className="page-header">
         <div>
           <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="page-title">Reassessment Hub</h1>
+            <h1 className="page-title">{getLabel('/reassessment/cases', 'Reassessment Hub')}</h1>
             <ScreenNumberBadge screenKey="reassessment-case-list" />
           </div>
           <p className="page-subtitle">Cases, watchlist, surveys, and period reviews</p>
         </div>
-        <Button size="sm" className="gap-1.5 h-8 text-[12px]" onClick={() => navigate("/reassessment/trigger")}>
+        <Button size="sm" className="gap-1.5 h-8 text-[12px]" onClick={() => navigate("/reassessment/trigger")} disabled={isAuditor} title={isAuditor ? 'Read-only in Audit view' : undefined}>
           <TrendingUp className="w-3.5 h-3.5" /> New Trigger Report
         </Button>
       </div>
