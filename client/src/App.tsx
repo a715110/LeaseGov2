@@ -202,11 +202,9 @@ function Router() {
       </Route>
 
       {/* ── FC-3: Contract Packages ─────────────────────────────────────── */}
-      {/* Bare /packages fallback — sidebar link; renders composition with default mock package */}
+      {/* Bare /packages — now opens as inline dialog from ApprovalsQueue; redirect there */}
       <Route path="/packages">
-        <ScreenGate screenKey={SCREEN_KEYS.PACKAGES_COMPOSITION} fallback={<NotFound />}>
-          <PackagesComposition />
-        </ScreenGate>
+        <Redirect to="/approvals/queue" />
       </Route>
       {/* /packages/:contractId — now opens as inline dialog from ApprovalsQueue;
            direct URL access redirects to the queue so the dialog can open there */}

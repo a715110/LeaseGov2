@@ -624,10 +624,15 @@ export default function ApprovalsQueue() {
                   <td>
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <p
-                          className={task.subject_type === 'contract_record' && task.package_id ? 'font-medium text-foreground cursor-pointer hover:text-[var(--color-lg-accent)] hover:underline underline-offset-2 transition-colors' : 'font-medium text-foreground'}
-                          onClick={task.subject_type === 'contract_record' && task.package_id ? (e) => { e.stopPropagation(); setPackageDialogId(task.package_id!); } : undefined}
-                        >{task.subject_label}</p>
+                        {task.subject_type === 'contract_record' && task.package_id ? (
+                          <button
+                            type="button"
+                            className="font-medium text-foreground text-left cursor-pointer hover:text-[var(--color-lg-accent)] hover:underline underline-offset-2 transition-colors bg-transparent border-0 p-0"
+                            onClick={() => setPackageDialogId(task.package_id!)}
+                          >{task.subject_label}</button>
+                        ) : (
+                          <p className="font-medium text-foreground">{task.subject_label}</p>
+                        )}
                         {task.subject_type === 'contract_record' && task.package_id && (
                           <Tooltip>
                             <TooltipTrigger asChild>
