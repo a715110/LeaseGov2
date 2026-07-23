@@ -21,7 +21,7 @@ import type { DemoEvent } from "@/lib/types";
 import { useLocation } from "wouter";
 import {
   Clock, AlertTriangle, CheckCircle2, XCircle,
-  ChevronRight, RotateCcw, AlertCircle, Filter, UserCog
+  ChevronRight, RotateCcw, AlertCircle, Filter, UserCog, ExternalLink
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -63,6 +63,8 @@ interface ApprovalTask {
   case_id?: string;
   /** Optional status hint used to resolve the correct destination URL for special case types (remediation, project_review) */
   case_status?: string;
+  /** For contract_record tasks: the linked package ID — enables "View Package" navigation */
+  package_id?: string;
 }
 
 // TODO: Backend integration required — GET /api/approvals/tasks
@@ -339,6 +341,7 @@ export default function ApprovalsQueue() {
           workspace?: string;
           fileCount?: number;
           submittedBy?: string;
+          packageId?: string;
         };
         // Use the explicit label from the payload if provided (set by ExtractionQueue);
         // fall back to the legacy hardcoded record label map for older events.
@@ -367,6 +370,7 @@ export default function ApprovalsQueue() {
           sla_deadline_at: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
           rework_iteration: 0,
           reviewer_id: 'user-rev-001',
+          package_id: p.packageId,
         };
         setTasks(prev => [newTask, ...prev]);
         triggerFlash(newTaskId);
@@ -679,6 +683,22 @@ export default function ApprovalsQueue() {
                           <TooltipContent className="text-[12px]">
                             Redirect to a different {task.approval_stage === "review" ? "Reviewer" : "Approver"}
                           </TooltipContent>
+                        </Tooltip>
+                      )}
+                      {/* View Package — contract_record tasks with a known package_id */}
+                      {task.subject_type === "contract_record" && task.package_id && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 gap-1 text-[12px]"
+                              onClick={() => navigate(`/packages/${task.package_id}`)}
+                            >
+                              <ExternalLink className="w-3 h-3" /> View Package
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent className="text-[12px]">Open contract package for inspection</TooltipContent>
                         </Tooltip>
                       )}
                       <Button

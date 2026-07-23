@@ -1702,18 +1702,21 @@ export default function ExtractionQueue() {
                   // PRODUCTION: replace with: await api.post('/api/v1/reviews', { batchRef, fileNames, workspace })
                   const fileNames = batchJobs.map(j => j.file_name);
                   const workspace = batchJobs[0]?.workspace ?? 'Unknown';
-                  publishEvent({
-                    type: 'SUBMIT_FOR_REVIEW',
-                    sourceRole: 'preparer',
-                    payload: {
-                      batchRef: completedBatchRef,
-                      contractRecordId: completedBatchRef,
-                      label: `${completedBatchRef} — ${fileNames.length} file${fileNames.length !== 1 ? 's' : ''} (${workspace})`,
-                      fileNames,
-                      workspace,
-                      fileCount: batchJobs.length,
-                      submittedBy: 'Preparer',
-                    },
+                   // Derive a stable package ID from the batch ref for the View Package link
+                   const derivedPkgId = `PKG-${completedBatchRef.replace(/[^0-9]/g, '').slice(-4).padStart(4, '0')}`;
+                   publishEvent({
+                     type: 'SUBMIT_FOR_REVIEW',
+                     sourceRole: 'preparer',
+                     payload: {
+                       batchRef: completedBatchRef,
+                       contractRecordId: completedBatchRef,
+                       label: `${completedBatchRef} — ${fileNames.length} file${fileNames.length !== 1 ? 's' : ''} (${workspace})`,
+                       fileNames,
+                       workspace,
+                       fileCount: batchJobs.length,
+                       submittedBy: 'Preparer',
+                       packageId: derivedPkgId,
+                     },
                   });
                   toast.success(`${completedBatchRef} submitted for review`, {
                     description: `${batchJobs.length} file${batchJobs.length !== 1 ? 's' : ''} sent to Reviewer queue.`,
