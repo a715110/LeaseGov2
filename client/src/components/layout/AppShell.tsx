@@ -42,6 +42,7 @@ import { useRole } from '../../contexts/RoleContext'
 import { useDemoMode } from '../../contexts/DemoModeContext'
 import { useNotifications } from '../../contexts/NotificationContext'
 import { usePipelineCounts } from '../../contexts/PipelineCountsContext'
+import { MOCK_CONTRACT_RECORDS, MOCK_EQUIPMENT_RECORDS } from '../../lib/mockData'
 import { useDevMode } from '../../contexts/DevModeContext'
 import { LeaseGovThemeContext } from '../../contexts/LeaseGovThemeContext'
 import { computeSlaStatus, getSlaOverdueTasks } from '../../lib/mockApprovalsData'
@@ -651,7 +652,7 @@ export default function AppShell({
               group.key === 'approvals' ? approvalsCount
               : group.key === 'document-pipeline' ? pipelineReadyCount
               : group.key === 'extraction' ? extractionQueueCount
-              : group.key === 'records' ? watchlistCount
+              : group.key === 'records' ? (MOCK_CONTRACT_RECORDS.length + MOCK_EQUIPMENT_RECORDS.length)
               : 0
             )
 

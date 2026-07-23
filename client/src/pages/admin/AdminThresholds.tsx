@@ -40,6 +40,11 @@ interface ThresholdConfig {
   standard_materiality: number;
   escalated_materiality: number;
   watchlist_default_frequency: "weekly" | "monthly" | "quarterly";
+  // Equipment Lease Classification thresholds (Prompt 5C)
+  eq_pv_finance_threshold: number;
+  eq_useful_life_threshold: number;
+  eq_rvg_materiality: number;
+  eq_purchase_option_materiality: number;
 }
 
 interface SlaConfig {
@@ -67,6 +72,11 @@ const DEFAULT_THRESHOLDS: ThresholdConfig = {
   standard_materiality: 250000,
   escalated_materiality: 1000000,
   watchlist_default_frequency: "monthly",
+  // Equipment Lease Classification thresholds (Prompt 5C)
+  eq_pv_finance_threshold: 0.90,
+  eq_useful_life_threshold: 0.75,
+  eq_rvg_materiality: 50000,
+  eq_purchase_option_materiality: 25000,
 };
 
 const DEFAULT_SLA: SlaConfig = {
@@ -89,7 +99,7 @@ const VERSION_HISTORY = [
   { version:1, changed_by:"System",  date:"2025-09-01", note:"Initial configuration" },
 ];
 
-type AccordionKey = "onboarding" | "reassessment" | "approval" | "watchlist" | "automation" | "sla" | "history";
+type AccordionKey = "onboarding" | "reassessment" | "approval" | "watchlist" | "automation" | "sla" | "history" | "eq_classification";
 
 export default function AdminThresholds() {
   const _screenKey = SCREEN_KEYS.ADMIN_THRESHOLDS;
@@ -342,6 +352,47 @@ export default function AdminThresholds() {
                 </Row>
                 <Row label="Day 7 Escalation Recipient" defaultVal="both">
                   <EscalationSelect value={sla.day7_escalation_recipient} onChange={v => setS("day7_escalation_recipient", v)} />
+                </Row>
+              </div>
+            )}
+          </div>
+
+          {/* GROUP 5: Equipment Lease Classification (Prompt 5C) */}
+          <div className="bg-card border border-border rounded-xl overflow-hidden">
+            <AccordionHeader label="Equipment Lease Classification" k="eq_classification" />
+            {open.has("eq_classification") && (
+              <div className="border-t border-border px-5 py-2">
+                <div className="flex items-start gap-2 px-0 py-3 border-b border-border mb-1">
+                  <div className="rounded px-2 py-0.5 text-[10px] font-bold" style={{ background: '#ede9fe', color: '#7c3aed' }}>IFRS 16 / ASC 842</div>
+                  <p className="text-[11px] text-muted-foreground">These thresholds determine when an equipment lease is automatically classified as Finance (IFRS 16) or Finance (ASC 842 Type A). Leases meeting any threshold are flagged for finance classification review.</p>
+                </div>
+                <Row label="PV Threshold — Finance Classification" defaultVal="90%">
+                  <div className="flex items-center gap-3">
+                    <Slider value={[thresholds.eq_pv_finance_threshold]} min={0.5} max={1} step={0.01}
+                      onValueChange={([v]) => setT("eq_pv_finance_threshold", v)} className="flex-1 max-w-xs" />
+                    <span className="font-mono text-[12px] w-12">{(thresholds.eq_pv_finance_threshold * 100).toFixed(0)}%</span>
+                  </div>
+                </Row>
+                <Row label="Useful Life Coverage — Finance Flag" defaultVal="75%">
+                  <div className="flex items-center gap-3">
+                    <Slider value={[thresholds.eq_useful_life_threshold]} min={0.5} max={1} step={0.01}
+                      onValueChange={([v]) => setT("eq_useful_life_threshold", v)} className="flex-1 max-w-xs" />
+                    <span className="font-mono text-[12px] w-12">{(thresholds.eq_useful_life_threshold * 100).toFixed(0)}%</span>
+                  </div>
+                </Row>
+                <Row label="RVG Materiality Threshold" defaultVal="$50,000">
+                  <div className="flex items-center gap-1">
+                    <span className="text-[12px] text-muted-foreground">$</span>
+                    <input type="number" className="h-7 w-32 text-[12px] border border-border rounded px-2 bg-background text-foreground" value={thresholds.eq_rvg_materiality}
+                      onChange={e => setT("eq_rvg_materiality", parseInt(e.target.value))} />
+                  </div>
+                </Row>
+                <Row label="Purchase Option Materiality" defaultVal="$25,000">
+                  <div className="flex items-center gap-1">
+                    <span className="text-[12px] text-muted-foreground">$</span>
+                    <input type="number" className="h-7 w-32 text-[12px] border border-border rounded px-2 bg-background text-foreground" value={thresholds.eq_purchase_option_materiality}
+                      onChange={e => setT("eq_purchase_option_materiality", parseInt(e.target.value))} />
+                  </div>
                 </Row>
               </div>
             )}

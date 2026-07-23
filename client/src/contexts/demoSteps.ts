@@ -361,10 +361,54 @@ export const DEMO_STEPS: DemoStep[] = [
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // FC-6 — REASSESSMENT  (Business Submitter, steps 32–34; Controller, steps 35–37)
+  // EQUIPMENT LEASE — Steps A–D (Controller, steps 32–35)
   // ═══════════════════════════════════════════════════════════════════════════
   {
-    id: 'step-32', stepNumber: 32, role: 'business_submitter',
+    id: 'step-eq-a', stepNumber: 32, role: 'controller',
+    roleLabel: 'Controller', roleColor: '#dc2626',
+    screenNumber: '5.2',
+    title: 'Equipment Lease Records — Contract Type Filter',
+    description: 'The Records Search screen now supports a Contract Type filter that isolates Equipment Lease records from Property Lease records. Equipment records display a teal badge and an expanded row showing asset type, serial number, location, classification, and monthly payment. The Controller uses this view as the entry point for equipment lease oversight.',
+    instruction: 'Navigate to /records. Open the filter panel and select "Equipment Lease" from the Contract Type dropdown. Show the teal Equipment Lease badge on the filtered rows. Expand a row to reveal the equipment-specific key terms (asset type, serial, location, classification, monthly payment).',
+    route: '/records',
+    tabHint: 'Tab 6 — Controller',
+  },
+  {
+    id: 'step-eq-b', stepNumber: 33, role: 'controller',
+    roleLabel: 'Controller', roleColor: '#dc2626',
+    screenNumber: '5.3',
+    title: 'Equipment Lease Record Detail — Asset Details Tab',
+    description: 'When the Controller opens an Equipment Lease record, the tab list switches to an equipment-specific set. The Asset Details tab shows five cards: Specifications (manufacturer, model, serial, year), Condition & Return (condition rating, return requirements), Usage Terms (permitted use, geographic restrictions), Maintenance Responsibility, and Purchase Option (with IFRS 16 note).',
+    instruction: 'Navigate to /records/eq-001. Show the teal Equipment Lease badge in the record header. Click the Asset Details tab. Walk through the five cards: Specifications, Condition & Return, Usage Terms, Maintenance, and Purchase Option.',
+    route: '/records/eq-001',
+    tabHint: 'Tab 6 — Controller',
+  },
+  {
+    id: 'step-eq-c', stepNumber: 34, role: 'controller',
+    roleLabel: 'Controller', roleColor: '#dc2626',
+    screenNumber: '5.3',
+    title: 'Equipment Lease Financial Tab — Finance Lease Depreciation',
+    description: 'The Financial tab for Equipment Lease records shows six metric tiles (including RVG and Purchase Option), a 12-period payment schedule with accumulated ROU depreciation, and — for finance-classified leases — a Finance Lease Depreciation section showing straight-line NBV over the lease term.',
+    instruction: 'Navigate to /records/eq-001 and click the Financial tab. Show the six metric tiles. Scroll to the payment schedule and point out the Depreciation column. Show the Finance Lease Depreciation section at the bottom.',
+    route: '/records/eq-001',
+    tabHint: 'Tab 6 — Controller',
+  },
+  {
+    id: 'step-eq-d', stepNumber: 35, role: 'controller',
+    roleLabel: 'Controller', roleColor: '#dc2626',
+    screenNumber: '6.2',
+    title: 'Equipment Lease Reassessment — Equipment Trigger Types',
+    description: 'When the Controller triggers a reassessment for an Equipment Lease record, the trigger type dropdown switches to equipment-specific categories: Equipment Modification, Usage Change, Useful Life Revision, Purchase Option Exercise, RVG Reassessment, Return Condition Change, Maintenance Breach, Sublease of Equipment, Geographic Restriction Change. The classification questions also show equipment context labels.',
+    instruction: 'Navigate to /reassessment/trigger. Select an Equipment Lease record from the contract typeahead. Show how the trigger type dropdown switches to equipment-specific categories. Select "Purchase Option Exercise" and show the equipment-specific trigger description.',
+    route: '/reassessment/trigger',
+    tabHint: 'Tab 6 — Controller',
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // FC-6 — REASSESSMENT  (Business Submitter, steps 36–38; Controller, steps 39–41)
+  // ═══════════════════════════════════════════════════════════════════════════
+  {
+    id: 'step-36', stepNumber: 36, role: 'business_submitter',
     roleLabel: 'Business Submitter', roleColor: '#ec4899',
     screenNumber: '6.13',
     title: 'Survey Intake — Lease Intelligence Signal',
@@ -373,7 +417,7 @@ export const DEMO_STEPS: DemoStep[] = [
     route: '/reassessment/surveys', tabHint: 'Tab 7 — Business Submitter',
   },
   {
-    id: 'step-33', stepNumber: 33, role: 'business_submitter',
+    id: 'step-37', stepNumber: 37, role: 'business_submitter',
     roleLabel: 'Business Submitter', roleColor: '#ec4899',
     screenNumber: '6.2',
     title: 'Trigger New Case — Modification or Reassessment',
@@ -382,7 +426,7 @@ export const DEMO_STEPS: DemoStep[] = [
     route: '/reassessment/trigger', tabHint: 'Tab 7 — Business Submitter',
   },
   {
-    id: 'step-34', stepNumber: 34, role: 'controller',
+    id: 'step-38', stepNumber: 38, role: 'controller',
     roleLabel: 'Controller', roleColor: '#dc2626',
     screenNumber: '6.3',
     title: 'Period-End Sweep — Bulk Tier 1 Screening',
@@ -391,7 +435,7 @@ export const DEMO_STEPS: DemoStep[] = [
     route: '/reassessment/sweep', tabHint: 'Tab 6 — Controller',
   },
   {
-    id: 'step-35', stepNumber: 35, role: 'controller',
+    id: 'step-39', stepNumber: 39, role: 'controller',
     roleLabel: 'Controller', roleColor: '#dc2626',
     screenNumber: '6.5',
     title: 'Case Classification — Sequential Gate',
@@ -400,7 +444,7 @@ export const DEMO_STEPS: DemoStep[] = [
     route: '/reassessment/cases/case-001/classify', tabHint: 'Tab 6 — Controller',
   },
   {
-    id: 'step-36', stepNumber: 36, role: 'controller',
+    id: 'step-40', stepNumber: 40, role: 'controller',
     roleLabel: 'Controller', roleColor: '#dc2626',
     screenNumber: '6.6',
     title: 'Option Exercise Assessment — Materiality Threshold',
@@ -409,7 +453,7 @@ export const DEMO_STEPS: DemoStep[] = [
     route: '/reassessment/cases/case-001/assess', tabHint: 'Tab 6 — Controller',
   },
   {
-    id: 'step-37', stepNumber: 37, role: 'controller',
+    id: 'step-41', stepNumber: 41, role: 'controller',
     roleLabel: 'Controller', roleColor: '#dc2626',
     screenNumber: '6.12',
     title: 'Watchlist Management — Automated Monitoring Rules',
@@ -422,7 +466,7 @@ export const DEMO_STEPS: DemoStep[] = [
   // FC-5 (Phase 2) — AUDIT  (Auditor, steps 38–40)
   // ═══════════════════════════════════════════════════════════════════════════
   {
-    id: 'step-38', stepNumber: 38, role: 'auditor',
+    id: 'step-42', stepNumber: 42, role: 'auditor',
     roleLabel: 'Auditor', roleColor: '#6b7280',
     screenNumber: '5.4',
     title: 'Deferred Fields Tracker — Resolution Workflow',
@@ -431,7 +475,7 @@ export const DEMO_STEPS: DemoStep[] = [
     route: '/records/CR-DEMO-001/deferred', tabHint: 'Tab 8 — Auditor',
   },
   {
-    id: 'step-39', stepNumber: 39, role: 'auditor',
+    id: 'step-43', stepNumber: 43, role: 'auditor',
     roleLabel: 'Auditor', roleColor: '#6b7280',
     screenNumber: '8.5',
     title: 'Audit Log — Immutable Event Trail',
@@ -440,7 +484,7 @@ export const DEMO_STEPS: DemoStep[] = [
     route: '/admin/audit', tabHint: 'Tab 8 — Auditor',
   },
   {
-    id: 'step-40', stepNumber: 40, role: 'auditor',
+    id: 'step-44', stepNumber: 44, role: 'auditor',
     roleLabel: 'Auditor', roleColor: '#6b7280',
     screenNumber: '5.5',
     title: 'Snapshot Viewer — Compliance Evidence',
@@ -453,7 +497,7 @@ export const DEMO_STEPS: DemoStep[] = [
   // FC-8 + FC-9 — ADMINISTRATION & AI AGENTS  (Lease Admin, steps 41–46)
   // ═══════════════════════════════════════════════════════════════════════════
   {
-    id: 'step-41', stepNumber: 41, role: 'lease_admin',
+    id: 'step-45', stepNumber: 45, role: 'lease_admin',
     roleLabel: 'Lease Admin', roleColor: '#1F3864',
     screenNumber: '8.1',
     title: 'User & Role Management',
@@ -462,7 +506,7 @@ export const DEMO_STEPS: DemoStep[] = [
     route: '/admin/users', tabHint: 'Tab 9 — Lease Admin',
   },
   {
-    id: 'step-42', stepNumber: 42, role: 'lease_admin',
+    id: 'step-46', stepNumber: 46, role: 'lease_admin',
     roleLabel: 'Lease Admin', roleColor: '#1F3864',
     screenNumber: '8.3',
     title: 'Template Management — Field Mapping Editor',
@@ -471,7 +515,7 @@ export const DEMO_STEPS: DemoStep[] = [
     route: '/admin/templates', tabHint: 'Tab 9 — Lease Admin',
   },
   {
-    id: 'step-43', stepNumber: 43, role: 'lease_admin',
+    id: 'step-47', stepNumber: 47, role: 'lease_admin',
     roleLabel: 'Lease Admin', roleColor: '#1F3864',
     screenNumber: '8.4',
     title: 'Threshold Configuration — SLA & Confidence',
@@ -480,7 +524,7 @@ export const DEMO_STEPS: DemoStep[] = [
     route: '/admin/thresholds', tabHint: 'Tab 9 — Lease Admin',
   },
   {
-    id: 'step-44', stepNumber: 44, role: 'lease_admin',
+    id: 'step-48', stepNumber: 48, role: 'lease_admin',
     roleLabel: 'Lease Admin', roleColor: '#1F3864',
     screenNumber: '8.6',
     title: 'Appearance & Notifications — Theme & Branding',
@@ -489,7 +533,7 @@ export const DEMO_STEPS: DemoStep[] = [
     route: '/admin/notifications', tabHint: 'Tab 9 — Lease Admin',
   },
   {
-    id: 'step-45', stepNumber: 45, role: 'lease_admin',
+    id: 'step-49', stepNumber: 49, role: 'lease_admin',
     roleLabel: 'Lease Admin', roleColor: '#1F3864',
     screenNumber: '9.1',
     title: 'AI Checkpoint Queue — Human-in-the-Loop',
@@ -498,7 +542,7 @@ export const DEMO_STEPS: DemoStep[] = [
     route: '/approvals/checkpoints', tabHint: 'Tab 9 — Lease Admin',
   },
   {
-    id: 'step-46', stepNumber: 46, role: 'lease_admin',
+    id: 'step-50', stepNumber: 50, role: 'lease_admin',
     roleLabel: 'Lease Admin', roleColor: '#1F3864',
     screenNumber: '9.2',
     title: 'Agent Activity Monitor — Real-Time Oversight',

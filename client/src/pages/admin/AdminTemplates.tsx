@@ -122,6 +122,42 @@ const MOCK_TEMPLATES: ExportTemplate[] = [
     ],
   },
   {
+    id:"t4", name:"Equipment Lease Onboarding v1.0", type:"equipment_lease", version:"1.0",
+    status:"active", tab_count:4, mapped_field_count:48, total_field_count:54,
+    created_at:"2026-06-01",
+    fields: [
+      { id:"eq-f1", canonical_name:"asset_description",        data_type:"string",   category:"Property",  validation_rule:"required",        is_critical:true,  is_required:true,  aliases:["equipment_description"] },
+      { id:"eq-f2", canonical_name:"manufacturer",             data_type:"string",   category:"Party",     validation_rule:"required",        is_critical:true,  is_required:true,  aliases:["make"] },
+      { id:"eq-f3", canonical_name:"model_number",             data_type:"string",   category:"Property",  validation_rule:"required",        is_critical:false, is_required:true,  aliases:["model"] },
+      { id:"eq-f4", canonical_name:"serial_number",            data_type:"string",   category:"Property",  validation_rule:"required",        is_critical:true,  is_required:true,  aliases:["serial"] },
+      { id:"eq-f5", canonical_name:"lease_commencement_date",  data_type:"date",     category:"Date",      validation_rule:"required",        is_critical:true,  is_required:true,  aliases:["start_date"] },
+      { id:"eq-f6", canonical_name:"lease_term_months",        data_type:"number",   category:"Financial", validation_rule:"positive_number", is_critical:true,  is_required:true,  aliases:["term_months"] },
+      { id:"eq-f7", canonical_name:"monthly_payment",          data_type:"currency", category:"Financial", validation_rule:"positive_number", is_critical:true,  is_required:true,  aliases:["monthly_rent"] },
+      { id:"eq-f8", canonical_name:"useful_life_months",       data_type:"number",   category:"Financial", validation_rule:"positive_number", is_critical:true,  is_required:true,  aliases:["useful_life"] },
+      { id:"eq-f9", canonical_name:"pv_percentage",            data_type:"number",   category:"Financial", validation_rule:"0_to_100",        is_critical:true,  is_required:true,  aliases:["pv_pct"] },
+      { id:"eq-f10",canonical_name:"purchase_option_price",    data_type:"currency", category:"Financial", validation_rule:"non_negative",    is_critical:false, is_required:false, aliases:["purchase_option"] },
+      { id:"eq-f11",canonical_name:"residual_value_guarantee", data_type:"currency", category:"Financial", validation_rule:"non_negative",    is_critical:false, is_required:false, aliases:["rvg"] },
+      { id:"eq-f12",canonical_name:"lease_classification",     data_type:"string",   category:"Legal",     validation_rule:"finance_or_operating", is_critical:true, is_required:true, aliases:["classification"] },
+    ],
+    tabs:[
+      { id:"tab1", name:"Lease Header",      field_count:16, mappings:[] },
+      { id:"tab2", name:"Classification",    field_count:12, mappings:[] },
+      { id:"tab3", name:"Financial Entries", field_count:15, mappings:[] },
+      { id:"tab4", name:"Supporting",        field_count:11, mappings:[] },
+    ],
+  },
+  {
+    id:"t5", name:"Equipment Lease Modification v1.0", type:"equipment_lease", version:"1.0",
+    status:"active", tab_count:3, mapped_field_count:35, total_field_count:38,
+    created_at:"2026-06-01",
+    fields: SEED_FIELDS.slice(0, 3),
+    tabs:[
+      { id:"tab1", name:"Amendment Summary", field_count:14, mappings:[] },
+      { id:"tab2", name:"Delta Entries",     field_count:16, mappings:[] },
+      { id:"tab3", name:"Supporting",        field_count:8,  mappings:[] },
+    ],
+  },
+  {
     id:"t3", name:"Ground Lease — Long Term", type:"ground_lease", version:"1.0",
     status:"deprecated", tab_count:2, mapped_field_count:12, total_field_count:28,
     created_at:"2025-11-20",
@@ -218,6 +254,7 @@ function TemplateModal({ open, onClose, initial }: TemplateModalProps) {
   // Tab 1 — Details
   const [name, setName] = useState(initial?.name ?? "");
   const [description, setDescription] = useState("");
+  const [contractType, setContractType] = useState<TemplateType>(initial?.type ?? "property_lease");
   const [docTypes, setDocTypes] = useState<string[]>(["Commercial Lease"]);
   const [status, setStatus] = useState<TemplateStatus>(initial?.status ?? "draft");
 
@@ -387,6 +424,26 @@ function TemplateModal({ open, onClose, initial }: TemplateModalProps) {
                   rows={3}
                 />
               </div>
+              <div>
+                <Label className="text-[12px] font-semibold mb-1.5 block">Contract Type</Label>
+                <Select value={contractType} onValueChange={v => setContractType(v as TemplateType)}>
+                  <SelectTrigger className="w-64">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="property_lease">Property Lease</SelectItem>
+                    <SelectItem value="equipment_lease">Equipment Lease</SelectItem>
+                    <SelectItem value="ground_lease">Ground Lease</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {/* Equipment-specific field set hint */}
+              {contractType === 'equipment_lease' && (
+                <div className="rounded-lg border border-violet-200 bg-violet-50 p-3 text-[12px] text-violet-800">
+                  <p className="font-semibold mb-1">Equipment Lease field set active</p>
+                  <p className="text-violet-600">This template will use the 41-field Equipment Lease extraction schema. Key fields: asset description, manufacturer, serial number, useful life, PV %, purchase option, RVG, and lease classification (finance / operating).</p>
+                </div>
+              )}
               <div>
                 <Label className="text-[12px] font-semibold mb-1.5 block">Document Types</Label>
                 <div className="flex flex-wrap gap-2">
@@ -619,6 +676,8 @@ export default function AdminTemplates() {
   const [selectedTab, setSelectedTab] = useState<TabDefinition>(MOCK_TEMPLATES[0].tabs[0]);
   const [previewMode, setPreviewMode] = useState(false);
   const [tabs, setTabs] = useState<TabDefinition[]>(MOCK_TEMPLATES[0].tabs);
+  // 5B: Contract type filter pill
+  const [typeFilter, setTypeFilter] = useState<TemplateType | 'all'>('all');
 
   // S7a: TemplateModal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -690,13 +749,32 @@ export default function AdminTemplates() {
         <div className="flex flex-1 overflow-hidden gap-0">
           {/* Template list */}
           <div className="w-72 shrink-0 border-r border-border flex flex-col overflow-hidden">
-            <div className="px-4 py-3 border-b border-border">
+            <div className="px-4 py-3 border-b border-border flex flex-col gap-2">
               <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em]">
-                Templates ({templates.length})
+                Templates ({templates.filter(t => typeFilter === 'all' || t.type === typeFilter).length})
               </p>
+              {/* Contract type filter pills */}
+              <div className="flex flex-wrap gap-1">
+                {(['all', 'property_lease', 'equipment_lease', 'ground_lease'] as const).map(f => (
+                  <button
+                    key={f}
+                    onClick={() => setTypeFilter(f)}
+                    className={cn(
+                      'px-2 py-0.5 rounded-full text-[10px] font-semibold border transition-colors',
+                      typeFilter === f
+                        ? f === 'equipment_lease'
+                          ? 'border-violet-400 text-violet-700 bg-violet-100'
+                          : 'border-primary text-primary bg-primary/10'
+                        : 'border-border text-muted-foreground hover:border-primary/40'
+                    )}
+                  >
+                    {f === 'all' ? 'All' : f === 'property_lease' ? 'Property' : f === 'equipment_lease' ? 'Equipment' : 'Ground'}
+                  </button>
+                ))}
+              </div>
             </div>
             <div className="flex-1 overflow-y-auto">
-              {templates.map(t => (
+              {templates.filter(t => typeFilter === 'all' || t.type === typeFilter).map(t => (
                 <div
                   key={t.id}
                   onClick={() => selectTemplate(t)}
