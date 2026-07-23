@@ -102,7 +102,7 @@ const STATIC_NAV: StaticNavEntry[] = [
   { label: 'Queue',               path: ROUTE_PATHS.extractionQueue,      navGroup: 'extraction',        phase: 'mvp' },
   { label: 'AI Workspace',        path: ROUTE_PATHS.extractionAi,         navGroup: 'extraction',        phase: 'mvp' },
   // FC-3
-  { label: 'Packages',            path: '/packages',                      navGroup: 'packages',          phase: 'mvp' },
+  { label: 'Packages',            path: '/packages',                      navGroup: 'packages',          phase: 'phase_2' },
   // FC-4
   { label: 'Approvals Queue',     path: ROUTE_PATHS.approvalsQueue,       navGroup: 'approvals',         phase: 'mvp' },
   // FC-5

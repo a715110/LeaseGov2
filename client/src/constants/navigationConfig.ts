@@ -41,7 +41,7 @@ export const NAV_GROUPS: NavGroupConfig[] = [
     allowedRoles: ['preparer', 'auditor', 'lease_admin'],
   },
   {
-    key: 'packages', label: 'Packages', icon: 'Layers', sortOrder: 3, phase: 'mvp',
+    key: 'packages', label: 'Packages', icon: 'Layers', sortOrder: 3, phase: 'phase_2',
     allowedRoles: ['preparer', 'reviewer', 'approver', 'auditor', 'lease_admin'],
     roleLabels: {
       reviewer: 'Contract Packages',
