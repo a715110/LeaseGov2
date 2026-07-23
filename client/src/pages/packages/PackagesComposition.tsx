@@ -212,7 +212,8 @@ export default function PackagesComposition() {
   const [pendingRole, setPendingRole] = useState<DocumentRole | "">("")
 
   // ── Reviewer annotation panel ─────────────────────────────────────────────
-  const [annotationOpen, setAnnotationOpen] = useState(true);
+  // Auto-open only for Reviewer; Approver and others start collapsed
+  const [annotationOpen, setAnnotationOpen] = useState(isReviewer);
   const [annotationComment, setAnnotationComment] = useState("");
   const [flaggedDocIds, setFlaggedDocIds] = useState<Set<string>>(new Set());
   const [annotationsSubmitted, setAnnotationsSubmitted] = useState(false);
@@ -340,7 +341,7 @@ export default function PackagesComposition() {
 
   return (
     <div className="flex flex-col min-h-full min-w-0 bg-[var(--color-lg-page-bg)]">
-      <div className="page-header">
+      <div className="page-header sticky top-0 z-10 bg-[var(--color-lg-page-bg)]">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <div className="flex items-center gap-3 flex-wrap">
@@ -409,7 +410,14 @@ export default function PackagesComposition() {
               className="gap-1.5"
               onClick={() => navigate("/approvals/queue")}
             >
-              <ClipboardCheck className="w-4 h-4" /> Review Package <ChevronRight className="w-4 h-4" />
+              <ClipboardCheck className="w-4 h-4" />
+              Review Package
+              {annotationsSubmitted && flaggedDocIds.size > 0 && (
+                <span className="ml-1 px-1.5 py-0.5 rounded-full bg-white/20 text-[10px] font-bold">
+                  {flaggedDocIds.size} flagged
+                </span>
+              )}
+              <ChevronRight className="w-4 h-4" />
             </Button>
           ) : isApprover ? (
             // Approver: Approve + Reject buttons
