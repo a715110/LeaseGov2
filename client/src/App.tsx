@@ -208,10 +208,10 @@ function Router() {
           <PackagesComposition />
         </ScreenGate>
       </Route>
+      {/* /packages/:contractId — now opens as inline dialog from ApprovalsQueue;
+           direct URL access redirects to the queue so the dialog can open there */}
       <Route path="/packages/:contractId">
-        <ScreenGate screenKey={SCREEN_KEYS.PACKAGES_COMPOSITION} fallback={<NotFound />}>
-          <PackagesComposition />
-        </ScreenGate>
+        <Redirect to="/approvals/queue" />
       </Route>
       <Route path="/packages/:packageId/flags">
         <ScreenGate screenKey={SCREEN_KEYS.PACKAGES_FLAGS} fallback={<NotFound />}>

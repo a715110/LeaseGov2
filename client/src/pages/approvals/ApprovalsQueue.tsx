@@ -38,6 +38,7 @@ import { MOCK_REVIEWERS } from "@/lib/mockData";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { usePipelineCounts } from "@/contexts/PipelineCountsContext";
 import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
+import { PackageDetailDialog } from '@/components/packages/PackageDetailDialog';
 
 type SubjectType = "contract_record" | "reassessment_case";
 type ApprovalStage = "review" | "final_approval";
@@ -233,6 +234,7 @@ export default function ApprovalsQueue() {
   const isApprover = activeRole === 'approver';
   const isAuditor  = activeRole === 'auditor';
   const [activeTab, setActiveTab] = useState<TabId>("my_reviews");
+  const [packageDialogId, setPackageDialogId] = useState<string | null>(null);
   // Initialise tasks — replay RECORD_APPROVED and REVIEW_OPENED events that fired
   // before this mount so badge state is correct when navigating back to the queue.
   const [tasks, setTasks] = useState<ApprovalTask[]>(() => {
@@ -700,7 +702,7 @@ export default function ApprovalsQueue() {
                               variant="outline"
                               size="sm"
                               className="h-7 gap-1 text-[12px]"
-                              onClick={() => navigate(`/packages/${task.package_id}`)}
+                              onClick={() => setPackageDialogId(task.package_id!)}
                             >
                               <ExternalLink className="w-3 h-3" /> View Package
                             </Button>
@@ -860,6 +862,19 @@ export default function ApprovalsQueue() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Package detail inline dialog */}
+      <PackageDetailDialog
+        open={packageDialogId !== null}
+        onClose={() => setPackageDialogId(null)}
+        packageId={packageDialogId ?? undefined}
+        onApproved={(_pkgId) => {
+          setPackageDialogId(null);
+        }}
+        onRejected={(_pkgId, _reason) => {
+          setPackageDialogId(null);
+        }}
+      />
     </div>
   );
 }
