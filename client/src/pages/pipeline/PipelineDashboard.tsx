@@ -1679,6 +1679,8 @@ export default function PipelineDashboard() {
   const [workspacePill, setWorkspacePill] = useState<string>('');
   // Assignee quick-filter pill ('' = All)
   const [assigneePill, setAssigneePill] = useState<string>('');
+  // Contract type quick-filter pill ('' = All, 'Equipment Lease' = equipment only)
+  const [contractTypePill, setContractTypePill] = useState<string>('');
   // Bulk reassign dialog state for Stage Documents
   const [bulkReassignOpen, setBulkReassignOpen] = useState(false);
   const [bulkReassignTargetId, setBulkReassignTargetId] = useState<string>('');
@@ -1962,7 +1964,8 @@ export default function PipelineDashboard() {
     const matchesPill = !workspacePill || doc.workspace_tag === workspacePill;
     const matchesAssigneePill = !assigneePill ||
       (assigneePill === '__unassigned__' ? !doc.assignee_id : doc.assignee_id === assigneePill);
-    return matchesSearch && matchesCol && matchesPill && matchesAssigneePill;
+    const matchesTypePill = !contractTypePill || doc.contract_type === contractTypePill;
+    return matchesSearch && matchesCol && matchesPill && matchesAssigneePill && matchesTypePill;
   });
 
   const filteredPkgs = (() => {
@@ -2541,18 +2544,19 @@ export default function PipelineDashboard() {
 
         {/* Workspace quick-filter pills */}
         {activeStagedDocs.length > 0 && (() => {
-          const WORKSPACE_PILLS = ['Retail', 'Office', 'Industrial', 'Land', 'Corporate Leasing'];
+          const WORKSPACE_PILLS = ['Retail', 'Office', 'Industrial', 'Land', 'Corporate Leasing', 'Operations'];
           // Only show pills for workspaces that have at least one doc in staging
           const presentWorkspaces = WORKSPACE_PILLS.filter(ws =>
             activeStagedDocs.some(d => d.workspace_tag === ws)
           );
-          if (presentWorkspaces.length < 2) return null;
+          const hasEquipment = activeStagedDocs.some(d => d.contract_type === 'Equipment Lease');
+          if (presentWorkspaces.length < 2 && !hasEquipment) return null;
           return (
             <div className="flex items-center gap-1.5 px-5 py-2.5 border-b border-border bg-muted/20 flex-wrap">
               <button
-                onClick={() => setWorkspacePill('')}
+                onClick={() => { setWorkspacePill(''); setContractTypePill(''); }}
                 className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-all duration-150 ${
-                  workspacePill === ''
+                  workspacePill === '' && contractTypePill === ''
                     ? 'bg-foreground text-background shadow-sm'
                     : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground'
                 }`}
@@ -2561,11 +2565,11 @@ export default function PipelineDashboard() {
               </button>
               {presentWorkspaces.map(ws => {
                 const c = getWorkspaceColour(ws);
-                const active = workspacePill === ws;
+                const active = workspacePill === ws && contractTypePill === '';
                 return (
                   <button
                     key={ws}
-                    onClick={() => setWorkspacePill(active ? '' : ws)}
+                    onClick={() => { setWorkspacePill(active ? '' : ws); setContractTypePill(''); }}
                     className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-semibold ring-1 transition-all duration-150 ${
                       active
                         ? `${c.bg} ${c.text} ${c.ring} shadow-sm scale-[1.04]`
@@ -2580,6 +2584,29 @@ export default function PipelineDashboard() {
                   </button>
                 );
               })}
+              {/* Equipment Lease contract-type filter chip */}
+              {hasEquipment && (
+                <button
+                  onClick={() => {
+                    const isActive = contractTypePill === 'Equipment Lease';
+                    setContractTypePill(isActive ? '' : 'Equipment Lease');
+                    setWorkspacePill('');
+                  }}
+                  className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-semibold ring-1 transition-all duration-150 ${
+                    contractTypePill === 'Equipment Lease'
+                      ? 'bg-teal-500/15 text-teal-600 ring-teal-500/40 shadow-sm scale-[1.04] dark:text-teal-400'
+                      : 'bg-muted text-muted-foreground ring-border hover:ring-teal-500/40 hover:text-teal-600 dark:hover:text-teal-400'
+                  }`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${
+                    contractTypePill === 'Equipment Lease' ? 'bg-teal-500' : 'bg-muted-foreground'
+                  }`} />
+                  Equipment
+                  <span className="ml-0.5 opacity-60">
+                    ({activeStagedDocs.filter(d => d.contract_type === 'Equipment Lease').length})
+                  </span>
+                </button>
+              )}
             </div>
           );
         })()}

@@ -64,6 +64,18 @@ interface ProcessingJob {
   workspace?: string;
   /** Assigned preparer ID — maps to MOCK_ASSIGNEES; '—' means auto-routed */
   assignee_id?: string;
+  /** Contract type inferred from filename or set by preparer */
+  contract_type?: 'property_lease' | 'equipment_lease';
+  /** Equipment pre-screen fields (populated for equipment_lease jobs) */
+  eq_prescreen?: {
+    asset_type?: string;
+    manufacturer?: string;
+    serial_number?: string;
+    useful_life_months?: number;
+    pv_percentage?: number;
+    purchase_option_price?: number;
+    rvg_amount?: number;
+  };
 }
 
 /** Per-file reason entry inside the batch decline dialog */
@@ -177,6 +189,35 @@ const MOCK_JOBS: ProcessingJob[] = [
       {time:'08:33:15',message:'AI extraction complete — 73/73 fields',level:'info'},
     ],
   },
+  {
+    id: 'j6', display_id: 'JOB-2026-0444',
+    file_name: 'Forklift-Fleet-Equipment-Lease-2026.pdf', batch_ref: 'BATCH-2026-0043', workspace: 'Operations',
+    status: 'ocr_complete', ocr_confidence: 0.96,
+    started: '10:30', duration: '1m 48s', assigned: 'L. Nguyen', assignee_id: 'user-prep-002',
+    agent_status: 'awaiting_checkpoint', extraction_mode: 'ai_assisted',
+    contract_type: 'equipment_lease',
+    eq_prescreen: {
+      asset_type: 'Forklift — Counterbalance',
+      manufacturer: 'Toyota Industries',
+      serial_number: 'TYT-8FBE15-2026-0044',
+      useful_life_months: 84,
+      pv_percentage: 91.4,
+      purchase_option_price: 18500,
+      rvg_amount: 12000,
+    },
+    pages: [
+      {page:1,confidence:0.97},{page:2,confidence:0.96},{page:3,confidence:0.95},
+      {page:4,confidence:0.97},{page:5,confidence:0.96},{page:6,confidence:0.95},
+    ],
+    log: [
+      {time:'10:30:00',message:'Job created, queued for OCR',level:'info'},
+      {time:'10:30:04',message:'OCR engine started (Tesseract v5)',level:'info'},
+      {time:'10:31:48',message:'OCR complete — 6 pages, avg confidence 96%',level:'info'},
+      {time:'10:31:50',message:'AI extraction queued — Equipment Lease template (tpl-6)',level:'info'},
+      {time:'10:31:55',message:'AI extraction complete — 38/41 fields extracted',level:'info'},
+      {time:'10:31:56',message:'Checkpoint required: 3 classification fields need review',level:'warn'},
+    ],
+  },
 ];
 
 // S5a: 5 mock templates
@@ -281,6 +322,24 @@ function suggestTemplate(filename: string): ExtractionTemplate | null {
   if (lower.includes('renewal')) return MOCK_TEMPLATES[3];
   if (lower.includes('termination')) return MOCK_TEMPLATES[4];
   return null;
+}
+
+// ─── Contract type badge (equipment vs property) ─────────────────────────────
+function ContractTypeBadge({ contractType }: { contractType?: ProcessingJob['contract_type'] }) {
+  if (!contractType) return null;
+  if (contractType === 'equipment_lease') {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border bg-teal-500/10 text-teal-600 border-teal-500/30 dark:text-teal-400">
+        <Cpu className="w-3 h-3" />
+        Equipment Lease
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border bg-blue-500/10 text-blue-600 border-blue-500/30 dark:text-blue-400">
+      Property Lease
+    </span>
+  );
 }
 
 function AgentBadge({ status }: { status: AgentStatus }) {
@@ -1128,9 +1187,12 @@ export default function ExtractionQueue() {
                         <td className="w-8"></td>{/* indent */}
                         <td className="font-mono text-[12px] text-muted-foreground pl-4">{job.display_id}</td>
                         <td>
-                          <span className="font-medium text-foreground truncate max-w-[180px] block" title={job.file_name}>
-                            {job.file_name}
-                          </span>
+                          <div className="flex flex-col gap-1">
+                            <span className="font-medium text-foreground truncate max-w-[180px] block" title={job.file_name}>
+                              {job.file_name}
+                            </span>
+                            {job.contract_type && <ContractTypeBadge contractType={job.contract_type} />}
+                          </div>
                         </td>
                         <td>
                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold ${STATUS_BADGE[job.status]}`}>
@@ -1353,6 +1415,46 @@ export default function ExtractionQueue() {
               </div>
             </div>
 
+            {/* Equipment pre-screen panel — shown only for equipment_lease jobs */}
+            {selectedJob.contract_type === 'equipment_lease' && selectedJob.eq_prescreen && (
+              <div className="px-5 py-4 border-b border-border">
+                <div className="flex items-center gap-2 mb-3">
+                  <Cpu className="w-4 h-4 text-teal-500" />
+                  <p className="text-[13px] font-semibold text-foreground">Equipment Pre-Screen</p>
+                  <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-teal-500/10 text-teal-600 dark:text-teal-400 font-semibold border border-teal-500/20">
+                    ASC 842 / IFRS 16
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
+                  {[
+                    { label: 'Asset Type',       value: selectedJob.eq_prescreen.asset_type },
+                    { label: 'Manufacturer',     value: selectedJob.eq_prescreen.manufacturer },
+                    { label: 'Serial Number',    value: selectedJob.eq_prescreen.serial_number },
+                    { label: 'Useful Life',      value: selectedJob.eq_prescreen.useful_life_months != null ? `${selectedJob.eq_prescreen.useful_life_months} mo` : undefined },
+                    { label: 'PV %',             value: selectedJob.eq_prescreen.pv_percentage != null ? `${selectedJob.eq_prescreen.pv_percentage.toFixed(1)}%` : undefined,
+                      highlight: selectedJob.eq_prescreen.pv_percentage != null && selectedJob.eq_prescreen.pv_percentage >= 90 },
+                    { label: 'Purchase Option', value: selectedJob.eq_prescreen.purchase_option_price != null
+                      ? `$${selectedJob.eq_prescreen.purchase_option_price.toLocaleString()}` : undefined },
+                    { label: 'RVG Amount',       value: selectedJob.eq_prescreen.rvg_amount != null
+                      ? `$${selectedJob.eq_prescreen.rvg_amount.toLocaleString()}` : undefined },
+                  ].map(({ label, value, highlight }) =>
+                    value ? (
+                      <div key={label}>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-[0.04em] mb-0.5">{label}</p>
+                        <p className={`text-[12px] font-semibold ${highlight ? 'text-amber-600 dark:text-amber-400' : 'text-foreground'}`}>
+                          {value}
+                          {highlight && <span className="ml-1 text-[10px] font-normal text-amber-500">(≥90% threshold)</span>}
+                        </p>
+                      </div>
+                    ) : null
+                  )}
+                </div>
+                <p className="mt-3 text-[11px] text-muted-foreground leading-relaxed">
+                  PV ≥ 90% indicates likely <span className="font-semibold text-foreground">Finance Lease</span> classification under ASC 842 / IFRS 16. Confirm in the verification gate.
+                </p>
+              </div>
+            )}
+
             {/* Processing log */}
             <div className="flex-1 overflow-y-auto px-5 py-4">
               <p className="text-[12px] font-semibold text-muted-foreground uppercase tracking-[0.05em] mb-3">
@@ -1427,17 +1529,21 @@ export default function ExtractionQueue() {
           batchFiles={workflowJob ? jobs.filter(j => j.batch_ref === workflowJob.batch_ref && j.id !== workflowJob.id).map(j => j.file_name) : []}
           submissionPath={workflowJob?.workspace ? 'existing_record' : undefined}
           contractType={
-            workflowJob?.file_name
-              ? /amendment|addendum|rider/i.test(workflowJob.file_name)
-                ? 'lease_amendment'
-                : /renewal/i.test(workflowJob.file_name)
-                  ? 'lease_renewal'
-                  : /sublease/i.test(workflowJob.file_name)
-                    ? 'sublease'
-                    : /termination/i.test(workflowJob.file_name)
-                      ? 'termination'
-                      : 'commercial_lease'
-              : undefined
+            workflowJob?.contract_type === 'equipment_lease'
+              ? 'equipment_lease'
+              : workflowJob?.file_name
+                ? /amendment|addendum|rider/i.test(workflowJob.file_name)
+                  ? 'lease_amendment'
+                  : /renewal/i.test(workflowJob.file_name)
+                    ? 'lease_renewal'
+                    : /sublease/i.test(workflowJob.file_name)
+                      ? 'sublease'
+                      : /termination/i.test(workflowJob.file_name)
+                        ? 'termination'
+                        : /equipment|forklift|crane|vehicle|fleet|machinery|server|copier/i.test(workflowJob.file_name)
+                          ? 'equipment_lease'
+                          : 'commercial_lease'
+                : undefined
           }
           onComplete={(files) => {
             // Store amendment files so they can be forwarded to /extraction/ai via nav state
