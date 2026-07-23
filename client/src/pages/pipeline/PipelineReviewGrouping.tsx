@@ -924,12 +924,24 @@ export default function PipelineReviewGrouping() {
               sourceRole: 'document_submitter',
               payload: {
                 batchId,
+                batchRef: batchId,
                 packageNum: pkgNum,
+                packageName,
                 fileCount: extractionFiles.length,
                 workspaceTag: extractionFiles[0]?.display_name?.split('-')[0] ?? 'General',
-                packageName,
+                workspace: extractionFiles[0]?.display_name?.split('-')[0] ?? 'General',
                 targetRecordId,
                 submissionMode,
+                // Per-file data so ExtractionQueue can create one job row per file
+                files: extractionFiles.map(f => ({
+                  docId: f.id,
+                  name: f.display_name,
+                  role: f.document_role,
+                  page_count: f.page_count ?? null,
+                  file_size_bytes: f.file_size_bytes ?? null,
+                  contract_type: null,
+                  assignee_id: null,
+                })),
               },
             });
             clearSession();

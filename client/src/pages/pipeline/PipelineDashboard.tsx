@@ -2234,6 +2234,16 @@ export default function PipelineDashboard() {
         packageName: pkg.packageName,
         workspace: pkg.workspace,
         fileCount: pkg.files.length,
+        // Per-file data so ExtractionQueue can create one job row per file
+        files: pkg.files.map(f => ({
+          docId: f.docId,
+          name: f.name,
+          role: f.role,
+          page_count: f.page_count ?? null,
+          file_size_bytes: f.file_size_bytes ?? null,
+          contract_type: f.contract_type ?? null,
+          assignee_id: f.assignee_id ?? null,
+        })),
       },
       sourceRole: 'document_submitter',
     });

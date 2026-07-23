@@ -924,27 +924,65 @@ export default function ExtractionQueue() {
   // PRODUCTION: remove this block; replace with a real-time backend subscription
   // (WebSocket/SSE) or a polling query: useQuery(['extractionQueue'], api.get('/api/v1/extraction/queue'))
 
-  /** Convert a BATCH_SUBMITTED event payload into a ProcessingJob row */
-  function batchEventToJob(event: DemoEvent): ProcessingJob {
-    const payload = event.payload as { batchId?: string; packageNum?: string; batchRef?: string; workspace?: string; fileCount?: number; packageName?: string };
+  /**
+   * Convert a BATCH_SUBMITTED event into one ProcessingJob per file.
+   * Falls back to a single package-level job when no per-file data is present
+   * (e.g. events from older code paths or external tabs).
+   */
+  function batchEventToJobs(event: DemoEvent): ProcessingJob[] {
+    type FileEntry = { docId?: string; name?: string; role?: string; page_count?: number | null; file_size_bytes?: number | null; contract_type?: string | null; assignee_id?: string | null };
+    const payload = event.payload as {
+      batchId?: string; batchRef?: string; packageNum?: string; packageName?: string;
+      workspace?: string; fileCount?: number;
+      files?: FileEntry[];
+    };
     const ts = new Date(event.timestamp);
     const timeStr = ts.toLocaleTimeString();
-    return {
+    const batchRef = payload.batchRef ?? payload.batchId ?? '';
+    const workspace = payload.workspace;
+    const year = new Date().getFullYear();
+
+    const fileEntries = payload.files && payload.files.length > 0 ? payload.files : null;
+
+    if (fileEntries) {
+      // One job per file — mirrors how the real extraction pipeline works
+      return fileEntries.map((f, i) => ({
+        id: `job-${ts.getTime()}-${i}-${Math.random().toString(36).slice(2, 5)}`,
+        display_id: `JOB-${year}-${Math.floor(1000 + Math.random() * 9000)}`,
+        file_name: f.name ?? `File ${i + 1}`,
+        batch_ref: batchRef,
+        workspace,
+        status: 'ocr_queued' as JobStatus,
+        ocr_confidence: 0,
+        started: timeStr,
+        duration: '—',
+        assigned: f.assignee_id ? (MOCK_ASSIGNEES.find(a => a.id === f.assignee_id)?.name ?? '—') : '—',
+        assignee_id: f.assignee_id ?? undefined,
+        agent_status: 'queued' as AgentStatus,
+        extraction_mode: 'ai_assisted' as const,
+        contract_type: (f.contract_type === 'equipment_lease' ? 'equipment_lease' : 'property_lease') as 'property_lease' | 'equipment_lease',
+        pages: [],
+        log: [{ time: timeStr, message: `Received from pipeline — ${f.role ?? 'document'} queued for OCR`, level: 'info' as const }],
+      }));
+    }
+
+    // Fallback: single package-level job (no per-file data available)
+    return [{
       id: `job-${ts.getTime()}-${Math.random().toString(36).slice(2, 6)}`,
-      display_id: `JOB-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
+      display_id: `JOB-${year}-${Math.floor(1000 + Math.random() * 9000)}`,
       file_name: payload.packageName ?? payload.packageNum ?? 'Submitted Package',
-      batch_ref: payload.batchRef ?? payload.batchId ?? '',
-      workspace: payload.workspace,
-      status: 'ocr_queued',
+      batch_ref: batchRef,
+      workspace,
+      status: 'ocr_queued' as JobStatus,
       ocr_confidence: 0,
       started: timeStr,
       duration: '—',
       assigned: '—',
-      agent_status: 'queued',
-      extraction_mode: 'ai_assisted',
+      agent_status: 'queued' as AgentStatus,
+      extraction_mode: 'ai_assisted' as const,
       pages: [],
-      log: [{ time: timeStr, message: `Received from pipeline — ${payload.fileCount ?? 1} file(s) queued for OCR`, level: 'info' }],
-    };
+      log: [{ time: timeStr, message: `Received from pipeline — ${payload.fileCount ?? 1} file(s) queued for OCR`, level: 'info' as const }],
+    }];
   }
 
   // DEMO ONLY — Mount-time drain: consume any BATCH_SUBMITTED events that were
@@ -958,12 +996,13 @@ export default function ExtractionQueue() {
       if (raw) {
         const pending: DemoEvent[] = JSON.parse(raw);
         if (pending.length > 0) {
-          const newJobs = pending.map(batchEventToJob);
+          const newJobs = pending.flatMap(batchEventToJobs);
           setJobs(prev => [...newJobs.reverse(), ...prev]);
           // Clear the queue so jobs are not duplicated on re-mount
           sessionStorage.removeItem(PENDING_EXTRACTION_JOBS_KEY);
+          const pkgCount = pending.length;
           toast.info(
-            `${newJobs.length} new package${newJobs.length !== 1 ? 's' : ''} received from pipeline`,
+            `${newJobs.length} file${newJobs.length !== 1 ? 's' : ''} from ${pkgCount} package${pkgCount !== 1 ? 's' : ''} received from pipeline`,
             { duration: 5000 }
           );
         }
@@ -978,7 +1017,7 @@ export default function ExtractionQueue() {
   useEffect(() => {
     const unsub = subscribeToEvents((event) => {
       if (event.type !== 'BATCH_SUBMITTED') return;
-      setJobs(prev => [batchEventToJob(event), ...prev]);
+      setJobs(prev => [...batchEventToJobs(event), ...prev]);
     });
     return () => unsub();
   // eslint-disable-next-line react-hooks/exhaustive-deps
