@@ -49,6 +49,66 @@ const TIER1_QUESTIONS = [
   { key:"intent_unchanged",     label:"Has the lessee's stated intent or business plan changed?" },
 ];
 
+// Equipment Lease — Tier 1 rapid assessment (4 questions)
+const EQUIPMENT_TIER1_QUESTIONS = [
+  {
+    key: "purchase_option_below_fv",
+    label: "Is the purchase option price significantly below the expected fair value of the asset at exercise date?",
+    hint: "If yes → strong indicator of reasonably certain",
+  },
+  {
+    key: "specialized_equipment",
+    label: "Is this equipment specialized to the lessee's operations with no practical alternative use available to the lessor?",
+    hint: "If yes → finance lease indicator",
+  },
+  {
+    key: "useful_life_coverage",
+    label: "Does the remaining useful life of the equipment substantially cover the remaining lease term? (≥75% threshold)",
+    hint: "Useful life vs remaining term — ≥75% = yes",
+  },
+  {
+    key: "operational_disruption",
+    label: "Would returning this equipment create significant operational disruption (replacement unavailable, long lead time, or critical production dependency)?",
+    hint: "If yes → reasonably certain indicator",
+  },
+];
+
+// Equipment Lease — Tier 2 full assessment (12 factors)
+const EQUIPMENT_TIER2_FACTORS = [
+  {
+    category: "Economic",
+    factors: [
+      { key:"purchase_option_vs_fv",  label:"Purchase option price vs expected fair value",       type:"select", options:["Significantly below (supports RC)","At market","Above market (does not support RC)"] },
+      { key:"specialized_alt_use",    label:"Specialized equipment — alternative use to lessor",   type:"select", options:["Yes (specialized — finance lease indicator)","No (generic)"] },
+      { key:"useful_life_coverage",   label:"Useful life coverage (75% threshold — ASC 842)",      type:"select", options:["\u226575% (major part met)","<75%"] },
+      { key:"pv_vs_fv",              label:"PV of payments vs fair value (90% threshold — ASC 842)", type:"select", options:["\u226590% (substantially all met)","<90%"] },
+    ],
+  },
+  {
+    category: "Ownership & Guarantees",
+    factors: [
+      { key:"ownership_transfer",     label:"Ownership transfer at lease end",                     type:"select", options:["Yes — finance lease criterion directly met","No"] },
+      { key:"rvg_significance",       label:"Residual value guarantee significance",               type:"select", options:["Significant (>20% of fair value)","Nominal","None"] },
+    ],
+  },
+  {
+    category: "Business Intent",
+    factors: [
+      { key:"economic_compulsion",    label:"Economic compulsion to exercise option",              type:"text" },
+      { key:"lessee_intent",          label:"Lessee's stated business intent",                     type:"select", options:["Confirmed intent to purchase","Undecided","No purchase intent"] },
+      { key:"historical_behavior",    label:"Historical equipment lease behavior (prior option exercises)", type:"select", options:["Yes — supports reasonably certain","No","Unknown"] },
+    ],
+  },
+  {
+    category: "Operational",
+    factors: [
+      { key:"alternative_suppliers",  label:"Remaining alternative suppliers",                    type:"select", options:["Multiple alternatives available","Limited alternatives","Single source (sole supplier)"] },
+      { key:"obsolescence_risk",      label:"Technology obsolescence risk",                       type:"select", options:["High (equipment likely obsolete at end of term)","Medium","Low (equipment retains value)"] },
+      { key:"asset_integration",      label:"Integration with other owned assets",                type:"select", options:["Deeply integrated (creates switching cost)","Modular (easy to replace)","Standalone"] },
+    ],
+  },
+];
+
 const TIER2_FACTORS = [
   {
     category: "Economic",
@@ -97,18 +157,19 @@ export default function ReassessmentAssessment() {
   const [, navigate] = useLocation();
   const params = useParams<{ id: string }>();
   const MOCK_CASE = MOCK_REASSESSMENT_CASES[params.id ?? ""] ?? FALLBACK_REASSESSMENT_CASE;
+  const isEquipmentLease = MOCK_CASE.contract_type === 'equipment_lease';
 
   const autoLevel = MOCK_CASE.automation_level;
   const badgeLevel = autoLevel === 'full_autonomous' ? 'full_autonomous' : autoLevel === 'collaborative' ? 'collaborative' : 'full_manual';
   const contractRecordId = MOCK_CASE.contract_record_id;
   const { activeCheckpoint: _checkpoint } = useCheckpoints(contractRecordId, { checkpointType: 'assessment_confirm' });
 
-  const [tier1Answers, setTier1Answers] = useState<Record<string, boolean | null>>({
-    below_market: null,
-    significant_improvements: null,
-    relocation_feasible: null,
-    intent_unchanged: null,
-  });
+  const activeTier1Questions = isEquipmentLease ? EQUIPMENT_TIER1_QUESTIONS : TIER1_QUESTIONS;
+  const activeTier2Factors = isEquipmentLease ? EQUIPMENT_TIER2_FACTORS : TIER2_FACTORS;
+
+  const [tier1Answers, setTier1Answers] = useState<Record<string, boolean | null>>(
+    Object.fromEntries(activeTier1Questions.map(q => [q.key, null]))
+  );
   const [tier2Expanded, setTier2Expanded] = useState(false);
   const [tier2Answers, setTier2Answers] = useState<Record<string, string>>({});
   const [probabilityPct, setProbabilityPct] = useState<number | "">(autoLevel === "collaborative" ? 88 : "");
@@ -117,15 +178,18 @@ export default function ReassessmentAssessment() {
   const [activeTier, setActiveTier] = useState<"tier_1" | "tier_2">("tier_1");
 
   const tier1AnsweredCount = Object.values(tier1Answers).filter(v => v !== null).length;
-  const tier1Complete = tier1AnsweredCount === 4;
+  const tier1Complete = tier1AnsweredCount === activeTier1Questions.length;
 
   // Auto-escalate logic: 3+ "change indicated" answers → Tier 2
-  const changeIndicatedCount = [
-    tier1Answers.below_market === true,
-    tier1Answers.significant_improvements === true,
-    tier1Answers.relocation_feasible === false,
-    tier1Answers.intent_unchanged === true,
-  ].filter(Boolean).length;
+  // For equipment: 3+ yes answers = escalate
+  const changeIndicatedCount = isEquipmentLease
+    ? Object.values(tier1Answers).filter(v => v === true).length
+    : [
+        tier1Answers.below_market === true,
+        tier1Answers.significant_improvements === true,
+        tier1Answers.relocation_feasible === false,
+        tier1Answers.intent_unchanged === true,
+      ].filter(Boolean).length;
   const autoEscalateToTier2 = changeIndicatedCount >= 3;
   const aboveFinancialThreshold = MOCK_CASE.financial_impact_amount > 1_000_000_00; // financial_impact_amount is stored in cents; 1_000_000_00 = $1,000,000
 
@@ -229,16 +293,30 @@ export default function ReassessmentAssessment() {
           {/* Tier 1 */}
           {activeTier === "tier_1" && (
             <div className="flex flex-col gap-4">
-              {TIER1_QUESTIONS.map((q, i) => {
+              {isEquipmentLease && MOCK_CASE.useful_life_months && (
+                <div className="rounded-lg border px-4 py-3 flex items-center gap-3" style={{ background:'#f0fdfa', borderColor:'#5eead4' }}>
+                  <div className="flex gap-6 text-[12px]">
+                    <span><span className="text-muted-foreground">Useful life:</span> <strong>{MOCK_CASE.useful_life_months} mo</strong></span>
+                    <span><span className="text-muted-foreground">Remaining:</span> <strong>{MOCK_CASE.remaining_months} mo</strong></span>
+                    <span><span className="text-muted-foreground">Coverage:</span> <strong style={{ color: ((MOCK_CASE.remaining_months ?? 0) / (MOCK_CASE.useful_life_months ?? 1) * 100) >= 75 ? '#0d9488' : '#dc2626' }}>{Math.round(((MOCK_CASE.remaining_months ?? 0) / (MOCK_CASE.useful_life_months ?? 1)) * 100)}%</strong></span>
+                    <span><span className="text-muted-foreground">PV:</span> <strong style={{ color: (MOCK_CASE.pv_percentage ?? 0) >= 90 ? '#0d9488' : '#dc2626' }}>{MOCK_CASE.pv_percentage}%</strong></span>
+                    {MOCK_CASE.purchase_option_price && <span><span className="text-muted-foreground">Option price:</span> <strong>{MOCK_CASE.purchase_option_price}</strong></span>}
+                    {MOCK_CASE.rvg_amount && MOCK_CASE.rvg_amount !== 'None' && <span><span className="text-muted-foreground">RVG:</span> <strong>{MOCK_CASE.rvg_amount}</strong></span>}
+                  </div>
+                </div>
+              )}
+              {activeTier1Questions.map((q, i) => {
                 const ans = tier1Answers[q.key];
                 const aiRec = AI_TIER1_RECS[q.key];
+                const hint = (q as { hint?: string }).hint;
                 return (
                   <div key={q.key} className="bg-card border border-border rounded-lg p-5 flex flex-col gap-3">
                     <div className="flex items-start gap-3">
                       <div className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0" style={{ background:"var(--color-lg-primary)", color:"white" }}>{i+1}</div>
                       <div className="flex-1">
                         <p className="text-[13px] font-semibold text-foreground">{q.label}</p>
-                        {autoLevel === "collaborative" && ans === null && (
+                        {hint && <p className="text-[11px] text-muted-foreground mt-0.5 italic">{hint}</p>}
+                        {autoLevel === "collaborative" && ans === null && aiRec !== undefined && (
                           <div className="mt-1.5 flex items-center gap-1.5 text-[11px]" style={{ color:"#7c3aed" }}>
                             <Bot className="w-3 h-3" /> AI recommends: <strong>{aiRec ? "Yes" : "No"}</strong>
                           </div>
@@ -309,27 +387,38 @@ export default function ReassessmentAssessment() {
           {/* Tier 2 */}
           {activeTier === "tier_2" && (
             <div className="flex flex-col gap-4">
-              {TIER2_FACTORS.map(cat => (
+              {activeTier2Factors.map((cat, ci) => (
                 <div key={cat.category} className="bg-card border border-border rounded-lg overflow-hidden">
                   <button
                     className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-muted/20"
-                    onClick={() => setTier2Expanded(prev => !prev)}
+                    onClick={() => setTier2Answers(prev => ({ ...prev, [`__expand_${ci}`]: prev[`__expand_${ci}`] === 'open' ? '' : 'open' }))}
                   >
                     <span className="text-[13px] font-semibold text-foreground">{cat.category} Factors</span>
-                    <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${tier2Expanded ? "rotate-180" : ""}`} />
+                    <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${tier2Answers[`__expand_${ci}`] === 'open' ? "rotate-180" : ""}`} />
                   </button>
-                  {tier2Expanded && (
+                  {tier2Answers[`__expand_${ci}`] === 'open' && (
                     <div className="px-5 pb-4 flex flex-col gap-3 border-t border-border">
-                      {cat.factors.map((f, fi) => (
+                      {(cat.factors as { key: string; label: string; type?: string; options?: string[] }[]).map((f, fi) => (
                         <div key={fi} className="flex flex-col gap-1.5">
-                          <label className="text-[12px] font-medium text-foreground">{f}</label>
-                          <textarea
-                            className="text-[12px] border border-border rounded-lg p-2 bg-background resize-none"
-                            rows={2}
-                            placeholder="Assessment notes…"
-                            value={tier2Answers[`${cat.category}-${fi}`] || ""}
-                            onChange={e => setTier2Answers(prev => ({ ...prev, [`${cat.category}-${fi}`]: e.target.value }))}
-                          />
+                          <label className="text-[12px] font-medium text-foreground">{f.label}</label>
+                          {f.type === 'select' && f.options ? (
+                            <select
+                              className="text-[12px] border border-border rounded-lg px-3 py-2 bg-background"
+                              value={tier2Answers[`${cat.category}-${f.key ?? fi}`] || ""}
+                              onChange={e => setTier2Answers(prev => ({ ...prev, [`${cat.category}-${f.key ?? fi}`]: e.target.value }))}
+                            >
+                              <option value="">Select…</option>
+                              {f.options.map(o => <option key={o} value={o}>{o}</option>)}
+                            </select>
+                          ) : (
+                            <textarea
+                              className="text-[12px] border border-border rounded-lg p-2 bg-background resize-none"
+                              rows={2}
+                              placeholder="Assessment notes…"
+                              value={tier2Answers[`${cat.category}-${f.key ?? fi}`] || ""}
+                              onChange={e => setTier2Answers(prev => ({ ...prev, [`${cat.category}-${f.key ?? fi}`]: e.target.value }))}
+                            />
+                          )}
                         </div>
                       ))}
                     </div>

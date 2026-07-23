@@ -17,7 +17,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import {
   TrendingUp, Star, Search, Calendar, ChevronRight,
-  AlertTriangle, CheckCircle2, Filter, MoreHorizontal, CheckCheck
+  AlertTriangle, CheckCircle2, Filter, MoreHorizontal, CheckCheck, Cpu
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,7 +33,13 @@ import { SCREEN_KEYS } from "@/constants/screenKeys";
 
 import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 // TODO: Backend integration required — GET /api/reassessments/cases
-const MOCK_CASES = [
+const MOCK_CASES: {
+  id: string; case_ref: string; contract: string; title: string;
+  path_type: string; trigger_type: string; status: string;
+  is_remediation: boolean; is_no_action: boolean;
+  assigned: string; created: string;
+  contract_type?: 'property_lease' | 'equipment_lease';
+}[] = [
   { id:"c1",  case_ref:"RC-2026-0014", contract:"CR-2026-0088", title:"Office Tower — 350 Fifth Ave",   path_type:"modification", trigger_type:"mod_term",     status:"pending_approval",       is_remediation:false, is_no_action:false, assigned:"M. Thompson", created:"2026-05-10" },
   { id:"c2",  case_ref:"RC-2026-0013", contract:"CR-2026-0072", title:"Retail HQ — 200 Park Ave",       path_type:"reassessment", trigger_type:"opt_assess",    status:"classification_pending", is_remediation:false, is_no_action:false, assigned:"J. Martinez", created:"2026-05-12" },
   { id:"c3",  case_ref:"RC-2026-0012", contract:"CR-2026-0055", title:"Warehouse — 1 Industrial Blvd",  path_type:"reassessment", trigger_type:"opt_assess",    status:"assessment_review",      is_remediation:false, is_no_action:false, assigned:"A. Chen",     created:"2026-05-08" },
@@ -44,6 +50,8 @@ const MOCK_CASES = [
   { id:"c8",  case_ref:"RC-2026-0007", contract:"CR-2026-0072", title:"Retail HQ — 200 Park Ave",       path_type:"modification", trigger_type:"mod_index",     status:"analysis_in_progress",  is_remediation:false, is_no_action:false, assigned:"A. Chen",     created:"2026-04-05" },
   { id:"c9",  case_ref:"RC-2026-0006", contract:"CR-2026-0055", title:"Warehouse — 1 Industrial Blvd",  path_type:"reassessment", trigger_type:"class_reass",   status:"closed",                 is_remediation:false, is_no_action:false, assigned:"L. Kim",      created:"2026-03-20" },
   { id:"c10", case_ref:"RC-2026-0005", contract:"CR-2026-0041", title:"Data Center — 500 Tech Park",    path_type:"reassessment", trigger_type:"opt_assess",    status:"no_action_submitted",    is_remediation:false, is_no_action:true,  assigned:"M. Thompson", created:"2026-03-15" },
+  { id:"case-eq-001", case_ref:"RC-2026-EQ-001", contract:"EQ-2026-0002", title:"Haas VF-4SS CNC Machining Center",       path_type:"modification", trigger_type:"mod_rent",   status:"classification_pending", is_remediation:false, is_no_action:false, assigned:"Alex Rivera", created:"2026-06-05", contract_type:"equipment_lease" },
+  { id:"case-eq-002", case_ref:"RC-2026-EQ-002", contract:"EQ-2026-0001", title:"Dell PowerEdge R750 Server Array (×12)", path_type:"reassessment", trigger_type:"opt_assess", status:"assessment_pending",      is_remediation:false, is_no_action:false, assigned:"Alex Rivera", created:"2026-06-12", contract_type:"equipment_lease" },
 ];
 
 const STATUS_BADGE: Record<string, string> = {
@@ -249,9 +257,14 @@ export default function ReassessmentCaseList() {
                       </div>
                     </td>
                     <td>
-                      <div>
-                        <p className="font-medium text-foreground text-[12px]">{c.contract}</p>
-                        <p className="text-muted-foreground text-[11px] truncate max-w-[180px]">{c.title}</p>
+                      <div className="flex items-start gap-1.5">
+                        {c.contract_type === 'equipment_lease' && (
+                          <Cpu className="w-3.5 h-3.5 mt-0.5 shrink-0" style={{ color:'#0d9488' }} />
+                        )}
+                        <div>
+                          <p className="font-medium text-foreground text-[12px]">{c.contract}</p>
+                          <p className="text-muted-foreground text-[11px] truncate max-w-[180px]">{c.title}</p>
+                        </div>
                       </div>
                     </td>
                     <td>

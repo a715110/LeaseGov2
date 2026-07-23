@@ -61,6 +61,7 @@ export default function ReassessmentClassification() {
   const MOCK_CASE = MOCK_REASSESSMENT_CASES[params.id ?? ""] ?? FALLBACK_CASE;
 
   const autoLevel = MOCK_CASE.automation_level;
+  const isEquipmentLease = MOCK_CASE.contract_type === 'equipment_lease';
 
   // FC-9: Map reassessment AutoLevel to AutomationPolicyBadge level
   const contractRecordId = MOCK_CASE.contract_record_id ?? 'r1';
@@ -213,6 +214,11 @@ export default function ReassessmentClassification() {
               <div className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0" style={{ background:"var(--color-lg-primary)", color:"white" }}>1</div>
               <div className="flex-1">
                 <p className="text-[14px] font-semibold text-foreground">Have the terms and conditions of the contract changed?</p>
+                <p className="text-[12px] text-muted-foreground mt-1">
+                  {isEquipmentLease
+                    ? "Review for payment restructuring, additional units, term changes, or changes to purchase option or residual value guarantee terms."
+                    : "Review for rent changes, term extensions, or space modifications."}
+                </p>
                 {autoLevel === "collaborative" && q1 === null && (
                   <div className="mt-2 flex items-center gap-2 text-[12px]" style={{ color:"#7c3aed" }}>
                     <Bot className="w-3.5 h-3.5" />
@@ -241,8 +247,13 @@ export default function ReassessmentClassification() {
               <div className="flex items-start gap-3">
                 <div className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0" style={{ background:"var(--color-lg-primary)", color:"white" }}>2</div>
                 <div className="flex-1">
-                  <p className="text-[14px] font-semibold text-foreground">Does the modification grant the lessee additional ROU assets not included in the original lease?</p>
-                  {autoLevel === "collaborative" && q2 === null && (
+                <p className="text-[14px] font-semibold text-foreground">Does the modification grant the lessee additional ROU assets not included in the original lease?</p>
+                <p className="text-[12px] text-muted-foreground mt-1">
+                  {isEquipmentLease
+                    ? "Additional units, upgraded model substitution creating new ROU, or extended coverage to additional locations."
+                    : "Additional space, new floors, or additional premises."}
+                </p>
+                {autoLevel === "collaborative" && q2 === null && (
                     <div className="mt-2 flex items-center gap-2 text-[12px]" style={{ color:"#7c3aed" }}>
                       <Bot className="w-3.5 h-3.5" />
                       <span>AI recommends: <strong>{AI_RECS.q2 ? "Yes" : "No"}</strong></span>
@@ -271,8 +282,13 @@ export default function ReassessmentClassification() {
               <div className="flex items-start gap-3">
                 <div className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0" style={{ background:"var(--color-lg-primary)", color:"white" }}>3</div>
                 <div className="flex-1">
-                  <p className="text-[14px] font-semibold text-foreground">Is the consideration for the additional ROU commensurate with the standalone price?</p>
-                </div>
+                <p className="text-[14px] font-semibold text-foreground">Is the consideration for the additional ROU commensurate with the standalone price?</p>
+                <p className="text-[12px] text-muted-foreground mt-1">
+                  {isEquipmentLease
+                    ? "Compare to lessor's standalone price list for additional units or comparable equipment."
+                    : "Compare to market rent for additional space."}
+                </p>
+              </div>
                 {q3 !== null && <CheckCircle2 className="w-5 h-5 shrink-0" style={{ color:"var(--color-lg-success)" }} />}
               </div>
               {step === 3 && q3 === null && (

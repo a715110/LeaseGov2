@@ -52,9 +52,33 @@ const TRIGGER_GROUPS: { group: string; triggers: { value: string; label: string 
 
 // TODO: Backend integration required — GET /api/records (typeahead)
 const MOCK_LEASES = [
-  { id:"r1", contract_number:"CR-2026-0088", title:"Office Tower — 350 Fifth Ave" },
-  { id:"r2", contract_number:"CR-2026-0072", title:"Retail HQ — 200 Park Ave" },
-  { id:"r3", contract_number:"CR-2026-0055", title:"Warehouse — 1 Industrial Blvd" },
+  { id:"r1", contract_number:"CR-2026-0088", title:"Office Tower — 350 Fifth Ave",          contract_type:"property_lease" },
+  { id:"r2", contract_number:"CR-2026-0072", title:"Retail HQ — 200 Park Ave",             contract_type:"property_lease" },
+  { id:"r3", contract_number:"CR-2026-0055", title:"Warehouse — 1 Industrial Blvd",        contract_type:"property_lease" },
+  { id:"eq1", contract_number:"EQ-2026-0001", title:"Dell PowerEdge R750 Server Array (×12)", contract_type:"equipment_lease" },
+  { id:"eq2", contract_number:"EQ-2026-0002", title:"Haas VF-4SS CNC Machining Center",     contract_type:"equipment_lease" },
+];
+
+const EQUIPMENT_TRIGGER_GROUPS: { group: string; triggers: { value: string; label: string }[] }[] = [
+  {
+    group: "Modification Triggers",
+    triggers: [
+      { value:"mod_scope_inc", label:"Additional units or capacity added" },
+      { value:"mod_scope_dec", label:"Units removed or capacity reduced" },
+      { value:"mod_term",      label:"Lease term extended or shortened" },
+      { value:"mod_rent",      label:"Payment amount or structure changed" },
+      { value:"mod_index",     label:"Variable rate or index changed" },
+    ],
+  },
+  {
+    group: "Reassessment Triggers",
+    triggers: [
+      { value:"opt_assess",  label:"Purchase option assessment required" },
+      { value:"rvg_change",  label:"Residual value guarantee changed" },
+      { value:"pay_reclass", label:"Payment reclassification required" },
+      { value:"class_reass", label:"Finance / Operating reclassification" },
+    ],
+  },
 ];
 
 // TODO: Backend integration required — GET /api/reassessments/cases?contract_record_id=:id
@@ -76,6 +100,9 @@ export default function ReassessmentTrigger() {
   const [description, setDescription] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [submitted, setSubmitted] = useState(false);
+
+  const isEquipmentLease = selectedLease?.contract_type === 'equipment_lease';
+  const activeTriggerGroups = isEquipmentLease ? EQUIPMENT_TRIGGER_GROUPS : TRIGGER_GROUPS;
 
   const showConcurrentWarning = selectedLease !== null && MOCK_CONCURRENT.length > 0;
   const filteredLeases = MOCK_LEASES.filter(l =>
@@ -186,9 +213,14 @@ export default function ReassessmentTrigger() {
                     <button
                       key={l.id}
                       className="w-full flex flex-col gap-0.5 px-4 py-3 hover:bg-muted/30 text-left"
-                      onMouseDown={() => { setSelectedLease(l); setLeaseSearch(""); setShowLeaseDropdown(false); }}
+                      onMouseDown={() => { setSelectedLease(l); setLeaseSearch(""); setShowLeaseDropdown(false); setTriggerType(""); }}
                     >
-                      <span className="text-[13px] font-semibold text-foreground">{l.contract_number}</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[13px] font-semibold text-foreground">{l.contract_number}</span>
+                        {l.contract_type === 'equipment_lease' && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold" style={{ background:'#ccfbf1', color:'#0d9488', border:'1px solid #5eead4' }}>Equipment</span>
+                        )}
+                      </div>
                       <span className="text-[12px] text-muted-foreground">{l.title}</span>
                     </button>
                   ))}
@@ -236,7 +268,7 @@ export default function ReassessmentTrigger() {
               onChange={e => setTriggerType(e.target.value)}
             >
               <option value="">Select trigger type…</option>
-              {TRIGGER_GROUPS.map(g => (
+              {activeTriggerGroups.map(g => (
                 <optgroup key={g.group} label={g.group}>
                   {g.triggers.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                 </optgroup>

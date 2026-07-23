@@ -29,6 +29,17 @@ export interface ReassessmentCase {
   title: string;
   workspace: string;
 
+  // Contract type
+  contract_type?: 'property_lease' | 'equipment_lease';
+
+  // Equipment-specific assessment fields (populated for equipment_lease cases)
+  useful_life_months?: number;
+  remaining_months?: number;
+  pv_percentage?: number;
+  purchase_option_price?: string;
+  rvg_amount?: string;
+  asset_description?: string;
+
   // Classification fields
   trigger_type: string;
   trigger_date: string;
@@ -182,6 +193,38 @@ export const MOCK_REASSESSMENT_CASES: Record<string, ReassessmentCase> = {
     ai_confidence: 94,             memo_ref: 'MEMO-2026-0041-R2',
     submitted_by: 'Sarah Chen',    submitted_at: '2026-05-06 09:00',
     current_term_end: '2030-09-30', monthly_payment: '$125,000', lease_liability: '$7,500,000',
+  },
+  'case-eq-001': {
+    id: 'case-eq-001', case_ref: 'RC-2026-EQ-001', contract_number: 'EQ-2026-0002',
+    title: 'Haas VF-4SS CNC Machining Center', workspace: 'Operations',
+    contract_type: 'equipment_lease' as const,
+    trigger_type: 'mod_rent',      trigger_date: '2026-06-01', path_type: 'modification',
+    concurrent_case_ids: [],       automation_level: 'collaborative' as const, contract_record_id: 'eq-002',
+    option_type: 'purchase',       option_exercise_date: '2032-07-31', financial_impact_amount: 6840000,
+    is_remediation: false,
+    analyst: 'Alex Rivera',        reviewer: 'Sarah Chen',   approver: 'Michael Torres',
+    ai_confidence: 88,             memo_ref: 'MEMO-2026-EQ-0002-R1',
+    submitted_by: 'Alex Rivera',   submitted_at: '2026-06-05 10:15',
+    current_term_end: '2032-07-31', monthly_payment: '$9,800', lease_liability: '$588,000',
+    useful_life_months: 120, remaining_months: 74, pv_percentage: 91,
+    purchase_option_price: '$28,000', rvg_amount: '$15,000',
+    asset_description: 'Haas VF-4SS CNC Machining Center',
+  },
+  'case-eq-002': {
+    id: 'case-eq-002', case_ref: 'RC-2026-EQ-002', contract_number: 'EQ-2026-0001',
+    title: 'Dell PowerEdge R750 Server Array (×12)', workspace: 'Technology Assets',
+    contract_type: 'equipment_lease' as const,
+    trigger_type: 'opt_assess',    trigger_date: '2026-06-10', path_type: 'reassessment',
+    concurrent_case_ids: [],       automation_level: 'manual' as const, contract_record_id: 'eq-001',
+    option_type: 'purchase',       option_exercise_date: '2028-01-31', financial_impact_amount: 9600000,
+    is_remediation: false,
+    analyst: 'Alex Rivera',        reviewer: 'Jordan Kim',   approver: 'Michael Torres',
+    ai_confidence: 82,             memo_ref: 'MEMO-2026-EQ-0001-R1',
+    submitted_by: 'Alex Rivera',   submitted_at: '2026-06-12 14:00',
+    current_term_end: '2028-01-31', monthly_payment: '$14,200', lease_liability: '$340,800',
+    useful_life_months: 60, remaining_months: 19, pv_percentage: 78,
+    purchase_option_price: '$72,000', rvg_amount: 'None',
+    asset_description: 'Dell PowerEdge R750 Server Array (×12)',
   },
 };
 
