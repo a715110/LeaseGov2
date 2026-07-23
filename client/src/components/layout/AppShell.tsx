@@ -32,9 +32,10 @@ import {
   UploadCloud, Scan, Layers, CheckCircle, Folder,
   CloudUpload, Settings, Shield, Bell, ChevronRight,
   RefreshCw, UserCog, ChevronDown, Bot, Play, Palette, Check,
-  Sun, Moon, Menu, X, Search, RotateCcw,
+  Sun, Moon, Menu, X, Search, RotateCcw, ArrowLeft,
 } from 'lucide-react'
 import { Breadcrumb } from '../shared/Breadcrumb'
+import { useBackPath } from '../../hooks/useBackPath'
 import { NotificationDrawer } from './NotificationDrawer'
 import { cn } from '../../lib/utils'
 import { NAV_GROUPS, ROUTE_PATHS } from '../../constants/navigationConfig'
@@ -479,7 +480,8 @@ export default function AppShell({
   organizationName = 'LeaseGov',
   userDisplayName = 'User',
 }: AppShellProps) {
-  const [location] = useLocation()
+  const [location, navigate] = useLocation()
+  const backPath = useBackPath()
   const { activeRole } = useRole()
   const { addNotification, unreadCount } = useNotifications()
   const { pipelineReadyCount, approvalsCount, extractionQueueCount, watchlistCount, setWatchlistCount } = usePipelineCounts()
@@ -808,8 +810,8 @@ export default function AppShell({
       >
         {/* Top header bar */}
         <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-background px-4 gap-3">
-          {/* Left: collapse toggle + breadcrumb */}
-          <div className="flex items-center gap-3 min-w-0">
+          {/* Left: collapse toggle + back arrow + breadcrumb */}
+          <div className="flex items-center gap-2 min-w-0">
             <button
               onClick={toggleSidebar}
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -817,6 +819,17 @@ export default function AppShell({
             >
               {sidebarCollapsed ? <Menu className="h-4 w-4" /> : <X className="h-4 w-4" />}
             </button>
+            {/* Context-aware back arrow — only shown when a parent crumb exists */}
+            {backPath && (
+              <button
+                onClick={() => navigate(backPath)}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded text-muted-foreground transition-all hover:bg-accent hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-95"
+                aria-label="Go back"
+                title="Back"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </button>
+            )}
             <Breadcrumb />
           </div>
 

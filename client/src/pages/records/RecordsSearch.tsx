@@ -9,7 +9,7 @@
  * Data model refs: ContractRecord, EquipmentLease, PropertyLease
  */
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useLocation } from 'wouter'
 import { useRoleLabel } from '@/hooks/useRoleLabel'
 import {
@@ -592,7 +592,7 @@ export default function RecordsSearch() {
                 </tr>
               )}
               {paged.map(row => (
-                <>
+                <React.Fragment key={`frag-${row.id}`}>
                   <tr
                     key={row.id}
                     className={`cursor-pointer hover:bg-muted/30 transition-colors ${expandedRow === row.id ? "bg-muted/20" : ""}`}
@@ -655,7 +655,7 @@ export default function RecordsSearch() {
                       </td>
                     </tr>
                   )}
-                </>
+                </React.Fragment>
               ))}
             </tbody>
           </table>
