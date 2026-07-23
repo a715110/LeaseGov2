@@ -22,6 +22,8 @@ import type { UserRole } from '../lib/types'
 export interface NavGroupConfig {
   key: string
   label: string
+  /** Optional per-role label overrides. Falls back to `label` when role not listed. */
+  roleLabels?: Partial<Record<UserRole, string>>
   icon: string   // Lucide icon name
   sortOrder: number
   phase: 'mvp' | 'phase_2'
@@ -41,18 +43,36 @@ export const NAV_GROUPS: NavGroupConfig[] = [
   {
     key: 'packages', label: 'Packages', icon: 'Layers', sortOrder: 3, phase: 'mvp',
     allowedRoles: ['preparer', 'reviewer', 'approver', 'auditor', 'lease_admin'],
+    roleLabels: {
+      reviewer: 'Contract Packages',
+      approver: 'Packages for Approval',
+    },
   },
   {
     key: 'approvals', label: 'Approvals', icon: 'CheckCircle', sortOrder: 4, phase: 'mvp',
     allowedRoles: ['preparer', 'reviewer', 'approver', 'auditor', 'lease_admin'],
+    roleLabels: {
+      reviewer: 'Reviews',
+      approver: 'Approvals',
+      auditor: 'Audit Reviews',
+    },
   },
   {
     key: 'records', label: 'Records', icon: 'Folder', sortOrder: 5, phase: 'mvp',
     allowedRoles: ['preparer', 'reviewer', 'approver', 'accountant', 'controller', 'auditor', 'lease_admin'],
+    roleLabels: {
+      accountant: 'Lease Ledger',
+      controller: 'Financial Records',
+      auditor: 'Audit Records',
+    },
   },
   {
     key: 'export', label: 'Governed Export', icon: 'CloudUpload', sortOrder: 6, phase: 'mvp',
     allowedRoles: ['controller', 'auditor', 'lease_admin'],
+    roleLabels: {
+      controller: 'Export & Reporting',
+      auditor: 'Export & Audit',
+    },
   },
   {
     key: 'admin', label: 'Admin', icon: 'Settings', sortOrder: 7, phase: 'mvp',
@@ -61,6 +81,11 @@ export const NAV_GROUPS: NavGroupConfig[] = [
   {
     key: 'reassessment', label: 'Reassessment', icon: 'RefreshCw', sortOrder: 8, phase: 'mvp',
     allowedRoles: ['preparer', 'reviewer', 'approver', 'accountant', 'controller', 'auditor', 'lease_admin'],
+    roleLabels: {
+      accountant: 'Lease Reassessment',
+      controller: 'Portfolio Review',
+      auditor: 'Reassessment Audit',
+    },
   },
   {
     key: 'agents', label: 'Agents', icon: 'Bot', sortOrder: 9, phase: 'mvp',

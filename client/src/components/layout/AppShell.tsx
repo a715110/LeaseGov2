@@ -131,6 +131,40 @@ const STATIC_NAV: StaticNavEntry[] = [
   { label: 'Activity Monitor',    path: ROUTE_PATHS.agentMonitor,           navGroup: 'agents',       phase: 'mvp' },
 ]
 
+// ─── Per-item role-aware label overrides ─────────────────────────────────────
+// Key: route path. Value: map of role → display label.
+const NAV_ITEM_ROLE_LABELS: Record<string, Partial<Record<string, string>>> = {
+  [ROUTE_PATHS.approvalsQueue]: {
+    reviewer: 'Review Queue',
+    approver: 'Approval Queue',
+    auditor:  'Audit Queue',
+  },
+  [ROUTE_PATHS.records]: {
+    accountant: 'Lease Ledger',
+    controller: 'Financial Records',
+    auditor:    'Audit Records',
+  },
+  [ROUTE_PATHS.recordsDashboard]: {
+    accountant: 'Ledger Dashboard',
+    controller: 'Portfolio Dashboard',
+    auditor:    'Audit Dashboard',
+  },
+  [ROUTE_PATHS.exportTemplates]: {
+    controller: 'Export & Reporting',
+    auditor:    'Export & Audit',
+  },
+  [ROUTE_PATHS.reassessmentDashboard]: {
+    accountant: 'Reassessment Overview',
+    controller: 'Portfolio Review',
+    auditor:    'Audit Overview',
+  },
+  [ROUTE_PATHS.reassessmentCases]: {
+    accountant: 'Reassessment Cases',
+    controller: 'Review Cases',
+    auditor:    'Audit Cases',
+  },
+}
+
 // ─── Demo badge counts per nav group (static for demo purposes) ───────────────
 // In production these would come from API responses / context.
 // GROUP_BADGE_COUNTS is now derived from PipelineCountsContext at runtime (see AppShell body)
@@ -687,7 +721,7 @@ export default function AppShell({
                       {!sidebarCollapsed && (
                         <>
                           <span className="flex-1 text-left font-semibold text-[10px] uppercase tracking-widest truncate">
-                            {group.key === 'approvals' && activeRole === 'reviewer' ? 'Reviews' : group.label}
+                            {group.roleLabels?.[activeRole] ?? group.label}
                           </span>
                           <GroupBadge count={badgeCount} />
                           {isExpanded
@@ -700,7 +734,7 @@ export default function AppShell({
                   </TooltipTrigger>
                   {sidebarCollapsed && (
                     <TooltipContent side="right" className="text-xs">
-                      {group.key === 'approvals' && activeRole === 'reviewer' ? 'Reviews' : group.label}
+                      {group.roleLabels?.[activeRole] ?? group.label}
                       {badgeCount > 0 && ` (${badgeCount})`}
                     </TooltipContent>
                   )}
@@ -729,7 +763,7 @@ export default function AppShell({
                             style={active ? { background: 'rgba(255,255,255,0.18)', boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.10)' } : undefined}
                             aria-current={active ? 'page' : undefined}
                           >
-                            {item.path === ROUTE_PATHS.approvalsQueue && activeRole === 'reviewer' ? 'Review Queue' : item.label}
+                            {NAV_ITEM_ROLE_LABELS[item.path]?.[activeRole] ?? item.label}
                           </Link>
                         </li>
                       )
