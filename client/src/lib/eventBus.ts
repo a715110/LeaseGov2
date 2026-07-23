@@ -53,6 +53,17 @@ export const PENDING_EXTRACTION_JOBS_KEY = 'leasegov_pending_extraction_jobs';
 export const PENDING_DECLINE_EVENTS_KEY = 'leasegov_pending_decline_events';
 
 /**
+ * sessionStorage key for SUBMIT_FOR_REVIEW events that have not yet been consumed
+ * by ApprovalsQueue. Bridges the timing gap where the event fires while
+ * ApprovalsQueue is unmounted (reviewer is on a different screen).
+ * ApprovalsQueue drains this on mount.
+ *
+ * PRODUCTION UPGRADE: Remove entirely — the backend persists the review task
+ * and ApprovalsQueue fetches it via GET /api/v1/approvals/queue on mount.
+ */
+export const PENDING_REVIEW_EVENTS_KEY = 'leasegov_pending_review_events';
+
+/**
  * Publish a cross-role event. Notifies all other tabs immediately.
  *
  * // DEMO ONLY — replace with: await api.post('/api/v1/events', event)
@@ -88,6 +99,18 @@ export function publishEvent(event: Omit<DemoEvent, 'timestamp'>): void {
       const pending: DemoEvent[] = raw ? JSON.parse(raw) : [];
       pending.push(fullEvent);
       sessionStorage.setItem(PENDING_DECLINE_EVENTS_KEY, JSON.stringify(pending));
+    } catch { /* quota exceeded — ignore */ }
+  }
+
+  // DEMO ONLY: persist SUBMIT_FOR_REVIEW payloads so ApprovalsQueue can drain
+  // them on mount if it was not mounted when the event fired.
+  // PRODUCTION: remove — backend persists the review task; queue fetches via API.
+  if (fullEvent.type === 'SUBMIT_FOR_REVIEW') {
+    try {
+      const raw = sessionStorage.getItem(PENDING_REVIEW_EVENTS_KEY);
+      const pending: DemoEvent[] = raw ? JSON.parse(raw) : [];
+      pending.push(fullEvent);
+      sessionStorage.setItem(PENDING_REVIEW_EVENTS_KEY, JSON.stringify(pending));
     } catch { /* quota exceeded — ignore */ }
   }
 

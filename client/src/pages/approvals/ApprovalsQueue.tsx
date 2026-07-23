@@ -16,7 +16,8 @@
  */
 
 import { useState, useCallback, useEffect } from "react";
-import { subscribeToEvents, getLatestEvent, getEventHistory } from "@/lib/eventBus";
+import { subscribeToEvents, getLatestEvent, getEventHistory, PENDING_REVIEW_EVENTS_KEY } from "@/lib/eventBus";
+import type { DemoEvent } from "@/lib/types";
 import { useLocation } from "wouter";
 import {
   Clock, AlertTriangle, CheckCircle2, XCircle,
@@ -277,6 +278,25 @@ export default function ApprovalsQueue() {
     setApprovalsCount(actionable)
   }, [tasks, setApprovalsCount])
 
+  // DEMO ONLY: Mount-time drain for SUBMIT_FOR_REVIEW events that fired while
+  // ApprovalsQueue was unmounted (reviewer was on a different screen).
+  // PRODUCTION: remove — backend persists the review task; queue fetches via GET /api/v1/approvals/queue.
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(PENDING_REVIEW_EVENTS_KEY);
+      if (raw) {
+        const pending: DemoEvent[] = JSON.parse(raw);
+        if (pending.length > 0) {
+          pending.forEach(event => {
+            window.dispatchEvent(new CustomEvent('leasegov_same_tab_event', { detail: event }));
+          });
+          sessionStorage.removeItem(PENDING_REVIEW_EVENTS_KEY);
+        }
+      }
+    } catch { /* ignore parse errors */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Subscribe to REVIEW_OPENED — flip matching 'pending' row to 'opened'
   useEffect(() => {
     return subscribeToEvents((event) => {
@@ -311,8 +331,18 @@ export default function ApprovalsQueue() {
       }
       // G-01: Preparer submits for review → add a new review-stage task to the queue // DEMO ONLY
       if (event.type === 'SUBMIT_FOR_REVIEW') {
-        const p = event.payload as { contractRecordId?: string };
-        const recordId = p.contractRecordId ?? 'r1';
+        const p = event.payload as {
+          contractRecordId?: string;
+          batchRef?: string;
+          label?: string;
+          fileNames?: string[];
+          workspace?: string;
+          fileCount?: number;
+          submittedBy?: string;
+        };
+        // Use the explicit label from the payload if provided (set by ExtractionQueue);
+        // fall back to the legacy hardcoded record label map for older events.
+        const recordId = p.contractRecordId ?? p.batchRef ?? 'r1';
         const RECORD_LABEL_MAP: Record<string, string> = {
           'r1':              'Office Tower Amendment 3',
           'mock-record-001': 'Acme Corp — 123 Main St',
@@ -320,16 +350,16 @@ export default function ApprovalsQueue() {
           'mock-record-003': 'Initech — 789 Pine Rd',
           'mock-record-004': 'Office Tower — 350 Fifth Ave',
         };
-        const label = RECORD_LABEL_MAP[recordId] ?? `Record ${recordId}`;
+        const label = p.label ?? RECORD_LABEL_MAP[recordId] ?? `Batch ${recordId}`;
         const newTaskId = `live-${Date.now()}`;
         const newTask: ApprovalTask = {
           id: newTaskId,
-          task_reference: `AT-${new Date().getFullYear()}-LIVE`,
+          task_reference: `AT-${new Date().getFullYear()}-${(p.batchRef ?? recordId).slice(-4).toUpperCase()}`,
           subject_type: 'contract_record',
           subject_label: label,
           approval_stage: 'review',
           status: 'pending',
-          submitted_by: 'Current User (Preparer)',
+          submitted_by: p.submittedBy ?? 'Preparer',
           submitted_at: new Date().toISOString(),
           opened_at: null,
           recall_available: true,
@@ -353,6 +383,11 @@ export default function ApprovalsQueue() {
         }));
         if (p.task_id) triggerFlash(p.task_id);
         toast.success(`Advanced to Final Approval${p.label ? ': ' + p.label : ''}`, { duration: 4000 });
+      }
+      // DEMO_RESET: clear pending review queue and restore seed tasks
+      if (event.type === 'DEMO_RESET') {
+        sessionStorage.removeItem(PENDING_REVIEW_EVENTS_KEY);
+        setTasks(INITIAL_TASKS);
       }
     });
   }, [])

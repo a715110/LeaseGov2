@@ -1683,18 +1683,54 @@ export default function ExtractionQueue() {
             // PRODUCTION: replace with: await api.patch(`/api/v1/extraction/jobs/${workflowJob?.id}`, { status: 'ocr_complete' })
             if (workflowJob) {
               const completedId = workflowJob.id;
-              setJobs(prev => prev.map(j =>
-                j.id === completedId
-                  ? { ...j, status: 'ocr_complete' as JobStatus, completed_at: new Date().toISOString() }
-                  : j
-              ));
+              const completedBatchRef = workflowJob.batch_ref;
+              const completedDisplayId = workflowJob.display_id;
+
+              setJobs(prev => {
+                const updated = prev.map(j =>
+                  j.id === completedId
+                    ? { ...j, status: 'ocr_complete' as JobStatus, completed_at: new Date().toISOString() }
+                    : j
+                );
+
+                // Check if ALL jobs in this batch are now ocr_complete
+                const batchJobs = updated.filter(j => j.batch_ref === completedBatchRef);
+                const allComplete = batchJobs.length > 0 && batchJobs.every(j => j.status === 'ocr_complete');
+
+                if (allComplete) {
+                  // Fire SUBMIT_FOR_REVIEW so the Reviewer's queue receives the batch.
+                  // PRODUCTION: replace with: await api.post('/api/v1/reviews', { batchRef, fileNames, workspace })
+                  const fileNames = batchJobs.map(j => j.file_name);
+                  const workspace = batchJobs[0]?.workspace ?? 'Unknown';
+                  publishEvent({
+                    type: 'SUBMIT_FOR_REVIEW',
+                    sourceRole: 'preparer',
+                    payload: {
+                      batchRef: completedBatchRef,
+                      contractRecordId: completedBatchRef,
+                      label: `${completedBatchRef} — ${fileNames.length} file${fileNames.length !== 1 ? 's' : ''} (${workspace})`,
+                      fileNames,
+                      workspace,
+                      fileCount: batchJobs.length,
+                      submittedBy: 'Preparer',
+                    },
+                  });
+                  toast.success(`${completedBatchRef} submitted for review`, {
+                    description: `${batchJobs.length} file${batchJobs.length !== 1 ? 's' : ''} sent to Reviewer queue.`,
+                    duration: 6000,
+                  });
+                }
+
+                return updated;
+              });
+
               // Also update selectedJob panel if it is showing this job
               setSelectedJob(prev =>
                 prev && prev.id === completedId
                   ? { ...prev, status: 'ocr_complete' as JobStatus, completed_at: new Date().toISOString() }
                   : prev
               );
-              toast.success(`${workflowJob.display_id} extraction complete`, {
+              toast.success(`${completedDisplayId} extraction complete`, {
                 description: 'All 5 steps verified — status updated to OCR Complete.',
                 duration: 5000,
               });
