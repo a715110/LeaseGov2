@@ -28,8 +28,8 @@ export interface ExtractionTemplate {
 export interface ExtractionTemplateField {
   id: string
   canonicalName: string
-  dataType: 'string' | 'number' | 'date' | 'boolean' | 'currency'
-  category: 'Financial' | 'Legal' | 'Party' | 'Date' | 'Property' | 'Other'
+  dataType: 'string' | 'number' | 'date' | 'boolean' | 'currency' | 'decimal' | 'integer' | 'percentage'
+  category: 'Financial' | 'Legal' | 'Party' | 'Date' | 'Property' | 'Other' | 'Asset' | 'Equipment' | 'Usage' | 'Classification'
   validationRule?: string
   isCritical: boolean
   isRequired: boolean
@@ -90,11 +90,11 @@ export function useExtractionStore(): ExtractionStoreValue {
   return ctx
 }
 
-/** 5 canonical mock templates used by S5a and S5b */
+/** 6 canonical mock templates used by S5a and S5b — tpl-1 to tpl-5 Property Lease, tpl-6 Equipment Lease */
 export const MOCK_EXTRACTION_TEMPLATES: ExtractionTemplate[] = [
   {
     id: 'tpl-1',
-    name: 'Standard Commercial Lease',
+    name: 'Property Lease v3.2',
     version: 'v3.2',
     description: 'Full commercial lease with rent schedule, CAM, and option terms.',
     fieldCount: 34,
@@ -157,6 +157,63 @@ export const MOCK_EXTRACTION_TEMPLATES: ExtractionTemplate[] = [
       { id: 'f20', canonicalName: 'termination_date',         dataType: 'date',     category: 'Date',      isCritical: true,  isRequired: true,  status: 'Active', aliases: [] },
       { id: 'f21', canonicalName: 'termination_fee',          dataType: 'currency', category: 'Financial', isCritical: true,  isRequired: false, status: 'Active', aliases: [] },
       { id: 'f22', canonicalName: 'termination_reason',       dataType: 'string',   category: 'Legal',     isCritical: false, isRequired: false, status: 'Active', aliases: [] },
+    ],
+  },
+  // ── tpl-6: Equipment Lease v1.0 — 41 fields across 6 categories ──────────
+  {
+    id: 'tpl-6',
+    name: 'Equipment Lease v1.0',
+    version: 'v1.0',
+    description: 'Equipment lease with IFRS 16 classification indicators, asset identification, and financial terms.',
+    fieldCount: 41,
+    fields: [
+      // Asset Identification (8 fields)
+      { id: 'eq-f01', canonicalName: 'equipment_type',                   dataType: 'string',     category: 'Asset',          isCritical: false, isRequired: true,  status: 'Active', aliases: [] },
+      { id: 'eq-f02', canonicalName: 'equipment_category',               dataType: 'string',     category: 'Asset',          isCritical: false, isRequired: true,  status: 'Active', aliases: [] },
+      { id: 'eq-f03', canonicalName: 'manufacturer',                     dataType: 'string',     category: 'Asset',          isCritical: false, isRequired: true,  status: 'Active', aliases: [] },
+      { id: 'eq-f04', canonicalName: 'model',                            dataType: 'string',     category: 'Asset',          isCritical: false, isRequired: true,  status: 'Active', aliases: [] },
+      { id: 'eq-f05', canonicalName: 'serial_number',                    dataType: 'string',     category: 'Asset',          isCritical: false, isRequired: true,  status: 'Active', aliases: [] },
+      { id: 'eq-f06', canonicalName: 'asset_tag',                        dataType: 'string',     category: 'Asset',          isCritical: false, isRequired: false, status: 'Active', aliases: [] },
+      { id: 'eq-f07', canonicalName: 'quantity',                         dataType: 'integer',    category: 'Asset',          isCritical: false, isRequired: true,  status: 'Active', aliases: [] },
+      { id: 'eq-f08', canonicalName: 'installation_location',            dataType: 'string',     category: 'Asset',          isCritical: false, isRequired: true,  status: 'Active', aliases: [] },
+      // Financial Terms (10 fields — all critical)
+      { id: 'eq-f09', canonicalName: 'commencement_date',                dataType: 'date',       category: 'Financial',      isCritical: true,  isRequired: true,  status: 'Active', aliases: ['start_date'] },
+      { id: 'eq-f10', canonicalName: 'expiration_date',                  dataType: 'date',       category: 'Financial',      isCritical: true,  isRequired: true,  status: 'Active', aliases: ['end_date'] },
+      { id: 'eq-f11', canonicalName: 'base_lease_term_months',           dataType: 'integer',    category: 'Financial',      isCritical: true,  isRequired: true,  status: 'Active', aliases: [] },
+      { id: 'eq-f12', canonicalName: 'monthly_payment',                  dataType: 'currency',   category: 'Financial',      isCritical: true,  isRequired: true,  status: 'Active', aliases: ['lease_payment'] },
+      { id: 'eq-f13', canonicalName: 'payment_frequency',                dataType: 'string',     category: 'Financial',      isCritical: true,  isRequired: true,  status: 'Active', aliases: [] },
+      { id: 'eq-f14', canonicalName: 'fair_value_at_commencement',       dataType: 'currency',   category: 'Financial',      isCritical: true,  isRequired: true,  status: 'Active', aliases: [] },
+      { id: 'eq-f15', canonicalName: 'residual_value_guarantee',         dataType: 'currency',   category: 'Financial',      isCritical: true,  isRequired: false, status: 'Active', aliases: [] },
+      { id: 'eq-f16', canonicalName: 'purchase_option_price',            dataType: 'currency',   category: 'Financial',      isCritical: true,  isRequired: false, status: 'Active', aliases: [] },
+      { id: 'eq-f17', canonicalName: 'purchase_option_exercise_date',    dataType: 'date',       category: 'Financial',      isCritical: true,  isRequired: false, status: 'Active', aliases: [] },
+      { id: 'eq-f18', canonicalName: 'discount_rate',                    dataType: 'percentage', category: 'Financial',      isCritical: true,  isRequired: true,  status: 'Active', aliases: ['ibr'] },
+      // Equipment Conditions (6 fields)
+      { id: 'eq-f19', canonicalName: 'condition_at_commencement',        dataType: 'string',     category: 'Equipment',      isCritical: false, isRequired: true,  status: 'Active', aliases: [] },
+      { id: 'eq-f20', canonicalName: 'return_conditions',                dataType: 'string',     category: 'Equipment',      isCritical: false, isRequired: true,  status: 'Active', aliases: [] },
+      { id: 'eq-f21', canonicalName: 'maintenance_responsibility',       dataType: 'string',     category: 'Equipment',      isCritical: false, isRequired: true,  status: 'Active', aliases: [] },
+      { id: 'eq-f22', canonicalName: 'permitted_modifications',          dataType: 'string',     category: 'Equipment',      isCritical: false, isRequired: false, status: 'Active', aliases: [] },
+      { id: 'eq-f23', canonicalName: 'deinstallation_responsibility',    dataType: 'string',     category: 'Equipment',      isCritical: false, isRequired: false, status: 'Active', aliases: [] },
+      { id: 'eq-f24', canonicalName: 'insurance_requirements',           dataType: 'string',     category: 'Equipment',      isCritical: false, isRequired: false, status: 'Active', aliases: [] },
+      // Usage Terms (5 fields)
+      { id: 'eq-f25', canonicalName: 'usage_limits',                     dataType: 'string',     category: 'Usage',          isCritical: false, isRequired: false, status: 'Active', aliases: [] },
+      { id: 'eq-f26', canonicalName: 'variable_payment_rate',            dataType: 'decimal',    category: 'Usage',          isCritical: false, isRequired: false, status: 'Active', aliases: [] },
+      { id: 'eq-f27', canonicalName: 'usage_measurement_unit',           dataType: 'string',     category: 'Usage',          isCritical: false, isRequired: false, status: 'Active', aliases: [] },
+      { id: 'eq-f28', canonicalName: 'maximum_usage_per_period',         dataType: 'decimal',    category: 'Usage',          isCritical: false, isRequired: false, status: 'Active', aliases: [] },
+      { id: 'eq-f29', canonicalName: 'excess_usage_rate',                dataType: 'decimal',    category: 'Usage',          isCritical: false, isRequired: false, status: 'Active', aliases: [] },
+      // Classification Indicators (6 fields — all critical)
+      { id: 'eq-f30', canonicalName: 'useful_life_months',               dataType: 'integer',    category: 'Classification', isCritical: true,  isRequired: true,  status: 'Active', aliases: [] },
+      { id: 'eq-f31', canonicalName: 'lessee_useful_life_coverage_pct',  dataType: 'percentage', category: 'Classification', isCritical: true,  isRequired: true,  status: 'Active', aliases: [] },
+      { id: 'eq-f32', canonicalName: 'ownership_transfer_at_end',        dataType: 'boolean',    category: 'Classification', isCritical: true,  isRequired: true,  status: 'Active', aliases: [] },
+      { id: 'eq-f33', canonicalName: 'purchase_option_reasonably_certain', dataType: 'boolean',  category: 'Classification', isCritical: true,  isRequired: false, status: 'Active', aliases: [] },
+      { id: 'eq-f34', canonicalName: 'specialized_nature',               dataType: 'boolean',    category: 'Classification', isCritical: true,  isRequired: true,  status: 'Active', aliases: [] },
+      { id: 'eq-f35', canonicalName: 'pv_as_pct_of_fair_value',          dataType: 'percentage', category: 'Classification', isCritical: true,  isRequired: false, status: 'Active', aliases: [] },
+      // Legal Terms (6 fields)
+      { id: 'eq-f36', canonicalName: 'governing_law',                    dataType: 'string',     category: 'Legal',          isCritical: false, isRequired: false, status: 'Active', aliases: [] },
+      { id: 'eq-f37', canonicalName: 'early_termination_clause',         dataType: 'string',     category: 'Legal',          isCritical: false, isRequired: false, status: 'Active', aliases: [] },
+      { id: 'eq-f38', canonicalName: 'early_termination_penalty',        dataType: 'currency',   category: 'Legal',          isCritical: false, isRequired: false, status: 'Active', aliases: [] },
+      { id: 'eq-f39', canonicalName: 'assignment_rights',                dataType: 'string',     category: 'Legal',          isCritical: false, isRequired: false, status: 'Active', aliases: [] },
+      { id: 'eq-f40', canonicalName: 'sublease_rights',                  dataType: 'string',     category: 'Legal',          isCritical: false, isRequired: false, status: 'Active', aliases: [] },
+      { id: 'eq-f41', canonicalName: 'insurance_requirements_legal',     dataType: 'string',     category: 'Legal',          isCritical: false, isRequired: false, status: 'Active', aliases: [] },
     ],
   },
 ]

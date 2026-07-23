@@ -198,6 +198,7 @@ const MOCK_DOCUMENTS: StagedDocument[] = [
     target_record_id: null,
     submission_path: null,
     submitter_context_notes: null,
+    contract_type: 'Property Lease',
     document_job_status: 'staged',
     assignee_id: 'user-prep-002', // L. Nguyen
   },
@@ -330,6 +331,26 @@ const MOCK_DOCUMENTS: StagedDocument[] = [
     document_job_status: 'staged',
     assignee_id: null, // Auto-routed
   },
+  // Equipment Lease demo document — shows teal contract type badge
+  {
+    id: 'doc-9',
+    display_name: 'Forklift-Fleet-Equipment-Lease-2026.pdf',
+    status: 'valid',
+    original_status: 'valid',
+    originalStatus: 'valid',
+    upload_date: '2026-06-12 10:30',
+    uploader: 'M. Webb',
+    mime_type: 'application/pdf',
+    file_size_bytes: 3_100_000,
+    page_count: 18,
+    workspace_tag: 'Operations',
+    target_record_id: null,
+    submission_path: 'new_record',
+    submitter_context_notes: 'New equipment lease for forklift fleet — IFRS 16 classification required.',
+    contract_type: 'Equipment Lease',
+    document_job_status: 'staged',
+    assignee_id: null,
+  },
 ];
 
 // MOCK_BATCHES retained for BatchDetailPanel compatibility (not shown in V3 tables)
@@ -397,6 +418,23 @@ const INITIAL_SUBMISSIONS: Submission[] = [
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Returns a badge element for a contract_type value, or null if no type is set. */
+function ContractTypeBadge({ contractType }: { contractType?: string | null }) {
+  if (!contractType) return null;
+  const isEquipment = contractType === 'Equipment Lease' || contractType === 'equipment_lease' || contractType === 'EQUIPMENT_LEASE';
+  return (
+    <span
+      className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold shrink-0 ${
+        isEquipment
+          ? 'bg-teal-50 text-teal-700 border border-teal-200 dark:bg-teal-900/30 dark:text-teal-300 dark:border-teal-700'
+          : 'bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700'
+      }`}
+    >
+      {contractType}
+    </span>
+  );
+}
 
 function formatBytes(bytes: number): string {
   if (bytes < 1_000_000) return `${(bytes / 1024).toFixed(0)} KB`;
@@ -2685,7 +2723,8 @@ export default function PipelineDashboard() {
                       <td>
                         <div className="flex items-center gap-2">
                           <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                          <span className="font-medium text-foreground truncate max-w-[180px]" title={doc.display_name}>{doc.display_name}</span>
+                          <span className="font-medium text-foreground truncate max-w-[160px]" title={doc.display_name}>{doc.display_name}</span>
+                          <ContractTypeBadge contractType={doc.contract_type} />
                           {isLocked && (
                             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-200 shrink-0">
                               <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
@@ -3203,7 +3242,8 @@ export default function PipelineDashboard() {
                                       <td className="py-1.5 pr-4">
                                         <div className="flex items-center gap-1.5">
                                           <FileText className="w-3 h-3 text-muted-foreground shrink-0" />
-                                          <span className="font-medium text-foreground truncate max-w-[220px]" title={f.name}>{f.name}</span>
+                                          <span className="font-medium text-foreground truncate max-w-[180px]" title={f.name}>{f.name}</span>
+                                          <ContractTypeBadge contractType={f.contract_type} />
                                         </div>
                                       </td>
                                       <td className="py-1.5 pr-4">

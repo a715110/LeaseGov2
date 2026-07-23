@@ -4,19 +4,25 @@
  *
  * Multi-step processing workflow dialog:
  *   Step 1: Document Review
- *   Step 2: Field Mapping (S6b: stores confirmedTemplate)
- *   Step 3: AI Extract
- *   Step 4: Confidence Review
+ *   Step 2: Field Mapping (S6b: stores confirmedTemplate) — grouped by contract type
+ *   Step 3: AI Extract — contract-type-aware extraction log labels
+ *   Step 4: Confidence Review — finance lease indicator card for equipment leases
  *   Step 5: Final Verification (S6b: uses confirmedTemplate canonical field names)
  *
  * S6a: accepts initialStep?: number prop (default 1)
  * S6b: confirmedTemplate state flows from Step 2 → Step 5
+ *
+ * Equipment Lease Prompt 2B:
+ *   - Step 2: grouped template selector (Property Lease Documents / Equipment Lease Documents)
+ *   - Step 3: equipment-specific extraction log labels when tpl-6 is confirmed
+ *   - Step 4: finance lease indicator card (IFRS 16 classification) when tpl-6 is confirmed
  */
 
 import { useState, useEffect, useRef } from 'react';
 import {
   ChevronRight, ChevronLeft, CheckCircle2, Cpu, FileText,
-  BarChart2, ShieldCheck, X, GripVertical, Zap, AlertTriangle, GitMerge
+  BarChart2, ShieldCheck, X, GripVertical, Zap, AlertTriangle, GitMerge,
+  Package, TrendingUp
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -73,6 +79,14 @@ const STEPS = [
   { id: 5, label: 'Final Verify',    icon: ShieldCheck },
 ];
 
+// ─── Template grouping ────────────────────────────────────────────────────────
+
+const PROPERTY_TEMPLATE_IDS = new Set(['tpl-1', 'tpl-2', 'tpl-3', 'tpl-4', 'tpl-5']);
+const EQUIPMENT_TEMPLATE_IDS = new Set(['tpl-6']);
+
+const PROPERTY_TEMPLATES = MOCK_EXTRACTION_TEMPLATES.filter(t => PROPERTY_TEMPLATE_IDS.has(t.id));
+const EQUIPMENT_TEMPLATES = MOCK_EXTRACTION_TEMPLATES.filter(t => EQUIPMENT_TEMPLATE_IDS.has(t.id));
+
 // ─── Confidence helpers ───────────────────────────────────────────────────────
 
 function confidenceLabel(c: number) {
@@ -126,6 +140,48 @@ function AmendmentBanner({ amendmentFiles, step }: { amendmentFiles: string[]; s
   );
 }
 
+/** Grouped template selector row */
+function TemplateCard({
+  template,
+  isSelected,
+  isAutoSelected,
+  onSelect,
+}: {
+  template: ExtractionTemplate;
+  isSelected: boolean;
+  isAutoSelected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <div
+      className={cn(
+        'rounded-lg border-2 p-4 cursor-pointer transition-colors',
+        isSelected
+          ? 'border-primary bg-primary/5'
+          : 'border-border hover:border-primary/50'
+      )}
+      onClick={onSelect}
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-0.5">
+          <div className="flex items-center gap-2">
+            <p className="text-[13px] font-semibold text-foreground">{template.name}</p>
+            {isAutoSelected && (
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted text-muted-foreground border border-border">
+                Auto-selected from upload context
+              </span>
+            )}
+          </div>
+          <p className="text-[12px] text-muted-foreground">{template.version} · {template.fields.length} fields</p>
+        </div>
+        {isSelected && (
+          <CheckCircle2 className="w-5 h-5 text-primary" />
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function ProcessingWorkflowDialog({
   open,
   onClose,
@@ -158,6 +214,9 @@ export function ProcessingWorkflowDialog({
   const [extractionJobStatus, setExtractionJobStatus] = useState('staged');
   const extractionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Derived: is this an equipment lease extraction?
+  const isEquipmentLease = confirmedTemplate?.id === 'tpl-6';
+
   // Reset extraction state when dialog opens/closes or step changes
   useEffect(() => {
     if (!open || currentStep !== 3) {
@@ -178,24 +237,25 @@ export function ProcessingWorkflowDialog({
 
     extractionTimerRef.current = setTimeout(() => {
       setExtractionJobStatus('ocr_processing');
-      setExtractionLabel('Running OCR and reading document structure…');
+      setExtractionLabel(isEquipmentLease ? 'Running OCR and reading asset schedules…' : 'Running OCR and reading document structure…');
       setExtractionProgress(20);
     }, 1000);
 
     extractionTimerRef.current = setTimeout(() => {
       setExtractionJobStatus('extraction_in_progress');
-      setExtractionLabel('Extracting fields and placing evidence anchors…');
+      setExtractionLabel(isEquipmentLease ? 'Extracting equipment identifiers and financial terms…' : 'Extracting fields and placing evidence anchors…');
       setExtractionProgress(55);
     }, 3000);
 
     extractionTimerRef.current = setTimeout(() => {
-      setExtractionLabel('Scoring confidence and checking critical fields…');
+      setExtractionLabel(isEquipmentLease ? 'Scoring IFRS 16 classification indicators…' : 'Scoring confidence and checking critical fields…');
       setExtractionProgress(80);
     }, 6000);
 
     extractionTimerRef.current = setTimeout(() => {
       setExtractionJobStatus('verification_pending');
-      setExtractionLabel('Extraction complete — 68 fields extracted');
+      const fieldCount = isEquipmentLease ? 41 : 68;
+      setExtractionLabel(`Extraction complete — ${fieldCount} fields extracted`);
       setExtractionProgress(100);
       setExtractionComplete(true);
     }, 8000);
@@ -214,14 +274,16 @@ export function ProcessingWorkflowDialog({
   useEffect(() => {
     if (!open || !contractType || confirmedTemplate) return;
     const CONTRACT_TYPE_TO_TEMPLATE: Record<string, string> = {
-      commercial_lease:  'tpl-1', // Standard Commercial Lease
+      commercial_lease:  'tpl-1', // Property Lease v3.2
       lease_amendment:   'tpl-2', // Lease Amendment
       sublease:          'tpl-3', // Sublease Agreement
       lease_renewal:     'tpl-4', // Lease Renewal
       termination:       'tpl-5', // Termination Agreement
+      equipment_lease:   'tpl-6', // Equipment Lease v1.0
+      EQUIPMENT_LEASE:   'tpl-6', // Equipment Lease v1.0 (uppercase variant)
       // V3 upload context values
       'Property Lease':  'tpl-1',
-      'Equipment Lease': 'tpl-1',
+      'Equipment Lease': 'tpl-6',
       'Service Contract':'tpl-1',
     };
     const templateId = CONTRACT_TYPE_TO_TEMPLATE[contractType];
@@ -242,6 +304,7 @@ export function ProcessingWorkflowDialog({
     const RENEWAL_RE   = /renew|renewal|extension/i;
     const SUBLEASE_RE  = /sublease|sub-lease|subtenant/i;
     const TERMINATION_RE = /terminat|surrender/i;
+    const EQUIPMENT_RE = /equipment|asset|hardware|machinery|vehicle|device/i;
     let documentType = 'Commercial Lease';
     let confidence   = 0.91;
     let suggestedTemplateId = 'tpl-1';
@@ -249,11 +312,15 @@ export function ProcessingWorkflowDialog({
     else if (RENEWAL_RE.test(fileName)) { documentType = 'Lease Renewal';        confidence = 0.89; suggestedTemplateId = 'tpl-4'; }
     else if (SUBLEASE_RE.test(fileName)){ documentType = 'Sublease Agreement';   confidence = 0.87; suggestedTemplateId = 'tpl-3'; }
     else if (TERMINATION_RE.test(fileName)){ documentType = 'Termination Agreement'; confidence = 0.92; suggestedTemplateId = 'tpl-5'; }
+    else if (EQUIPMENT_RE.test(fileName)){ documentType = 'Equipment Lease';     confidence = 0.93; suggestedTemplateId = 'tpl-6'; }
     // Also honour the contractType prop if present
     if (contractType === 'lease_amendment')   { documentType = 'Lease Amendment';      confidence = 0.96; suggestedTemplateId = 'tpl-2'; }
     else if (contractType === 'sublease')     { documentType = 'Sublease Agreement';   confidence = 0.95; suggestedTemplateId = 'tpl-3'; }
     else if (contractType === 'lease_renewal'){ documentType = 'Lease Renewal';        confidence = 0.94; suggestedTemplateId = 'tpl-4'; }
     else if (contractType === 'termination')  { documentType = 'Termination Agreement'; confidence = 0.95; suggestedTemplateId = 'tpl-5'; }
+    else if (contractType === 'equipment_lease' || contractType === 'EQUIPMENT_LEASE' || contractType === 'Equipment Lease') {
+      documentType = 'Equipment Lease'; confidence = 0.96; suggestedTemplateId = 'tpl-6';
+    }
     const suggestedTemplate = MOCK_EXTRACTION_TEMPLATES.find(t => t.id === suggestedTemplateId) ?? null;
     const result: ClassificationResult = { documentType, confidence, suggestedTemplate: suggestedTemplate ?? undefined };
     extractionStore.setClassificationResult(result);
@@ -265,9 +332,13 @@ export function ProcessingWorkflowDialog({
       setVerificationFields(
         confirmedTemplate.fields.map(f => ({
           canonical_name: f.canonicalName,
-          extracted_value: f.dataType === 'date'     ? '2026-01-01'
-                         : f.dataType === 'currency' ? '$12,500.00'
-                         : f.dataType === 'number'   ? '4,200'
+          extracted_value: f.dataType === 'date'       ? '2026-01-01'
+                         : f.dataType === 'currency'   ? '$12,500.00'
+                         : f.dataType === 'number'     ? '4,200'
+                         : f.dataType === 'integer'    ? '36'
+                         : f.dataType === 'percentage' ? '4.50%'
+                         : f.dataType === 'decimal'    ? '0.045'
+                         : f.dataType === 'boolean'    ? 'Yes'
                          : 'Extracted value placeholder',
           confidence: 0.85 + Math.random() * 0.14,
           is_critical: f.isCritical,
@@ -300,6 +371,37 @@ export function ProcessingWorkflowDialog({
     onClose();
   };
 
+  // ── Equipment lease extraction log steps ─────────────────────────────────
+  const PROPERTY_EXTRACTION_STEPS = [
+    { threshold: 5,   label: 'Preparing document…' },
+    { threshold: 20,  label: 'Running OCR and reading document structure…' },
+    { threshold: 55,  label: 'Extracting fields and placing evidence anchors…' },
+    { threshold: 80,  label: 'Scoring confidence and checking critical fields…' },
+    { threshold: 100, label: 'Extraction complete — 68 fields extracted' },
+  ];
+  const EQUIPMENT_EXTRACTION_STEPS = [
+    { threshold: 5,   label: 'Preparing document…' },
+    { threshold: 20,  label: 'Running OCR and reading asset schedules…' },
+    { threshold: 45,  label: 'Extracting equipment identifiers and serial numbers…' },
+    { threshold: 65,  label: 'Extracting financial terms and payment schedule…' },
+    { threshold: 80,  label: 'Scoring IFRS 16 classification indicators…' },
+    { threshold: 100, label: 'Extraction complete — 41 fields extracted' },
+  ];
+  const extractionSteps = isEquipmentLease ? EQUIPMENT_EXTRACTION_STEPS : PROPERTY_EXTRACTION_STEPS;
+
+  // ── Equipment confidence counts (Step 4) ─────────────────────────────────
+  const propertyConfidenceCounts = [
+    { label: 'High Confidence', count: 58, cls: 'badge-valid' },
+    { label: 'Medium Confidence', count: 10, cls: 'badge-warning' },
+    { label: 'Low Confidence', count: 5, cls: 'badge-invalid' },
+  ];
+  const equipmentConfidenceCounts = [
+    { label: 'High Confidence', count: 34, cls: 'badge-valid' },
+    { label: 'Medium Confidence', count: 5, cls: 'badge-warning' },
+    { label: 'Low Confidence', count: 2, cls: 'badge-invalid' },
+  ];
+  const confidenceCounts = isEquipmentLease ? equipmentConfidenceCounts : propertyConfidenceCounts;
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
@@ -325,7 +427,7 @@ export function ProcessingWorkflowDialog({
         </div>
 
         {/* Step indicator */}
-        <div className="flex shrink-0 items-center gap-0 px-5 py-3 border-b border-border bg-muted/30">
+        <div className="flex shrink-0 items-center gap-0 px-5 py-3 border-b border-border bg-muted/20 overflow-x-auto">
           {STEPS.map((step, i) => {
             const Icon = step.icon;
             const isActive = step.id === currentStep;
@@ -388,40 +490,53 @@ export function ProcessingWorkflowDialog({
               <p className="text-[13px] text-muted-foreground">
                 Select the extraction template to use for this document.
               </p>
+
+              {/* ── Property Lease Documents group ── */}
               <div className="flex flex-col gap-2">
-                {MOCK_EXTRACTION_TEMPLATES.map(template => (
-                  <div
+                <div className="flex items-center gap-2 mb-1">
+                  <FileText className="w-3.5 h-3.5 text-muted-foreground" />
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+                    Property Lease Documents
+                  </p>
+                  <div className="flex-1 h-px bg-border" />
+                </div>
+                {PROPERTY_TEMPLATES.map(template => (
+                  <TemplateCard
                     key={template.id}
-                    className={cn(
-                      'rounded-lg border-2 p-4 cursor-pointer transition-colors',
-                      confirmedTemplate?.id === template.id
-                        ? 'border-primary bg-primary/5'
-                        : 'border-border hover:border-primary/50'
-                    )}
-                    onClick={() => {
+                    template={template}
+                    isSelected={confirmedTemplate?.id === template.id}
+                    isAutoSelected={autoSelectedTemplateId === template.id}
+                    onSelect={() => {
                       setConfirmedTemplate(template);
                       extractionStore.setConfirmedTemplate(template);
                     }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex flex-col gap-0.5">
-                        <div className="flex items-center gap-2">
-                          <p className="text-[13px] font-semibold text-foreground">{template.name}</p>
-                          {autoSelectedTemplateId === template.id && (
-                            <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted text-muted-foreground border border-border">
-                              Auto-selected from upload context
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-[12px] text-muted-foreground">{template.version} · {template.fields.length} fields</p>
-                      </div>
-                      {confirmedTemplate?.id === template.id && (
-                        <CheckCircle2 className="w-5 h-5 text-primary" />
-                      )}
-                    </div>
-                  </div>
+                  />
                 ))}
               </div>
+
+              {/* ── Equipment Lease Documents group ── */}
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2 mb-1">
+                  <Package className="w-3.5 h-3.5 text-teal-500" />
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-teal-600 dark:text-teal-400">
+                    Equipment Lease Documents
+                  </p>
+                  <div className="flex-1 h-px bg-border" />
+                </div>
+                {EQUIPMENT_TEMPLATES.map(template => (
+                  <TemplateCard
+                    key={template.id}
+                    template={template}
+                    isSelected={confirmedTemplate?.id === template.id}
+                    isAutoSelected={autoSelectedTemplateId === template.id}
+                    onSelect={() => {
+                      setConfirmedTemplate(template);
+                      extractionStore.setConfirmedTemplate(template);
+                    }}
+                  />
+                ))}
+              </div>
+
               {confirmedTemplate && (
                 <p className="text-[12px] text-primary font-medium">
                   ✓ {confirmedTemplate.name} confirmed — {confirmedTemplate.fields.length} fields will be used in Step 5.
@@ -475,8 +590,9 @@ export function ProcessingWorkflowDialog({
                     <Cpu className="w-6 h-6 text-primary" />
                   </div>
                   <p className="text-[13px] text-muted-foreground text-center max-w-sm">
-                    Single-pass OCR + extraction. The AI agent reads the document,
-                    extracts all fields, and places evidence anchors in one pass (~8 seconds).
+                    {isEquipmentLease
+                      ? 'Single-pass OCR + extraction. The AI agent reads the asset schedules, extracts all 41 equipment lease fields, and scores IFRS 16 classification indicators in one pass (~8 seconds).'
+                      : 'Single-pass OCR + extraction. The AI agent reads the document, extracts all fields, and places evidence anchors in one pass (~8 seconds).'}
                   </p>
                   <Button
                     className="gap-2"
@@ -519,17 +635,11 @@ export function ProcessingWorkflowDialog({
                     </div>
                   </div>
 
-                  {/* V3 5b — progress label timeline */}
+                  {/* V3 5b — progress label timeline (contract-type-aware) */}
                   <div className="rounded-lg border border-border bg-muted/30 p-4">
                     <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] mb-3">Extraction Log</p>
                     <div className="flex flex-col gap-1.5">
-                      {[
-                        { threshold: 5,   label: 'Preparing document…',                          status: 'ocr_queued' },
-                        { threshold: 20,  label: 'Running OCR and reading document structure…',  status: 'ocr_processing' },
-                        { threshold: 55,  label: 'Extracting fields and placing evidence anchors…', status: 'extraction_in_progress' },
-                        { threshold: 80,  label: 'Scoring confidence and checking critical fields…', status: 'extraction_in_progress' },
-                        { threshold: 100, label: `Extraction complete — 68 fields extracted`,       status: 'verification_pending' },
-                      ].map(step => (
+                      {extractionSteps.map(step => (
                         <div
                           key={step.threshold}
                           className={cn(
@@ -564,11 +674,7 @@ export function ProcessingWorkflowDialog({
             <div className="flex flex-col gap-4">
               <h3 className="text-[14px] font-semibold text-foreground">Confidence Review</h3>
               <div className="grid grid-cols-3 gap-3">
-                {[
-                  { label: 'High Confidence', count: 58, cls: 'badge-valid' },
-                  { label: 'Medium Confidence', count: 10, cls: 'badge-warning' },
-                  { label: 'Low Confidence', count: 5, cls: 'badge-invalid' },
-                ].map(item => (
+                {confidenceCounts.map(item => (
                   <div key={item.label} className="rounded-lg border border-border bg-card p-4 text-center">
                     <p className="text-[24px] font-bold text-foreground">{item.count}</p>
                     <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-semibold mt-1 ${item.cls}`}>
@@ -577,6 +683,57 @@ export function ProcessingWorkflowDialog({
                   </div>
                 ))}
               </div>
+
+              {/* Finance Lease Indicator Card — only shown for Equipment Lease template */}
+              {isEquipmentLease && (
+                <div className="rounded-xl border border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-950/30 p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <TrendingUp className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+                    <p className="text-[13px] font-semibold text-teal-800 dark:text-teal-300">
+                      IFRS 16 Classification Indicator
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 mb-3">
+                    <div className="rounded-lg border border-teal-200 dark:border-teal-700 bg-white dark:bg-teal-900/30 p-3">
+                      <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] mb-1">Preliminary Classification</p>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[12px] font-bold bg-teal-100 dark:bg-teal-800 text-teal-800 dark:text-teal-200 border border-teal-300 dark:border-teal-600">
+                        Finance Lease
+                      </span>
+                    </div>
+                    <div className="rounded-lg border border-teal-200 dark:border-teal-700 bg-white dark:bg-teal-900/30 p-3">
+                      <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] mb-1">Confidence</p>
+                      <p className="text-[20px] font-bold text-teal-700 dark:text-teal-300">87%</p>
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    {[
+                      { label: 'Ownership transfer at end', value: 'Yes', met: true },
+                      { label: 'Useful life coverage', value: '82%  (≥ 75% threshold)', met: true },
+                      { label: 'PV as % of fair value', value: '91%  (≥ 90% threshold)', met: true },
+                      { label: 'Purchase option reasonably certain', value: 'Not applicable', met: null },
+                    ].map(indicator => (
+                      <div key={indicator.label} className="flex items-center justify-between text-[12px]">
+                        <span className="text-muted-foreground">{indicator.label}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-foreground font-medium">{indicator.value}</span>
+                          {indicator.met === true && (
+                            <CheckCircle2 className="w-3.5 h-3.5 text-teal-500 shrink-0" />
+                          )}
+                          {indicator.met === false && (
+                            <div className="w-3.5 h-3.5 rounded-full border-2 border-muted-foreground/40 shrink-0" />
+                          )}
+                          {indicator.met === null && (
+                            <div className="w-3.5 h-3.5 rounded-full bg-muted shrink-0" />
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[11px] text-teal-700 dark:text-teal-400 mt-3 leading-relaxed">
+                    Preliminary classification based on extracted indicators. Final classification requires review by the accounting team in the Equipment Lease record.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
