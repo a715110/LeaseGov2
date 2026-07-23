@@ -630,6 +630,16 @@ export default function ApprovalsQueue() {
                             className="font-medium text-foreground text-left cursor-pointer hover:text-[var(--color-lg-accent)] hover:underline underline-offset-2 transition-colors bg-transparent border-0 p-0"
                             onClick={() => setPackageDialogId(task.package_id!)}
                           >{task.subject_label}</button>
+                        ) : task.subject_type === 'reassessment_case' && task.case_id ? (
+                          <button
+                            type="button"
+                            className="font-medium text-foreground text-left cursor-pointer hover:text-[var(--color-lg-accent)] hover:underline underline-offset-2 transition-colors bg-transparent border-0 p-0"
+                            onClick={() => {
+                              if (task.case_status === 'remediation') navigate(`/reassessment/cases/${task.case_id}/remediation`);
+                              else if (task.case_status === 'project_review') navigate(`/reassessment/projects/${task.case_id}`);
+                              else navigate(task.approval_stage === 'final_approval' ? `/workflows/reassessment/approval?caseId=${task.case_id}` : `/workflows/reassessment/review?caseId=${task.case_id}`);
+                            }}
+                          >{task.subject_label}</button>
                         ) : (
                           <p className="font-medium text-foreground">{task.subject_label}</p>
                         )}
@@ -638,13 +648,31 @@ export default function ApprovalsQueue() {
                             <TooltipTrigger asChild>
                               <button
                                 className="inline-flex items-center justify-center w-5 h-5 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
-                                onClick={(e) => { e.stopPropagation(); setPackageDialogId(task.package_id!); }}
+                                onClick={() => setPackageDialogId(task.package_id!)}
                                 aria-label="View package detail"
                               >
                                 <Eye className="w-3.5 h-3.5" />
                               </button>
                             </TooltipTrigger>
                             <TooltipContent className="text-[12px]">View package detail</TooltipContent>
+                          </Tooltip>
+                        )}
+                        {task.subject_type === 'reassessment_case' && task.case_id && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                className="inline-flex items-center justify-center w-5 h-5 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
+                                onClick={() => {
+                                  if (task.case_status === 'remediation') navigate(`/reassessment/cases/${task.case_id}/remediation`);
+                                  else if (task.case_status === 'project_review') navigate(`/reassessment/projects/${task.case_id}`);
+                                  else navigate(task.approval_stage === 'final_approval' ? `/workflows/reassessment/approval?caseId=${task.case_id}` : `/workflows/reassessment/review?caseId=${task.case_id}`);
+                                }}
+                                aria-label="Open reassessment case"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent className="text-[12px]">Open reassessment case</TooltipContent>
                           </Tooltip>
                         )}
                       </div>
@@ -716,6 +744,26 @@ export default function ApprovalsQueue() {
                           <TooltipContent className="text-[12px]">
                             Redirect to a different {task.approval_stage === "review" ? "Reviewer" : "Approver"}
                           </TooltipContent>
+                        </Tooltip>
+                      )}
+                      {/* View Case — reassessment_case tasks with a known case_id */}
+                      {task.subject_type === "reassessment_case" && task.case_id && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 gap-1 text-[12px]"
+                              onClick={() => {
+                                if (task.case_status === 'remediation') navigate(`/reassessment/cases/${task.case_id}/remediation`);
+                                else if (task.case_status === 'project_review') navigate(`/reassessment/projects/${task.case_id}`);
+                                else navigate(task.approval_stage === 'final_approval' ? `/workflows/reassessment/approval?caseId=${task.case_id}` : `/workflows/reassessment/review?caseId=${task.case_id}`);
+                              }}
+                            >
+                              <ExternalLink className="w-3 h-3" /> View Case
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent className="text-[12px]">Open reassessment case detail</TooltipContent>
                         </Tooltip>
                       )}
                       {/* View Package — contract_record tasks with a known package_id */}
