@@ -28,8 +28,10 @@ import React, { useState, useEffect } from "react";
 import { useLocation, useParams } from "wouter";
 import {
   FileText, Plus, Flag, ChevronRight, Info, Tag,
-  CheckCircle2, AlertTriangle, Clock, MoreHorizontal, ArrowRight, AlertCircle
+  CheckCircle2, AlertTriangle, Clock, MoreHorizontal, ArrowRight, AlertCircle,
+  Eye, ClipboardCheck, Lock
 } from "lucide-react";
+import { useRole } from "@/contexts/RoleContext";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
@@ -185,6 +187,13 @@ function TimelineNode({ doc, isLast }: { doc: PackageDoc; isLast: boolean }) {
 export default function PackagesComposition() {
   const _screenKey = SCREEN_KEYS.PACKAGES_COMPOSITION;
   const [, navigate] = useLocation();
+  const { activeRole } = useRole();
+  // Role-aware permissions:
+  //   Preparer / Lease Admin → full edit surface
+  //   Reviewer               → read-only; action bar shows "Review Package"
+  //   All others             → read-only
+  const isReviewer = activeRole === 'reviewer';
+  const canEdit = activeRole === 'preparer' || activeRole === 'lease_admin';
   const params = useParams<{ contractId: string }>();
   // Resolve the package from the route param; fall back to the default mock if unknown
   const contractId = params.contractId ?? FALLBACK_PACKAGE_ID;
@@ -297,21 +306,39 @@ export default function PackagesComposition() {
           <p className="page-subtitle">{pkg.record_label} · {pkg.id} · {pkg.document_count} documents</p>
         </div>
         <div className="flex items-center gap-2">
-          {/* BR1: Navigate to Pipeline with pre-selected record so the auto-creation flow is demonstrable */}
-          <Button
-            variant="outline" size="sm" className="gap-1.5"
-            onClick={() => {
-              // TODO: Backend integration — replace with navigation state when using React Router
-              sessionStorage.setItem('leasegov_add_doc_for', JSON.stringify({
-                packageId: pkg.id,
-                recordId: pkg.record_id,
-                recordLabel: pkg.record_label,
-              }));
-              navigate('/pipeline/dashboard');
-            }}
-          >
-            <Plus className="w-3.5 h-3.5" /> Add Document
-          </Button>
+          {/* Role badge */}
+          {isReviewer ? (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-semibold bg-blue-100 text-blue-800 border border-blue-200">
+              <Eye className="w-3.5 h-3.5" /> Reviewer View — Read Only
+            </span>
+          ) : canEdit ? (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-semibold bg-[var(--color-lg-accent-subtle)] text-[var(--color-lg-info)] border border-blue-200">
+              <ClipboardCheck className="w-3.5 h-3.5" /> Preparer View
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-semibold bg-muted text-muted-foreground border border-border">
+              <Lock className="w-3.5 h-3.5" /> Read Only
+            </span>
+          )}
+
+          {/* Add Document — Preparer / Lease Admin only */}
+          {canEdit && (
+            <Button
+              variant="outline" size="sm" className="gap-1.5"
+              onClick={() => {
+                sessionStorage.setItem('leasegov_add_doc_for', JSON.stringify({
+                  packageId: pkg.id,
+                  recordId: pkg.record_id,
+                  recordLabel: pkg.record_label,
+                }));
+                navigate('/pipeline/dashboard');
+              }}
+            >
+              <Plus className="w-3.5 h-3.5" /> Add Document
+            </Button>
+          )}
+
+          {/* View Flags — all roles */}
           <Button
             variant="outline" size="sm"
             className="gap-1.5 border-[var(--color-lg-error)] text-[var(--color-lg-error)] hover:bg-[var(--color-lg-error-subtle)]"
@@ -322,20 +349,33 @@ export default function PackagesComposition() {
               <span className="ml-1 px-1.5 py-0.5 rounded-full bg-[var(--color-lg-error)] text-white text-[10px] font-bold">{totalOpenFlags}</span>
             )}
           </Button>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span>
-                <Button disabled={!canProceed} className="gap-1.5" onClick={() => navigate("/approvals/queue")}>
-                  Proceed to Approval <ChevronRight className="w-4 h-4" />
-                </Button>
-              </span>
-            </TooltipTrigger>
-            {!canProceed && (
-              <TooltipContent side="bottom" className="text-[12px]">
-                {pkg.open_blocking_flags} blocking flag{pkg.open_blocking_flags !== 1 ? "s" : ""} must be resolved
-              </TooltipContent>
-            )}
-          </Tooltip>
+
+          {/* Primary CTA — differs by role */}
+          {isReviewer ? (
+            // Reviewer: "Review Package" → navigates to the review detail screen
+            <Button
+              className="gap-1.5"
+              onClick={() => navigate("/approvals/queue")}
+            >
+              <ClipboardCheck className="w-4 h-4" /> Review Package <ChevronRight className="w-4 h-4" />
+            </Button>
+          ) : canEdit ? (
+            // Preparer: "Proceed to Approval" — disabled while blocking flags exist
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>
+                  <Button disabled={!canProceed} className="gap-1.5" onClick={() => navigate("/approvals/queue")}>
+                    Proceed to Approval <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              {!canProceed && (
+                <TooltipContent side="bottom" className="text-[12px]">
+                  {pkg.open_blocking_flags} blocking flag{pkg.open_blocking_flags !== 1 ? "s" : ""} must be resolved
+                </TooltipContent>
+              )}
+            </Tooltip>
+          ) : null}
         </div>
       </div>
 
@@ -353,27 +393,29 @@ export default function PackagesComposition() {
               <span className="text-muted-foreground ml-1">
                 Only one Base Contract is allowed per package. Found {baseContracts.length}. Reclassify the duplicate to resolve this flag.
               </span>
-              {/* Quick-action: one reclassify button per duplicate Base Contract */}
-              <div className="flex flex-wrap gap-2 mt-2.5">
-                {baseContracts.map((dupeDoc, idx) => (
-                  <button
-                    key={dupeDoc.id}
-                    onClick={() => { setChangeRoleDoc(dupeDoc); setPendingRole(dupeDoc.document_role); }}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded border text-[11px] font-semibold transition-colors"
-                    style={{
-                      borderColor: "var(--color-lg-error)",
-                      color: "var(--color-lg-error)",
-                      background: "transparent",
-                    }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "var(--color-lg-error-subtle)"; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
-                    title={`Reclassify “${dupeDoc.name}”`}
-                  >
-                    <Tag className="w-3 h-3" />
-                    Reclassify {idx === 0 ? "first" : "duplicate"}: {dupeDoc.name.length > 28 ? dupeDoc.name.slice(0, 25) + "…" : dupeDoc.name}
-                  </button>
-                ))}
-              </div>
+              {/* Quick-action: one reclassify button per duplicate Base Contract — Preparer / Lease Admin only */}
+              {canEdit && (
+                <div className="flex flex-wrap gap-2 mt-2.5">
+                  {baseContracts.map((dupeDoc, idx) => (
+                    <button
+                      key={dupeDoc.id}
+                      onClick={() => { setChangeRoleDoc(dupeDoc); setPendingRole(dupeDoc.document_role); }}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded border text-[11px] font-semibold transition-colors"
+                      style={{
+                        borderColor: "var(--color-lg-error)",
+                        color: "var(--color-lg-error)",
+                        background: "transparent",
+                      }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "var(--color-lg-error-subtle)"; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
+                      title={`Reclassify "${dupeDoc.name}"`}
+                    >
+                      <Tag className="w-3 h-3" />
+                      Reclassify {idx === 0 ? "first" : "duplicate"}: {dupeDoc.name.length > 28 ? dupeDoc.name.slice(0, 25) + "…" : dupeDoc.name}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -474,17 +516,20 @@ export default function PackagesComposition() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="text-[13px]">
                           <DropdownMenuItem onClick={() => navigate("/extraction/verify")}>View Extraction</DropdownMenuItem>
-                          {/* BR5: Change Role → triggers re-assembly */}
-                          <DropdownMenuItem onClick={() => { setChangeRoleDoc(doc); setPendingRole(doc.document_role); }}>
-                            Change Role
-                          </DropdownMenuItem>
-                          {/* BR5: Remove from Package → triggers re-assembly */}
-                          <DropdownMenuItem
-                            className="text-destructive"
-                            onClick={() => handleRemove(doc)}
-                          >
-                            Remove from Package
-                          </DropdownMenuItem>
+                          {/* BR5: Change Role / Remove — Preparer / Lease Admin only */}
+                          {canEdit && (
+                            <>
+                              <DropdownMenuItem onClick={() => { setChangeRoleDoc(doc); setPendingRole(doc.document_role); }}>
+                                Change Role
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onClick={() => handleRemove(doc)}
+                              >
+                                Remove from Package
+                              </DropdownMenuItem>
+                            </>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </td>
