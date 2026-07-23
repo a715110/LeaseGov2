@@ -42,6 +42,17 @@ function getChannel(): BroadcastChannel | null {
 export const PENDING_EXTRACTION_JOBS_KEY = 'leasegov_pending_extraction_jobs';
 
 /**
+ * sessionStorage key for DECLINE_SUBMITTED events that have not yet been consumed
+ * by PipelineDashboard. Bridges the timing gap where the event fires while
+ * PipelineDashboard is unmounted (submitter is on a different screen).
+ * PipelineDashboard drains this on mount.
+ *
+ * PRODUCTION UPGRADE: Remove entirely — the backend persists the decline record
+ * and PipelineDashboard fetches it via GET /api/v1/submissions on mount.
+ */
+export const PENDING_DECLINE_EVENTS_KEY = 'leasegov_pending_decline_events';
+
+/**
  * Publish a cross-role event. Notifies all other tabs immediately.
  *
  * // DEMO ONLY — replace with: await api.post('/api/v1/events', event)
@@ -65,6 +76,18 @@ export function publishEvent(event: Omit<DemoEvent, 'timestamp'>): void {
       const pending: DemoEvent[] = raw ? JSON.parse(raw) : [];
       pending.push(fullEvent);
       sessionStorage.setItem(PENDING_EXTRACTION_JOBS_KEY, JSON.stringify(pending));
+    } catch { /* quota exceeded — ignore */ }
+  }
+
+  // DEMO ONLY: persist DECLINE_SUBMITTED payloads so PipelineDashboard can drain
+  // them on mount if it was not mounted when the event fired.
+  // PRODUCTION: remove — backend persists the decline; dashboard fetches via API.
+  if (fullEvent.type === 'DECLINE_SUBMITTED') {
+    try {
+      const raw = sessionStorage.getItem(PENDING_DECLINE_EVENTS_KEY);
+      const pending: DemoEvent[] = raw ? JSON.parse(raw) : [];
+      pending.push(fullEvent);
+      sessionStorage.setItem(PENDING_DECLINE_EVENTS_KEY, JSON.stringify(pending));
     } catch { /* quota exceeded — ignore */ }
   }
 

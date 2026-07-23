@@ -47,7 +47,8 @@ import { UploadDialog, WorkspaceBadge, getWorkspaceColour } from '@/components/p
 import type { StagedFile as UploadedFile } from '@/components/pipeline/UploadDialog';
 import { toast } from 'sonner';
 import { SCREEN_KEYS } from '@/constants/screenKeys';
-import { publishEvent, subscribeToEvents } from '@/lib/eventBus';
+import { publishEvent, subscribeToEvents, PENDING_DECLINE_EVENTS_KEY } from '@/lib/eventBus';
+import type { DemoEvent } from '@/lib/types';
 import { useRole } from '@/contexts/RoleContext';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { usePipelineCounts } from '@/contexts/PipelineCountsContext';
@@ -1782,6 +1783,7 @@ export default function PipelineDashboard() {
           reasonLabel?: string;
           reason?: string;
           document_ids?: string[];
+          fileNames?: string[];  // per-file names for fallback matching
           perFileReasons?: { jobId: string; fileName: string; reason: string }[];
           // ApprovalsApprover (Approver decline-for-rework) shape
           task_id?: string;
@@ -1790,13 +1792,16 @@ export default function PipelineDashboard() {
           comments?: string;
         };
         const idSet = new Set(payload.document_ids ?? []);
-        const declinedFileNames = new Set((payload.perFileReasons ?? []).map(item => item.fileName.toLowerCase()));
-        // If document_ids are missing, fall back to file-name matching so the docs
-        // still return to Table 1 and any locked rows are unlocked.
+        // Build a combined set of declined file names from both fileNames[] and perFileReasons[]
+        const declinedFileNames = new Set([
+          ...(payload.fileNames ?? []).map(n => n.toLowerCase()),
+          ...(payload.perFileReasons ?? []).map(item => item.fileName.toLowerCase()),
+        ]);
+        // Unlock any staged docs that match by document_id or file name
         if (idSet.size > 0 || declinedFileNames.size > 0) {
           setStagedDocs(prev => prev.map(d => {
             const matchesDocumentId = idSet.has(d.id);
-            const matchesFileName = idSet.size === 0 && declinedFileNames.has(d.display_name.toLowerCase());
+            const matchesFileName = declinedFileNames.has(d.display_name.toLowerCase());
             if (!matchesDocumentId && !matchesFileName) return d;
             return {
               ...d,
@@ -1808,11 +1813,16 @@ export default function PipelineDashboard() {
         }
         // Mark the matching submission as Declined and restore its docs to Table 1
         setSubmissions(prev => prev.map(sub => {
+          // fileNamesMatch: true when ALL files in the submission appear in the declined set
+          const fileNamesMatch = payload.fileNames && payload.fileNames.length > 0
+            && sub.files.length > 0
+            && sub.files.every(f => (payload.fileNames ?? []).map(n => n.toLowerCase()).includes(f.name.toLowerCase()));
           const isMatch =
             (payload.batchRef     && sub.batchRef    === payload.batchRef)     ||
             (payload.submissionId && sub.packageNum  === payload.submissionId) ||
             (payload.submissionId && sub.id          === payload.submissionId) ||
             (payload.batchRef     && sub.id          === payload.batchRef)     ||
+            !!fileNamesMatch                                                    ||
             (payload.record_id    && sub.record_id   === payload.record_id)    ||
             (declinedFileNames.size > 0 && sub.files.some(f => declinedFileNames.has(f.name.toLowerCase()))) ||
             // Approver decline-for-rework: match by task_id (contract record ref)
@@ -1886,12 +1896,36 @@ export default function PipelineDashboard() {
     return () => unsub();
   }, [addNotification]);
 
+  // ── DEMO ONLY: Mount-time drain for DECLINE_SUBMITTED events ───────────────────
+  // Processes any DECLINE_SUBMITTED events that fired while PipelineDashboard was
+  // unmounted (e.g. the submitter was on a different screen when the preparer declined).
+  // PRODUCTION: remove — backend persists the decline; dashboard fetches via GET /api/v1/submissions.
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(PENDING_DECLINE_EVENTS_KEY);
+      if (raw) {
+        const pending: DemoEvent[] = JSON.parse(raw);
+        if (pending.length > 0) {
+          pending.forEach(event => {
+            // Re-dispatch as a same-tab event so the existing DECLINE_SUBMITTED
+            // handler (which is already mounted) processes it exactly once.
+            window.dispatchEvent(new CustomEvent('leasegov_same_tab_event', { detail: event }));
+          });
+          sessionStorage.removeItem(PENDING_DECLINE_EVENTS_KEY);
+        }
+      }
+    } catch { /* ignore parse errors */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ── DEMO ONLY: DEMO_RESET subscriber — restores all state to seed data when the
   // user clicks "Reset Demo" in the sidebar. Remove when backend is wired up;
   // a real reset would be: await api.post('/api/v1/demo/reset') then refetch queries. ──
   useEffect(() => {
     const unsub = subscribeToEvents((event) => {
       if (event.type !== 'DEMO_RESET') return;
+      // Clear the pending decline queue so reset starts clean
+      sessionStorage.removeItem(PENDING_DECLINE_EVENTS_KEY);
       setStagedDocs(MOCK_DOCUMENTS);
       setContractPackages(INITIAL_PACKAGES);
       setSubmissions(INITIAL_SUBMISSIONS);

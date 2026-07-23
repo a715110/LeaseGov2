@@ -1768,37 +1768,51 @@ export default function ExtractionQueue() {
                     other: 'Other',
                   };
                   // Mark all jobs in the batch as declined, storing per-file reason
+                  // Step 1: briefly flash the declined status so the user sees the change,
+                  // then remove the jobs from the queue after a short delay.
+                  const declinedBatchRef = declineBatch.batchRef;
+                  const declinedJobCount = declineBatch.jobs.length;
                   setJobs(prev => prev.map(j => {
-                    if (j.batch_ref !== declineBatch.batchRef) return j;
+                    if (j.batch_ref !== declinedBatchRef) return j;
                     return { ...j, status: 'declined' as JobStatus, decline_reason: fileReasons[j.id]?.trim() || undefined };
                   }));
-                  if (selectedJob && selectedJob.batch_ref === declineBatch.batchRef) {
-                    setSelectedJob(prev => prev ? { ...prev, status: 'declined' as JobStatus } : prev);
+                  if (selectedJob && selectedJob.batch_ref === declinedBatchRef) {
+                    setSelectedJob(null);
                   }
-                  // Build per-file reason list for the event payload
+                  // Remove the declined jobs from the queue after 1.5 s so the status
+                  // flash is visible, then the rows disappear cleanly.
+                  setTimeout(() => {
+                    setJobs(prev => prev.filter(j => j.batch_ref !== declinedBatchRef));
+                  }, 1500);
+
+                  // Step 2: Build per-file reason list for the event payload
                   const perFileReasons: FileDeclineReason[] = declineBatch.jobs
                     .filter(j => fileReasons[j.id]?.trim())
                     .map(j => ({ jobId: j.id, fileName: j.file_name, reason: fileReasons[j.id].trim() }));
-                  // DEMO ONLY: Fire cross-role event so PipelineDashboard Table 3 updates.
-                  // PRODUCTION: replace with: await api.post(`/api/v1/submissions/${declineBatch.batchRef}/decline`, { reasonCategory, notes, perFileReasons })
-                  // document_ids populated from the job list so PipelineDashboard can
-                  // match and reset individual staged documents by ID.
-                  const document_ids: string[] = declineBatch.jobs.map(j => j.id);
+
+                  // Step 3: Fire DECLINE_SUBMITTED so PipelineDashboard marks the submission Declined.
+                  // PRODUCTION: replace with: await api.post(`/api/v1/submissions/${declinedBatchRef}/decline`, { reasonCategory, notes, perFileReasons })
+                  // Include fileNames so PipelineDashboard can match via file-name fallback
+                  // when the batchRef on the submission differs from the queue's batchRef.
                   publishEvent({
                     type: 'DECLINE_SUBMITTED',
                     sourceRole: 'preparer',
                     payload: {
-                      submissionId: declineBatch.batchRef,
-                      batchRef: declineBatch.batchRef,
+                      submissionId: declinedBatchRef,
+                      batchRef: declinedBatchRef,
                       reasonCategory: declineReasonCategory,
                       reason: declineBatchNotes.trim(),
                       reasonLabel: reasonLabel[declineReasonCategory] ?? 'Other',
                       perFileReasons,
-                      document_ids,
+                      // fileNames lets PipelineDashboard match even if batchRef lookup misses
+                      fileNames: declineBatch.jobs.map(j => j.file_name),
+                      // document_ids kept for legacy compatibility
+                      document_ids: declineBatch.jobs.map(j => j.id),
                     },
                   });
-                  toast.error(`${declineBatch.batchRef} declined — ${reasonLabel[declineReasonCategory]}`, {
-                    description: `${declineBatch.jobs.length} file${declineBatch.jobs.length !== 1 ? 's' : ''} returned to Staged Documents.`,
+
+                  toast.error(`${declinedBatchRef} declined — ${reasonLabel[declineReasonCategory]}`, {
+                    description: `${declinedJobCount} file${declinedJobCount !== 1 ? 's' : ''} returned to Staged Documents.`,
                     duration: 6000,
                   });
                   closeDeclineBatch();
