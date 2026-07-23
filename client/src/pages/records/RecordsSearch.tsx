@@ -595,7 +595,8 @@ export default function RecordsSearch() {
                 <>
                   <tr
                     key={row.id}
-                    className={expandedRow === row.id ? "bg-muted/20" : ""}
+                    className={`cursor-pointer hover:bg-muted/30 transition-colors ${expandedRow === row.id ? "bg-muted/20" : ""}`}
+                    onClick={() => navigate(`/records/${row.id}`)}
                   >
                     <td>
                       {row.is_watchlisted
@@ -630,14 +631,14 @@ export default function RecordsSearch() {
                           variant="ghost"
                           size="sm"
                           className="h-7 w-7 p-0"
-                          onClick={() => setExpandedRow(expandedRow === row.id ? null : row.id)}
+                          onClick={e => { e.stopPropagation(); setExpandedRow(expandedRow === row.id ? null : row.id); }}
                         >
                           {expandedRow === row.id ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                         </Button>
                         <Button
                           size="sm"
                           className="h-7 gap-1 text-[12px]"
-                          onClick={() => navigate(`/records/${row.id}`)}
+                          onClick={e => { e.stopPropagation(); navigate(`/records/${row.id}`); }}
                         >
                           Open <ChevronRight className="w-3.5 h-3.5" />
                         </Button>
