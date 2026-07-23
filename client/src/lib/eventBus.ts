@@ -31,12 +31,23 @@ function getChannel(): BroadcastChannel | null {
 }
 
 /**
+ * sessionStorage key for BATCH_SUBMITTED jobs that have not yet been consumed
+ * by ExtractionQueue. This bridges the timing gap where the event fires while
+ * ExtractionQueue is unmounted (i.e. the submitter navigates away before the
+ * preparer opens the queue). ExtractionQueue drains this on mount.
+ *
+ * PRODUCTION UPGRADE: Remove entirely — the backend persists the job record
+ * and ExtractionQueue fetches it via GET /api/v1/extraction/queue on mount.
+ */
+export const PENDING_EXTRACTION_JOBS_KEY = 'leasegov_pending_extraction_jobs';
+
+/**
  * Publish a cross-role event. Notifies all other tabs immediately.
  *
  * // DEMO ONLY — replace with: await api.post('/api/v1/events', event)
- * localStorage persistence has been intentionally removed. Events are delivered
- * via BroadcastChannel (other tabs) and a same-tab CustomEvent only.
- * State does NOT survive a page reload — this is by design for demo simplicity.
+ * For BATCH_SUBMITTED events, the payload is also written to sessionStorage so
+ * ExtractionQueue can consume it on mount even if it was not mounted when the
+ * event fired (e.g. after a same-tab navigate away).
  * A real backend would persist events in a database and deliver via WebSocket/SSE.
  */
 export function publishEvent(event: Omit<DemoEvent, 'timestamp'>): void {
@@ -44,6 +55,18 @@ export function publishEvent(event: Omit<DemoEvent, 'timestamp'>): void {
     ...event,
     timestamp: new Date().toISOString(),
   };
+
+  // DEMO ONLY: persist BATCH_SUBMITTED payloads so ExtractionQueue can drain
+  // them on mount, regardless of whether it was mounted when the event fired.
+  // PRODUCTION: remove — backend persists the job; queue fetches via API.
+  if (fullEvent.type === 'BATCH_SUBMITTED') {
+    try {
+      const raw = sessionStorage.getItem(PENDING_EXTRACTION_JOBS_KEY);
+      const pending: DemoEvent[] = raw ? JSON.parse(raw) : [];
+      pending.push(fullEvent);
+      sessionStorage.setItem(PENDING_EXTRACTION_JOBS_KEY, JSON.stringify(pending));
+    } catch { /* quota exceeded — ignore */ }
+  }
 
   // Broadcast to other tabs via BroadcastChannel
   // DEMO ONLY — replace with: WebSocket or SSE push from backend

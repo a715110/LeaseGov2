@@ -2227,7 +2227,14 @@ export default function PipelineDashboard() {
     // The backend will create the submission record and push a notification to the Preparer.
     publishEvent({
       type: 'BATCH_SUBMITTED',
-      payload: { batchId: batchRef, packageNum: pkg.packageNum, batchRef, workspace: pkg.workspace },
+      payload: {
+        batchId: batchRef,
+        batchRef,
+        packageNum: pkg.packageNum,
+        packageName: pkg.packageName,
+        workspace: pkg.workspace,
+        fileCount: pkg.files.length,
+      },
       sourceRole: 'document_submitter',
     });
   }

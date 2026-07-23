@@ -31,7 +31,8 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { subscribeToEvents, publishEvent } from '@/lib/eventBus';
+import { subscribeToEvents, publishEvent, PENDING_EXTRACTION_JOBS_KEY } from '@/lib/eventBus';
+import type { DemoEvent } from '@/lib/types';
 import { WorkspaceBadge, getWorkspaceColour } from '@/components/pipeline/UploadDialog';
 import { MOCK_ASSIGNEES } from '@/lib/mockData';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
@@ -282,12 +283,14 @@ const MOCK_TEMPLATES: ExtractionTemplate[] = [
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const STATUS_TABS = [
-  { key: 'all',          label: 'All',          count: 15 },
-  { key: 'processing',   label: 'Processing',   count: 3 },
-  { key: 'ocr_complete', label: 'OCR Complete', count: 8 },
-  { key: 'warning',      label: 'Warning',      count: 2 },
-  { key: 'failed',       label: 'Failed',       count: 1 },
+// Tab keys only — counts are computed dynamically from the live `jobs` state
+const STATUS_TAB_DEFS = [
+  { key: 'all',          label: 'All' },
+  { key: 'processing',   label: 'Processing' },
+  { key: 'ocr_queued',   label: 'Queued' },
+  { key: 'ocr_complete', label: 'OCR Complete' },
+  { key: 'warning',      label: 'Warning' },
+  { key: 'failed',       label: 'Failed' },
 ];
 
 const STATUS_BADGE: Record<JobStatus, string> = {
@@ -906,29 +909,65 @@ export default function ExtractionQueue() {
   // DEMO ONLY: Wire BATCH_SUBMITTED → prepend new job to queue.
   // PRODUCTION: remove this block; replace with a real-time backend subscription
   // (WebSocket/SSE) or a polling query: useQuery(['extractionQueue'], api.get('/api/v1/extraction/queue'))
+
+  /** Convert a BATCH_SUBMITTED event payload into a ProcessingJob row */
+  function batchEventToJob(event: DemoEvent): ProcessingJob {
+    const payload = event.payload as { batchId?: string; packageNum?: string; batchRef?: string; workspace?: string; fileCount?: number; packageName?: string };
+    const ts = new Date(event.timestamp);
+    const timeStr = ts.toLocaleTimeString();
+    return {
+      id: `job-${ts.getTime()}-${Math.random().toString(36).slice(2, 6)}`,
+      display_id: `JOB-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
+      file_name: payload.packageName ?? payload.packageNum ?? 'Submitted Package',
+      batch_ref: payload.batchRef ?? payload.batchId ?? '',
+      workspace: payload.workspace,
+      status: 'ocr_queued',
+      ocr_confidence: 0,
+      started: timeStr,
+      duration: '—',
+      assigned: '—',
+      agent_status: 'queued',
+      extraction_mode: 'ai_assisted',
+      pages: [],
+      log: [{ time: timeStr, message: `Received from pipeline — ${payload.fileCount ?? 1} file(s) queued for OCR`, level: 'info' }],
+    };
+  }
+
+  // DEMO ONLY — Mount-time drain: consume any BATCH_SUBMITTED events that were
+  // published while this component was unmounted (e.g. submitter navigated away
+  // before preparer opened the queue). Without this drain the live subscribeToEvents
+  // listener below would miss them because it only fires for events published AFTER mount.
+  // PRODUCTION: remove — backend persists jobs; queue fetches via GET /api/v1/extraction/queue.
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(PENDING_EXTRACTION_JOBS_KEY);
+      if (raw) {
+        const pending: DemoEvent[] = JSON.parse(raw);
+        if (pending.length > 0) {
+          const newJobs = pending.map(batchEventToJob);
+          setJobs(prev => [...newJobs.reverse(), ...prev]);
+          // Clear the queue so jobs are not duplicated on re-mount
+          sessionStorage.removeItem(PENDING_EXTRACTION_JOBS_KEY);
+          toast.info(
+            `${newJobs.length} new package${newJobs.length !== 1 ? 's' : ''} received from pipeline`,
+            { duration: 5000 }
+          );
+        }
+      }
+    } catch { /* ignore parse errors */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Live listener: handles BATCH_SUBMITTED events published while this component IS mounted
+  // (e.g. submitter and preparer in different browser tabs, or same-tab multi-role demo
+  // where the queue is already open when the submitter confirms).
   useEffect(() => {
     const unsub = subscribeToEvents((event) => {
       if (event.type !== 'BATCH_SUBMITTED') return;
-      const payload = event.payload as { batchId?: string; packageNum?: string; workspace?: string };
-      const newJob: ProcessingJob = {
-        id: `job-${Date.now()}`,
-        display_id: `DJ-${Math.floor(1000 + Math.random() * 9000)}`,
-        file_name: payload.packageNum ?? 'Submitted Package',
-        batch_ref: payload.batchId ?? '',
-        workspace: payload.workspace,
-        status: 'ocr_queued',
-        ocr_confidence: 0,
-        started: new Date().toLocaleTimeString(),
-        duration: '—',
-        assigned: '—',
-        agent_status: 'queued',
-        extraction_mode: 'ai_assisted',
-        pages: [],
-        log: [{ time: new Date().toLocaleTimeString(), message: `Received from pipeline at ${new Date().toLocaleTimeString()}`, level: 'info' }],
-      };
-      setJobs(prev => [newJob, ...prev]);
+      setJobs(prev => [batchEventToJob(event), ...prev]);
     });
     return () => unsub();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Expandable batch rows — Set of batch_ref values that are currently expanded
@@ -961,6 +1000,12 @@ export default function ExtractionQueue() {
   // Derive which workspaces are present in the current job list
   const WORKSPACE_PILLS = ['Retail', 'Office', 'Industrial', 'Land', 'Corporate Leasing'];
   const presentWorkspaces = WORKSPACE_PILLS.filter(ws => jobs.some(j => j.workspace === ws));
+
+  // Compute live tab counts from the full (unfiltered by workspace/search) job list
+  const STATUS_TABS = STATUS_TAB_DEFS.map(def => ({
+    ...def,
+    count: def.key === 'all' ? jobs.length : jobs.filter(j => j.status === def.key).length,
+  }));
 
   // Group filtered jobs by batch_ref for expandable batch rows
   const batchGroups = Array.from(
@@ -1005,7 +1050,7 @@ export default function ExtractionQueue() {
             <span className={`text-[11px] px-1.5 py-0.5 rounded-full font-semibold ${
               activeTab === tab.key ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
             }`}>
-              {tab.count}
+              {tab.count > 0 ? tab.count : '0'}
             </span>
           </button>
         ))}
