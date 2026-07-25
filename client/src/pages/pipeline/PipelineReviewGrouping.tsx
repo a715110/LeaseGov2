@@ -33,7 +33,7 @@ import { toast } from 'sonner';
 import { SCREEN_KEYS } from '@/constants/screenKeys';
 import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 import { publishEvent } from '@/lib/eventBus';
-import { MOCK_CONTRACT_RECORDS, searchContractRecords } from '@/lib/mockData';
+import { MOCK_CONTRACT_RECORDS, searchContractRecords, MOCK_PACKAGES } from '@/lib/mockData';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -374,6 +374,181 @@ function clearSession() {
   try { sessionStorage.removeItem(SESSION_KEY); } catch { /* ignore */ }
 }
 
+// ─── Add to Existing Package Dialog ─────────────────────────────────────────
+
+function AddToExistingPackageDialog({
+  files,
+  onConfirm,
+  onCancel,
+}: {
+  files: ReviewFile[];
+  onConfirm: (targetPkgId: string) => void;
+  onCancel: () => void;
+}) {
+  const [selectedPkgId, setSelectedPkgId] = useState('');
+  const availablePkgs = MOCK_PACKAGES.filter(p => p.status === 'assembly');
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onCancel} />
+      <div className="relative z-10 w-[500px] rounded-xl border border-border bg-background shadow-2xl">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <div>
+            <h2 className="text-[15px] font-semibold text-foreground">Add to Existing Package</h2>
+            <p className="text-[12px] text-muted-foreground mt-0.5">
+              Adding {files.length} file{files.length !== 1 ? 's' : ''} to a package
+            </p>
+          </div>
+          <button onClick={onCancel} className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* File preview */}
+        <div className="px-5 py-3 border-b border-border bg-muted/30">
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Files to add</p>
+          <ul className="space-y-1 max-h-28 overflow-y-auto">
+            {files.map(f => (
+              <li key={f.id} className="flex items-center gap-2 text-[12px] text-foreground">
+                <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                <span className="truncate">{f.display_name}</span>
+                <span className="ml-auto text-muted-foreground shrink-0">{ROLE_LABELS[f.document_role]}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Package selector */}
+        <div className="px-5 py-4">
+          <label className="text-[12px] font-semibold text-foreground block mb-2">Select target package</label>
+          {availablePkgs.length === 0 ? (
+            <p className="text-[13px] text-muted-foreground italic">No packages in assembly. Create a new package first.</p>
+          ) : (
+            <div className="space-y-2 max-h-52 overflow-y-auto">
+              {availablePkgs.map(pkg => (
+                <label
+                  key={pkg.id}
+                  className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 cursor-pointer transition-colors ${
+                    selectedPkgId === pkg.id
+                      ? 'border-primary bg-primary/5'
+                      : 'border-border hover:border-primary/40 hover:bg-muted/40'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="target-pkg"
+                    value={pkg.id}
+                    checked={selectedPkgId === pkg.id}
+                    onChange={() => setSelectedPkgId(pkg.id)}
+                    className="accent-primary"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[13px] font-semibold text-foreground font-mono">{pkg.packageNumber}</span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      {pkg.document_count} file{pkg.document_count !== 1 ? 's' : ''} · {pkg.status}
+                    </p>
+                  </div>
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-border">
+          <Button size="sm" variant="outline" onClick={onCancel} className="text-[13px]">Cancel</Button>
+          <Button
+            size="sm"
+            onClick={() => selectedPkgId && onConfirm(selectedPkgId)}
+            disabled={!selectedPkgId || availablePkgs.length === 0}
+            className="text-[13px] gap-1.5"
+          >
+            <Layers className="w-3.5 h-3.5" /> Add to Package
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Create New Package Dialog ────────────────────────────────────────────────
+
+function CreateNewPackageDialog({
+  files,
+  defaultName,
+  onConfirm,
+  onCancel,
+}: {
+  files: ReviewFile[];
+  defaultName: string;
+  onConfirm: (packageName: string) => void;
+  onCancel: () => void;
+}) {
+  const [pkgName, setPkgName] = useState(defaultName);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onCancel} />
+      <div className="relative z-10 w-[500px] rounded-xl border border-border bg-background shadow-2xl">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <div>
+            <h2 className="text-[15px] font-semibold text-foreground">Create New Package</h2>
+            <p className="text-[12px] text-muted-foreground mt-0.5">
+              Group {files.length} file{files.length !== 1 ? 's' : ''} into a new package
+            </p>
+          </div>
+          <button onClick={onCancel} className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Package name */}
+        <div className="px-5 py-4 border-b border-border">
+          <label className="text-[12px] font-semibold text-foreground block mb-1.5">Package name</label>
+          <input
+            type="text"
+            value={pkgName}
+            onChange={e => setPkgName(e.target.value)}
+            className="w-full rounded-md border border-border bg-background px-3 py-2 text-[13px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+            placeholder="e.g. Retail Portfolio Q3 Package"
+          />
+        </div>
+
+        {/* File list */}
+        <div className="px-5 py-3 bg-muted/20">
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Files to include</p>
+          <ul className="space-y-1 max-h-40 overflow-y-auto">
+            {files.map(f => (
+              <li key={f.id} className="flex items-center gap-2 text-[12px] text-foreground">
+                <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                <span className="truncate flex-1">{f.display_name}</span>
+                <span className="text-muted-foreground shrink-0">{ROLE_LABELS[f.document_role]}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-border">
+          <Button size="sm" variant="outline" onClick={onCancel} className="text-[13px]">Cancel</Button>
+          <Button
+            size="sm"
+            onClick={() => onConfirm(pkgName.trim() || defaultName)}
+            disabled={files.length === 0}
+            className="text-[13px] gap-1.5"
+          >
+            <Package className="w-3.5 h-3.5" /> Create Package
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function PipelineReviewGrouping() {
@@ -475,6 +650,8 @@ export default function PipelineReviewGrouping() {
   const [packageNameEdit, setPackageNameEdit] = useState(packageName);
   const [showSubmissionPanel, setShowSubmissionPanel] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [showAddToExistingDialog, setShowAddToExistingDialog] = useState(false);
+  const [showCreateNewDialog, setShowCreateNewDialog] = useState(false);
   // ── Session restore banner ─────────────────────────────────────────────────────────────────────────
   // Show banner when files came from sessionStorage (no fresh navToken in history)
   const [sessionRestored, setSessionRestored] = useState<boolean>(() => {
@@ -919,26 +1096,50 @@ export default function PipelineReviewGrouping() {
       </div>
 
       {/* Bottom action bar */}
-      <div className="sticky bottom-0 border-t border-border bg-card px-6 py-4 flex items-center justify-between">
-        <p className="text-[13px] text-muted-foreground">
+      <div className="sticky bottom-0 border-t border-border bg-card px-6 py-4 flex items-center justify-between gap-4">
+        <p className="text-[13px] text-muted-foreground shrink-0">
           <span className="text-foreground font-medium">{extractionFiles.length}</span> file{extractionFiles.length !== 1 ? 's' : ''} will be sent for extraction
           {noExtractionFiles.length > 0 && (
             <span className="ml-1 text-muted-foreground">· <span className="text-red-600 font-medium">{noExtractionFiles.length}</span> excluded</span>
           )}
         </p>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          {/* Cancel — returns to dashboard, discards session */}
           <Button
             variant="outline"
             className="gap-2"
             onClick={() => {
               clearSession();
-              toast('Package discarded — documents returned to staging.');
+              toast('Session cancelled — documents returned to staging.');
               navigate('/pipeline/dashboard');
             }}
           >
             <X className="w-4 h-4" />
-            Undo Package
+            Cancel
           </Button>
+          {/* Add to Existing Package */}
+          <Button
+            variant="outline"
+            className="gap-2"
+            disabled={extractionFiles.length === 0}
+            onClick={() => setShowAddToExistingDialog(true)}
+            title={extractionFiles.length === 0 ? 'Add at least one file to Extraction first' : undefined}
+          >
+            <Layers className="w-4 h-4" />
+            Add to Existing Package
+          </Button>
+          {/* Create New Package */}
+          <Button
+            variant="outline"
+            className="gap-2"
+            disabled={extractionFiles.length === 0}
+            onClick={() => setShowCreateNewDialog(true)}
+            title={extractionFiles.length === 0 ? 'Add at least one file to Extraction first' : undefined}
+          >
+            <Package className="w-4 h-4" />
+            Create New Package
+          </Button>
+          {/* Review & Submit — governed submission path */}
           <Button
             className="gap-2"
             disabled={extractionFiles.length === 0}
@@ -952,6 +1153,44 @@ export default function PipelineReviewGrouping() {
       </div>
 
       {/* Submission Detail Panel */}
+      {/* Add to Existing Package Dialog */}
+      {showAddToExistingDialog && (
+        <AddToExistingPackageDialog
+          files={extractionFiles}
+          onConfirm={(targetPkgId) => {
+            const pkg = MOCK_PACKAGES.find(p => p.id === targetPkgId);
+            setShowAddToExistingDialog(false);
+            clearSession();
+            toast.success(
+              `${extractionFiles.length} file${extractionFiles.length !== 1 ? 's' : ''} added to ${
+                pkg?.packageNumber ?? targetPkgId
+              } — assign roles in the package.`,
+              { duration: 5000 }
+            );
+            navigate('/pipeline/dashboard');
+          }}
+          onCancel={() => setShowAddToExistingDialog(false)}
+        />
+      )}
+
+      {/* Create New Package Dialog */}
+      {showCreateNewDialog && (
+        <CreateNewPackageDialog
+          files={extractionFiles}
+          defaultName={packageName}
+          onConfirm={(newPkgName) => {
+            const pkgNum = `PKG-${Date.now().toString(36).toUpperCase()}`;
+            setShowCreateNewDialog(false);
+            clearSession();
+            toast.success(`Package ${pkgNum} created — ${extractionFiles.length} file${extractionFiles.length !== 1 ? 's' : ''} staged for review.`, {
+              duration: 5000,
+            });
+            navigate('/pipeline/dashboard');
+          }}
+          onCancel={() => setShowCreateNewDialog(false)}
+        />
+      )}
+
       {showSubmissionPanel && (
         <SubmissionDetailPanel
           extractionFiles={extractionFiles}
