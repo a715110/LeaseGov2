@@ -33,7 +33,6 @@ export const SCREEN_KEYS = {
   PIPELINE_NEW_RECORD_MODAL:    'pipeline-new-record-modal',
   PIPELINE_VALIDATION:          'pipeline-validation',
   PIPELINE_REVIEW_GROUPING:     'pipeline-review-grouping',
-  PIPELINE_SUBMIT_CONFIRM:      'pipeline-submit-confirm',
 
   // ─── FC-2: EXTRACTION AND VERIFICATION (MVP — 8 screens) ────────────────────
   EXTRACTION_QUEUE:             'extraction-processing-queue',

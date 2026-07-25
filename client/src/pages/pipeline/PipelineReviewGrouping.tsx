@@ -22,7 +22,7 @@ import { useLocation, useSearch } from 'wouter';
 import {
   FileText, CheckSquare, Square, ChevronDown, Edit2, Check,
   X, ZoomIn, ZoomOut, Layers, Package, Info, Save, Send,
-  ArrowDown, ArrowUp, Lock, Filter, ChevronRight
+  ArrowDown, ArrowUp, Lock, Filter, ChevronRight, CheckCircle2, AlertTriangle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -236,6 +236,9 @@ function SubmissionDetailPanel({
   onConfirm: () => void;
 }) {
   const mode = extractionFiles.length >= 2 ? 'Contract Package' : 'Single Contract';
+  // Generate a stable batch ID for preview — matches the real ID generated on confirm
+  const previewBatchId = `BATCH-${new Date().getFullYear()}-${String(extractionFiles.length).padStart(4, '0')}-PREVIEW`;
+  const warningCount = extractionFiles.filter(f => f.status === 'invalid').length;
 
   return (
     <FlagSlidingPanel
@@ -243,7 +246,7 @@ function SubmissionDetailPanel({
       onClose={onClose}
       title="Submission Summary"
       subtitle="Review before submitting for ingestion"
-      width={440}
+      width={460}
       footer={
         <>
           <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
@@ -255,28 +258,70 @@ function SubmissionDetailPanel({
       }
     >
       <div className="space-y-5">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Submission Mode</p>
-          <div className="flex items-center gap-2">
-            <Layers className="w-4 h-4 text-primary" />
-            <span className="text-[13px] font-semibold text-foreground">{mode}</span>
+
+        {/* Submission mode + batch ID */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-lg bg-muted/40 border border-border px-4 py-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-muted-foreground mb-1">Mode</p>
+            <div className="flex items-center gap-1.5">
+              <Layers className="w-3.5 h-3.5 text-primary shrink-0" />
+              <span className="text-[12px] font-semibold text-foreground truncate">{mode}</span>
+            </div>
             {mode === 'Contract Package' && (
-              <span className="text-[12px] text-muted-foreground">· {packageName}</span>
+              <p className="text-[11px] text-muted-foreground mt-0.5 truncate" title={packageName}>{packageName}</p>
             )}
+          </div>
+          <div className="rounded-lg bg-muted/40 border border-border px-4 py-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-muted-foreground mb-1">Batch ID</p>
+            <p className="font-mono text-[11px] font-semibold text-primary leading-snug">{previewBatchId}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">{extractionFiles.length} file{extractionFiles.length !== 1 ? 's' : ''}</p>
           </div>
         </div>
 
+        {/* File list */}
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Files for Extraction</p>
-          <div className="space-y-1.5">
-            {extractionFiles.map(f => (
-              <div key={f.id} className="flex items-center justify-between gap-2 text-[12px]">
-                <span className="text-foreground truncate flex-1">{f.display_name}</span>
-                <span className="text-muted-foreground shrink-0">{ROLE_LABELS[f.document_role]}</span>
+          <div className="rounded-lg border border-border overflow-hidden">
+            {extractionFiles.map((f, i) => (
+              <div
+                key={f.id}
+                className={`flex items-center justify-between gap-2 px-3 py-2 text-[12px] ${
+                  i < extractionFiles.length - 1 ? 'border-b border-border' : ''
+                }`}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                  <span className="text-foreground truncate">{f.display_name}</span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-muted-foreground">{ROLE_LABELS[f.document_role]}</span>
+                  {f.status === 'invalid'
+                    ? <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                    : <CheckCircle2 className="w-3.5 h-3.5 text-[var(--color-lg-success)]" />}
+                </div>
               </div>
             ))}
           </div>
         </div>
+
+        {/* Green pre-check */}
+        <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-green-50 border border-green-200 text-[12px] text-green-800">
+          <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0 text-green-600" />
+          <span>
+            {warningCount > 0
+              ? `${warningCount} file${warningCount > 1 ? 's' : ''} flagged — submission is not blocked.`
+              : 'All validation checks passed. Files are ready for processing.'}
+          </span>
+        </div>
+
+        {/* Read-only warning */}
+        <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-amber-50 border border-amber-200 text-[12px] text-amber-800">
+          <Lock className="w-4 h-4 mt-0.5 shrink-0" />
+          <span>
+            <strong>After submission, files become read-only.</strong> Document names and roles cannot be changed once submitted.
+          </span>
+        </div>
+
       </div>
     </FlagSlidingPanel>
   );
