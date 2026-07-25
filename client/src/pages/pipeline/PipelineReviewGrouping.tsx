@@ -1104,14 +1104,19 @@ export default function PipelineReviewGrouping() {
           )}
         </p>
         <div className="flex items-center gap-2">
-          {/* Cancel — returns to dashboard, discards session */}
+          {/* Cancel — returns to dashboard, restores checkbox selection */}
           <Button
             variant="outline"
             className="gap-2"
             onClick={() => {
-              clearSession();
-              toast('Session cancelled — documents returned to staging.');
-              navigate('/pipeline/dashboard');
+              // Do NOT clear the session — keep it so the user can return to
+              // Review & Group with their work intact if they navigate back.
+              // Pass the file IDs back so the dashboard can restore checkboxes.
+              const fileIds = files.map(f => f.id);
+              toast('Returned to staging — your selection has been restored.');
+              navigate('/pipeline/dashboard', {
+                state: { restoredSelectionIds: fileIds },
+              } as any);
             }}
           >
             <X className="w-4 h-4" />

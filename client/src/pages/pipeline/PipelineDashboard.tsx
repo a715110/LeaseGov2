@@ -1954,6 +1954,24 @@ export default function PipelineDashboard() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ── Restore checkbox selection after Cancel from Review & Group ────────────────────────────────────
+  // When the user clicks Cancel on /pipeline/review, the Review & Group screen
+  // navigates back with state: { restoredSelectionIds: string[] }.
+  // We read that state once on mount and re-populate selectedIds so the
+  // checkboxes appear exactly as they were before the user entered Review & Group.
+  useEffect(() => {
+    const histState = window.history.state as { restoredSelectionIds?: string[] } | null;
+    if (histState?.restoredSelectionIds && histState.restoredSelectionIds.length > 0) {
+      setSelectedIds(new Set(histState.restoredSelectionIds));
+      // Clear the state key so a subsequent hard-refresh doesn't re-apply it
+      window.history.replaceState(
+        { ...window.history.state, restoredSelectionIds: undefined },
+        ''
+      );
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ── FC-3 BR1: Add Document intent from PackagesComposition ───────────────────────────────────────────
   // Reads sessionStorage on mount; if an add-document intent is present,
   // opens the Upload dialog with the target record pre-selected.
