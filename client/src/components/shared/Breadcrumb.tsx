@@ -235,7 +235,7 @@ const PARAM_ROUTE_PATTERNS: Array<{
 /** Section roots — used to build the parent crumb for static sub-routes */
 const SECTION_ROOTS: Record<string, string> = {
   '/packages':     '/packages',
-  '/pipeline':     '/pipeline',
+  '/pipeline':     '/pipeline/dashboard',
   '/extraction':   '/extraction',
   '/records':      '/records',
   '/approvals':    '/approvals',

@@ -41,10 +41,10 @@ const PARAM_BACK_PATHS: Array<{ pattern: RegExp; parentHref: string }> = [
 // Maps a static route prefix to its parent href.
 // Ordered most-specific first.
 const STATIC_BACK_PATHS: Array<{ prefix: string; parentHref: string }> = [
-  // Pipeline sub-pages → Pipeline
-  { prefix: '/pipeline/upload',           parentHref: '/pipeline' },
-  { prefix: '/pipeline/review',           parentHref: '/pipeline' },
-  { prefix: '/pipeline/validation',       parentHref: '/pipeline' },
+  // Pipeline sub-pages → Pipeline Dashboard
+  { prefix: '/pipeline/upload',           parentHref: '/pipeline/dashboard' },
+  { prefix: '/pipeline/review',           parentHref: '/pipeline/dashboard' },
+  { prefix: '/pipeline/validation',       parentHref: '/pipeline/dashboard' },
   // Extraction sub-pages → Extraction
   { prefix: '/extraction/understanding',  parentHref: '/extraction' },
   { prefix: '/extraction/strategy',       parentHref: '/extraction' },
