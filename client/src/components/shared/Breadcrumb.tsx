@@ -234,16 +234,16 @@ const PARAM_ROUTE_PATTERNS: Array<{
 
 /** Section roots — used to build the parent crumb for static sub-routes */
 const SECTION_ROOTS: Record<string, string> = {
-  '/packages':     '/packages',
-  '/pipeline':     '/pipeline/dashboard',
-  '/extraction':   '/extraction',
-  '/records':      '/records',
-  '/approvals':    '/approvals',
-  '/export':       '/export/templates',
-  '/reassessment': '/reassessment',
-  '/onboarding':   '/onboarding/organization',
-  '/agents':       '/approvals/checkpoints',
-  '/admin':        '/admin',
+  '/packages':     '/packages',           // /packages is a valid route
+  '/pipeline':     '/pipeline/dashboard', // /pipeline bare has no route
+  '/extraction':   '/extraction/queue',   // /extraction bare has no route
+  '/records':      '/records',            // /records is a valid route
+  '/approvals':    '/approvals/queue',    // /approvals bare has no route
+  '/export':       '/export/templates',   // /export bare has no route
+  '/reassessment': '/reassessment/dashboard', // /reassessment bare has no route
+  '/onboarding':   '/onboarding/organization', // /onboarding bare redirects but org is the real start
+  '/agents':       '/approvals/checkpoints',   // agents root maps to checkpoints queue
+  '/admin':        '/admin',              // /admin is a valid route
 };
 
 function getLabelForPath(path: string): string {

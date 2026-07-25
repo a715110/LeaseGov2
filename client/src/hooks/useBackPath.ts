@@ -45,20 +45,23 @@ const STATIC_BACK_PATHS: Array<{ prefix: string; parentHref: string }> = [
   { prefix: '/pipeline/upload',           parentHref: '/pipeline/dashboard' },
   { prefix: '/pipeline/review',           parentHref: '/pipeline/dashboard' },
   { prefix: '/pipeline/validation',       parentHref: '/pipeline/dashboard' },
-  // Extraction sub-pages → Extraction
-  { prefix: '/extraction/understanding',  parentHref: '/extraction' },
-  { prefix: '/extraction/strategy',       parentHref: '/extraction' },
-  { prefix: '/extraction/workspace',      parentHref: '/extraction' },
-  { prefix: '/extraction/manual',         parentHref: '/extraction' },
-  { prefix: '/extraction/verification',   parentHref: '/extraction' },
-  { prefix: '/extraction/tracker',        parentHref: '/extraction' },
-  { prefix: '/extraction/reprocessing',   parentHref: '/extraction' },
+  // Extraction sub-pages → Extraction Queue (/extraction bare has no route)
+  { prefix: '/extraction/understanding',  parentHref: '/extraction/queue' },
+  { prefix: '/extraction/strategy',       parentHref: '/extraction/queue' },
+  { prefix: '/extraction/workspace',      parentHref: '/extraction/queue' },
+  { prefix: '/extraction/manual',         parentHref: '/extraction/queue' },
+  { prefix: '/extraction/verification',   parentHref: '/extraction/queue' },
+  { prefix: '/extraction/verify',         parentHref: '/extraction/queue' },
+  { prefix: '/extraction/tracker',        parentHref: '/extraction/queue' },
+  { prefix: '/extraction/reprocess',      parentHref: '/extraction/queue' },
+  { prefix: '/extraction/reprocessing',   parentHref: '/extraction/queue' },
+  { prefix: '/extraction/ai',             parentHref: '/extraction/queue' },
   // Records sub-pages → Records
   { prefix: '/records/dashboard',         parentHref: '/records' },
   { prefix: '/records/deferred',          parentHref: '/records' },
   { prefix: '/records/snapshots',         parentHref: '/records' },
   { prefix: '/records/correction',        parentHref: '/records' },
-  // Approvals sub-pages → Approvals queue
+  // Approvals sub-pages → Approvals Queue (/approvals bare has no route)
   { prefix: '/approvals/checkpoints',     parentHref: '/approvals/queue' },
   { prefix: '/approvals/review',          parentHref: '/approvals/queue' },
   { prefix: '/approvals/final',           parentHref: '/approvals/queue' },
@@ -66,16 +69,20 @@ const STATIC_BACK_PATHS: Array<{ prefix: string; parentHref: string }> = [
   { prefix: '/approvals/recall',          parentHref: '/approvals/queue' },
   { prefix: '/approvals/rework',          parentHref: '/approvals/queue' },
   { prefix: '/approvals/history',         parentHref: '/approvals/queue' },
+  // Workflows sub-pages → Approvals Queue (workflow screens are role-specific approval steps)
+  { prefix: '/workflows/reassessment',    parentHref: '/approvals/queue' },
   // Export sub-pages → Export templates
   { prefix: '/export/staging',            parentHref: '/export/templates' },
   { prefix: '/export/preflight',          parentHref: '/export/templates' },
   { prefix: '/export/tasks',              parentHref: '/export/templates' },
-  // Reassessment sub-pages → Reassessment dashboard
-  { prefix: '/reassessment/sweep',        parentHref: '/reassessment' },
-  { prefix: '/reassessment/cases',        parentHref: '/reassessment' },
-  { prefix: '/reassessment/watchlist',    parentHref: '/reassessment' },
-  { prefix: '/reassessment/survey',       parentHref: '/reassessment' },
-  { prefix: '/reassessment/projects',     parentHref: '/reassessment' },
+  // Reassessment sub-pages → Reassessment Dashboard (/reassessment bare has no route)
+  { prefix: '/reassessment/sweep',        parentHref: '/reassessment/dashboard' },
+  { prefix: '/reassessment/cases',        parentHref: '/reassessment/dashboard' },
+  { prefix: '/reassessment/watchlist',    parentHref: '/reassessment/dashboard' },
+  { prefix: '/reassessment/surveys',      parentHref: '/reassessment/dashboard' },
+  { prefix: '/reassessment/survey',       parentHref: '/reassessment/dashboard' },
+  { prefix: '/reassessment/projects',     parentHref: '/reassessment/dashboard' },
+  { prefix: '/reassessment/trigger',      parentHref: '/reassessment/dashboard' },
   // Onboarding sub-pages → Onboarding start
   { prefix: '/onboarding/admin-user',     parentHref: '/onboarding/organization' },
   { prefix: '/onboarding/theme-automation', parentHref: '/onboarding/organization' },
