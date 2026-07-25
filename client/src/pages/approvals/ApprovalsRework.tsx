@@ -90,7 +90,7 @@ export default function ApprovalsRework() {
               rejectionFlaggedFields: r.rejection_flagged_fields,
             }
           })}>
-            <RotateCcw className="w-4 h-4" /> Open for Rework
+            <RotateCcw className="w-4 h-4" /> Begin Rework
           </Button>
         </div>
       </div>
