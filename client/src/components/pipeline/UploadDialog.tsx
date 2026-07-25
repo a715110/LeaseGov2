@@ -608,7 +608,7 @@ export function UploadDialog({ open, onClose, onConfirm, initialRecord }: Upload
                 Upload more files
               </button>
               <button onClick={onClose} className="px-4 py-2 rounded text-[13px] font-semibold bg-[#1F3864] text-white hover:bg-[#162d54] transition-colors">
-                View in Dashboard
+                Close
               </button>
             </div>
           </div>
