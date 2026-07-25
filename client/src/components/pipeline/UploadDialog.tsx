@@ -850,7 +850,7 @@ export function UploadDialog({ open, onClose, onConfirm, initialRecord }: Upload
                       </div>
                       <div>
                         <p className="text-[13px] font-semibold text-foreground">Existing Record</p>
-                        <p className="text-[11px] text-muted-foreground">For an amendment, exhibit, or document for a current record</p>
+                        <p className="text-[11px] text-muted-foreground">Add to a current contract record in this system: an amendment, exhibit, document...etc.</p>
                       </div>
                     </div>
                   </button>
