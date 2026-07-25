@@ -1673,7 +1673,19 @@ export default function PipelineDashboard() {
 
   // ── Stage Documents state ──
   // PRODUCTION: replace MOCK_DOCUMENTS with: const { data } = useQuery(['stagedDocs'], api.get('/api/v1/pipeline/staged'))
-  const [stagedDocs, setStagedDocs] = useState<StagedDocument[]>(MOCK_DOCUMENTS);
+  // DEMO: persist stagedDocs to sessionStorage so newly uploaded files survive navigation
+  // to /pipeline/review and back. On Reset Demo, sessionStorage is cleared.
+  const STAGED_DOCS_SESSION_KEY = 'leasegov_staged_docs';
+  const [stagedDocs, setStagedDocs] = useState<StagedDocument[]>(() => {
+    try {
+      const raw = sessionStorage.getItem('leasegov_staged_docs');
+      if (raw) {
+        const parsed = JSON.parse(raw) as StagedDocument[];
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch { /* ignore */ }
+    return MOCK_DOCUMENTS;
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [colFilters, setColFilters] = useState({ name: '', uploader: '', workspace: '' });
   // Workspace quick-filter pill ('' = All)
@@ -1924,8 +1936,9 @@ export default function PipelineDashboard() {
   useEffect(() => {
     const unsub = subscribeToEvents((event) => {
       if (event.type !== 'DEMO_RESET') return;
-      // Clear the pending decline queue so reset starts clean
+      // Clear the pending decline queue and staged docs cache so reset starts clean
       sessionStorage.removeItem(PENDING_DECLINE_EVENTS_KEY);
+      sessionStorage.removeItem('leasegov_staged_docs');
       setStagedDocs(MOCK_DOCUMENTS);
       setContractPackages(INITIAL_PACKAGES);
       setSubmissions(INITIAL_SUBMISSIONS);
@@ -1953,6 +1966,15 @@ export default function PipelineDashboard() {
     return () => unsub();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ── Persist stagedDocs to sessionStorage on every change ──────────────────────────────────────────
+  // This ensures newly uploaded files survive navigation away from the dashboard
+  // (e.g. to /pipeline/review) and are restored when the user returns.
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('leasegov_staged_docs', JSON.stringify(stagedDocs));
+    } catch { /* ignore quota errors */ }
+  }, [stagedDocs]);
 
   // ── Restore checkbox selection after Cancel from Review & Group ────────────────────────────────────
   // When the user clicks Cancel on /pipeline/review, the Review & Group screen
