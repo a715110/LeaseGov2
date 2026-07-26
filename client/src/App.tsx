@@ -78,6 +78,7 @@ import AdminTemplates     from './pages/admin/AdminTemplates'
 import AdminThresholds    from './pages/admin/AdminThresholds'
 import AdminAuditLog      from './pages/admin/AdminAuditLog'
 import AdminNotifications from './pages/admin/AdminNotifications'
+import AdminOnboarding    from './pages/admin/AdminOnboarding'
 
 // ─── FC-10: Multi-Tenancy and Platform ───────────────────────────────────────
 import PlatformNotAuthorized  from './pages/platform/PlatformNotAuthorized'
@@ -332,6 +333,11 @@ function Router() {
       <Route path="/admin/notifications">
         <ScreenGate screenKey={SCREEN_KEYS.ADMIN_NOTIFICATIONS} fallback={<NotFound />}>
           <AdminNotifications />
+        </ScreenGate>
+      </Route>
+      <Route path="/admin/onboarding">
+        <ScreenGate screenKey={SCREEN_KEYS.ADMIN_ONBOARDING} fallback={<NotFound />}>
+          <AdminOnboarding />
         </ScreenGate>
       </Route>
 

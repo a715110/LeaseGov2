@@ -162,6 +162,7 @@ export const ROUTE_PATHS: Record<string, string> = {
 
   // FC-8: Administration
   adminUsers:               '/admin/users',
+  adminOnboarding:          '/admin/onboarding',
   adminSchema:              '/admin/schema',
   adminTemplates:           '/admin/templates',
   adminThresholds:          '/admin/thresholds',

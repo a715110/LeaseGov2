@@ -111,6 +111,7 @@ const STATIC_NAV: StaticNavEntry[] = [
   { label: 'Export',              path: ROUTE_PATHS.exportTemplates,      navGroup: 'export',            phase: 'mvp' },
   // FC-8
   { label: 'Users',               path: ROUTE_PATHS.adminUsers,           navGroup: 'admin',             phase: 'mvp' },
+  { label: 'User Onboarding',     path: ROUTE_PATHS.adminOnboarding,      navGroup: 'admin',             phase: 'mvp' },
   { label: 'Schema',              path: ROUTE_PATHS.adminSchema,          navGroup: 'admin',             phase: 'mvp' },
   { label: 'Templates',           path: ROUTE_PATHS.adminTemplates,       navGroup: 'admin',             phase: 'mvp' },
   { label: 'Thresholds',          path: ROUTE_PATHS.adminThresholds,      navGroup: 'admin',             phase: 'mvp' },

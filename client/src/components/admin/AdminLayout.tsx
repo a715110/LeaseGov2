@@ -10,12 +10,13 @@
 
 import { useLocation, Link } from "wouter";
 import { useEffect } from "react";
-import { Users, Database, FileSpreadsheet, SlidersHorizontal, ScrollText, Bell, Bot, ShieldOff } from "lucide-react";
+import { Users, Database, FileSpreadsheet, SlidersHorizontal, ScrollText, Bell, Bot, ShieldOff, UserCog } from "lucide-react";
 import { useRole } from "@/contexts/RoleContext";
 import { toast } from "sonner";
 
 const NAV_ITEMS = [
   { label: "Users",                   href: "/admin/users",         icon: Users,            phase2: false },
+  { label: "User Onboarding",         href: "/admin/onboarding",    icon: UserCog,          phase2: false },
   { label: "Schema",                  href: "/admin/schema",        icon: Database,         phase2: false },
   { label: "Templates",               href: "/admin/templates",     icon: FileSpreadsheet,  phase2: false },
   { label: "Thresholds",              href: "/admin/thresholds",    icon: SlidersHorizontal,phase2: false },

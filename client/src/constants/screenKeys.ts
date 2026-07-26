@@ -67,13 +67,14 @@ export const SCREEN_KEYS = {
   EXPORT_PREFLIGHT:             'export-preflight',
   EXPORT_UPLOAD_TASK:           'export-upload-task',
 
-  // ─── FC-8: ADMINISTRATION (MVP — 6 screens) ─────────────────────────────────
+  // ─── FC-8: ADMINISTRATION (MVP — 7 screens) ─────────────────────────────────
   ADMIN_USERS:                  'admin-users',
   ADMIN_SCHEMA:                 'admin-schema',
   ADMIN_TEMPLATES:              'admin-templates',
   ADMIN_THRESHOLDS:             'admin-thresholds',
   ADMIN_AUDIT_LOG:              'admin-audit-log',
   ADMIN_NOTIFICATIONS:          'admin-notifications',
+  ADMIN_ONBOARDING:             'admin-onboarding',
 
   // ─── FC-10: MULTI-TENANCY AND PLATFORM (MVP — 7 screens) ────────────────────
   PLATFORM_NOT_AUTHORIZED:      'platform-not-authorized',
