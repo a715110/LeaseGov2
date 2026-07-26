@@ -469,7 +469,7 @@ export default function PipelineUpload() {
           <Button variant="outline" onClick={() => navigate('/pipeline/dashboard')}>Cancel</Button>
           <Button
             disabled={!canContinue}
-            onClick={() => navigate('/pipeline/review')}
+            onClick={() => navigate('/pipeline/create-document-set')}
             title={!canContinue ? 'Select a workspace tag and ensure at least one valid file.' : undefined}
           >
             Continue to Review

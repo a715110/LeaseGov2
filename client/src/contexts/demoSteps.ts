@@ -67,7 +67,7 @@ export const DEMO_STEPS: DemoStep[] = [
     title: 'Create Document Set',
     description: 'Valid documents are grouped into contract packages using drag-and-drop. The operator assigns each document to a workspace and verifies the grouping before submission. Amendment files trigger an amber banner identifying the specific amendment documents.',
     instruction: 'Review the document groupings. Drag a document between groups to demonstrate re-assignment. Point out the amendment banner on the Office-Tower-Amendment-3.pdf row.',
-    route: '/pipeline/review', tabHint: 'Tab 1 — Document Submitter',
+    route: '/pipeline/create-document-set', tabHint: 'Tab 1 — Document Submitter',
   },
   {
     id: 'step-4', stepNumber: 4, role: 'document_submitter',
@@ -76,7 +76,7 @@ export const DEMO_STEPS: DemoStep[] = [
     title: 'Submit Batch — Handoff to Preparer',
     description: "The operator submits the validated batch. This triggers the cross-tab handoff — the Preparer's Processing Queue receives the new jobs immediately. The submission_path banner confirms whether this is a new record or an amendment to an existing one.",
     instruction: 'Click "Submit Batch" to send the documents to the Preparer. Watch Tab 2 receive the new jobs in real time.',
-    route: '/pipeline/review',
+    route: '/pipeline/create-document-set',
     eventToPublish: { type: 'BATCH_SUBMITTED', payload: { batchId: 'BATCH-DEMO-001', documentCount: 12, workspaceTag: 'Retail', submittedBy: 'Document Submitter' } },
     isHandoff: true, handoffTo: 'preparer',
     handoffLabel: 'Batch submitted → Preparer receives 12 new jobs in Processing Queue',

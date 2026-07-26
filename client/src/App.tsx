@@ -146,7 +146,7 @@ function Router() {
           <PipelineValidation />
         </ScreenGate>
       </Route>
-      <Route path="/pipeline/review">
+      <Route path="/pipeline/create-document-set">
         <ScreenGate screenKey={SCREEN_KEYS.PIPELINE_REVIEW_GROUPING} fallback={<NotFound />}>
           <PipelineReviewGrouping />
         </ScreenGate>

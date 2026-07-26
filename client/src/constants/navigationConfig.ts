@@ -120,7 +120,7 @@ export const ROUTE_PATHS: Record<string, string> = {
   pipelineDashboard:        '/pipeline/dashboard',
   pipelineNewRecord:        '/pipeline/new-record',
   pipelineValidation:       '/pipeline/validation',
-  pipelineReview:           '/pipeline/review',
+  pipelineReview:           '/pipeline/create-document-set',
   // pipelineConfirm removed in V3 — BATCH_SUBMITTED fires from pipelineReview
 
   // FC-2: Extraction and Verification

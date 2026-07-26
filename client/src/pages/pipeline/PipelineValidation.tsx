@@ -223,7 +223,7 @@ export default function PipelineValidation() {
             </Button>
             <Button
               className="w-full gap-2 text-[13px]"
-              onClick={() => navigate('/pipeline/review')}
+              onClick={() => navigate('/pipeline/create-document-set')}
             >
               Continue to Review
               <ArrowRight className="w-3.5 h-3.5" />

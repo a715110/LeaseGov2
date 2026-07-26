@@ -1675,7 +1675,7 @@ export default function PipelineDashboard() {
   // ── Stage Documents state ──
   // PRODUCTION: replace MOCK_DOCUMENTS with: const { data } = useQuery(['stagedDocs'], api.get('/api/v1/pipeline/staged'))
   // DEMO: persist stagedDocs to sessionStorage so newly uploaded files survive navigation
-  // to /pipeline/review and back. On Reset Demo, sessionStorage is cleared.
+  // to /pipeline/create-document-set and back. On Reset Demo, sessionStorage is cleared.
   const STAGED_DOCS_SESSION_KEY = 'leasegov_staged_docs';
   const [stagedDocs, setStagedDocs] = useState<StagedDocument[]>(() => {
     try {
@@ -1970,7 +1970,7 @@ export default function PipelineDashboard() {
 
   // ── Persist stagedDocs to sessionStorage on every change ──────────────────────────────────────────
   // This ensures newly uploaded files survive navigation away from the dashboard
-  // (e.g. to /pipeline/review) and are restored when the user returns.
+  // (e.g. to /pipeline/create-document-set) and are restored when the user returns.
   useEffect(() => {
     try {
       sessionStorage.setItem('leasegov_staged_docs', JSON.stringify(stagedDocs));
@@ -1978,7 +1978,7 @@ export default function PipelineDashboard() {
   }, [stagedDocs]);
 
   // ── Restore checkbox selection after Cancel from Review & Group ────────────────────────────────────
-  // When the user clicks Cancel on /pipeline/review, the Review & Group screen
+  // When the user clicks Cancel on /pipeline/create-document-set, the Review & Group screen
   // navigates back with state: { restoredSelectionIds: string[] }.
   // We read that state once on mount and re-populate selectedIds so the
   // checkboxes appear exactly as they were before the user entered Review & Group.
@@ -3096,7 +3096,7 @@ export default function PipelineDashboard() {
                 // IMPORTANT: wouter's navigate(to, { state }) calls pushState once.
                 // Do NOT call window.history.pushState separately before navigate —
                 // wouter's own pushState call would overwrite the state we set.
-                navigate('/pipeline/review', {
+                navigate('/pipeline/create-document-set', {
                   state: {
                     selectedDocs: selected,
                     navToken: Date.now(),

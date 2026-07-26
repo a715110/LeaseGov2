@@ -1,7 +1,7 @@
 /**
  * PipelineReviewGrouping — FC-1 Screen 1.5
  * Screen key: pipeline-review-grouping
- * Route: /pipeline/review
+ * Route: /pipeline/create-document-set
  * Role: Document Submitter
  *
  * Design: Structured Authority — Structured Clarity (Modern Gov-Tech)
