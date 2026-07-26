@@ -21,10 +21,6 @@ import React, { createContext, useContext, useState, useCallback, useMemo, useEf
 import type { UserRole } from '@/lib/types';
 import { clearEventHistory, publishEvent, subscribeToEvents } from '@/lib/eventBus';
 
-// Re-export everything from demoSteps so callers can import from one place
-export type { DemoStep } from './demoSteps';
-export { DEMO_STEPS, getStepsForRole, globalIndexForRole } from './demoSteps';
-
 import { DEMO_STEPS, getStepsForRole, globalIndexForRole } from './demoSteps';
 import type { DemoStep } from './demoSteps';
 

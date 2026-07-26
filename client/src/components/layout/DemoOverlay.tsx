@@ -20,7 +20,8 @@ import {
   List, CheckCircle2, Circle, Play,
 } from 'lucide-react'
 import { cn } from '../../lib/utils'
-import { useDemoMode, globalIndexForRole, DEMO_STEPS } from '../../contexts/DemoModeContext'
+import { useDemoMode } from '../../contexts/DemoModeContext'
+import { globalIndexForRole, DEMO_STEPS } from '../../contexts/demoSteps'
 import { useRole } from '../../contexts/RoleContext'
 import { ROLE_LABELS, ROLE_COLORS } from '../../lib/types'
 import type { UserRole } from '../../lib/types'
