@@ -395,9 +395,9 @@ function AddToExistingPackageDialog({
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <div>
-            <h2 className="text-[15px] font-semibold text-foreground">Add to Saved Package</h2>
+            <h2 className="text-[15px] font-semibold text-foreground">Add to Existing Document Set</h2>
             <p className="text-[12px] text-muted-foreground mt-0.5">
-              Adding {files.length} file{files.length !== 1 ? 's' : ''} to a package
+              Adding {files.length} file{files.length !== 1 ? 's' : ''} to an existing Document Set
             </p>
           </div>
           <button onClick={onCancel} className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
@@ -421,9 +421,9 @@ function AddToExistingPackageDialog({
 
         {/* Package selector */}
         <div className="px-5 py-4">
-          <label className="text-[12px] font-semibold text-foreground block mb-2">Select target package</label>
+          <label className="text-[12px] font-semibold text-foreground block mb-2">Select target Document Set</label>
           {availablePkgs.length === 0 ? (
-            <p className="text-[13px] text-muted-foreground italic">No packages in assembly. Create a new package first.</p>
+            <p className="text-[13px] text-muted-foreground italic">No Document Sets in assembly. Create a new Document Set first.</p>
           ) : (
             <div className="space-y-2 max-h-52 overflow-y-auto">
               {availablePkgs.map(pkg => (
@@ -466,7 +466,7 @@ function AddToExistingPackageDialog({
             disabled={!selectedPkgId || availablePkgs.length === 0}
             className="text-[13px] gap-1.5"
           >
-            <Layers className="w-3.5 h-3.5" /> Add to Package
+            <Layers className="w-3.5 h-3.5" /> Add to Document Set
           </Button>
         </div>
       </div>
@@ -496,9 +496,9 @@ function CreateNewPackageDialog({
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <div>
-            <h2 className="text-[15px] font-semibold text-foreground">Save as New Package only</h2>
+            <h2 className="text-[15px] font-semibold text-foreground">Create New Document Set</h2>
             <p className="text-[12px] text-muted-foreground mt-0.5">
-              Group {files.length} file{files.length !== 1 ? 's' : ''} into a new package
+              Group {files.length} file{files.length !== 1 ? 's' : ''} into a new Document Set
             </p>
           </div>
           <button onClick={onCancel} className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
@@ -508,13 +508,13 @@ function CreateNewPackageDialog({
 
         {/* Package name */}
         <div className="px-5 py-4 border-b border-border">
-          <label className="text-[12px] font-semibold text-foreground block mb-1.5">Package name</label>
+          <label className="text-[12px] font-semibold text-foreground block mb-1.5">Document Set name</label>
           <input
             type="text"
             value={pkgName}
             onChange={e => setPkgName(e.target.value)}
             className="w-full rounded-md border border-border bg-background px-3 py-2 text-[13px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-            placeholder="e.g. Retail Portfolio Q3 Package"
+            placeholder="e.g. Retail Portfolio Q3 Document Set"
           />
         </div>
 
@@ -541,7 +541,7 @@ function CreateNewPackageDialog({
             disabled={files.length === 0}
             className="text-[13px] gap-1.5"
           >
-            <Package className="w-3.5 h-3.5" /> Create Package
+            <Package className="w-3.5 h-3.5" /> Create Document Set
           </Button>
         </div>
       </div>
@@ -779,11 +779,11 @@ export default function PipelineReviewGrouping() {
       <div className="page-header">
         <div>
           <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="page-title">Review &amp; Group</h1>
+            <h1 className="page-title">Create Document Set</h1>
             <ScreenNumberBadge screenKey="pipeline-review-grouping" />
           </div>
           <p className="page-subtitle">
-            Assign document roles and confirm groupings before submission.
+            Assign document roles and group files into a Document Set before submission.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -1131,7 +1131,7 @@ export default function PipelineReviewGrouping() {
             title={extractionFiles.length === 0 ? 'Add at least one file to Extraction first' : undefined}
           >
             <Layers className="w-4 h-4" />
-            Add to Saved Package
+            Add to Existing Document Set
           </Button>
           {/* Create New Package */}
           <Button
@@ -1142,7 +1142,7 @@ export default function PipelineReviewGrouping() {
             title={extractionFiles.length === 0 ? 'Add at least one file to Extraction first' : undefined}
           >
             <Package className="w-4 h-4" />
-            Save as New Package only
+            Save as New Document Set
           </Button>
           {/* Submit Package — governed submission path */}
           <Button
@@ -1152,7 +1152,7 @@ export default function PipelineReviewGrouping() {
             title={extractionFiles.length === 0 ? 'Add at least one file to Extraction before submitting' : undefined}
           >
             <ChevronRight className="w-4 h-4" />
-            Submit Package
+            Submit Document Set
           </Button>
         </div>
       </div>
@@ -1187,7 +1187,7 @@ export default function PipelineReviewGrouping() {
             const pkgNum = `PKG-${Date.now().toString(36).toUpperCase()}`;
             setShowCreateNewDialog(false);
             clearSession();
-            toast.success(`Package ${pkgNum} created — ${extractionFiles.length} file${extractionFiles.length !== 1 ? 's' : ''} staged for review.`, {
+            toast.success(`Document Set ${pkgNum} created — ${extractionFiles.length} file${extractionFiles.length !== 1 ? 's' : ''} staged for review.`, {
               duration: 5000,
             });
             navigate('/pipeline/dashboard');
@@ -1234,7 +1234,7 @@ export default function PipelineReviewGrouping() {
               },
             });
             clearSession();
-            toast.success(`Package submitted for extraction — ${extractionFiles.length} file${extractionFiles.length !== 1 ? 's' : ''} queued.`, {
+            toast.success(`Document Set submitted for extraction — ${extractionFiles.length} file${extractionFiles.length !== 1 ? 's' : ''} queued.`, {
               action: { label: 'View Queue', onClick: () => navigate('/extraction/queue') },
               duration: 6000,
             });

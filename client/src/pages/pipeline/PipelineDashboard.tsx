@@ -3104,9 +3104,9 @@ export default function PipelineDashboard() {
                 } as any);
               }}
               className="gap-1.5 text-[13px]"
-              title={selectedIds.size === 0 ? 'Select files first to review & group' : undefined}
+              title={selectedIds.size === 0 ? 'Select files first to create a document set' : undefined}
             >
-              Review &amp; Group{selectedIds.size > 0 ? ` (${selectedIds.size})` : ''} <ArrowRight className="w-3.5 h-3.5" />
+              Create Document Set{selectedIds.size > 0 ? ` (${selectedIds.size})` : ''} <ArrowRight className="w-3.5 h-3.5" />
             </Button>
             </div>{/* end flex gap-2 */}
           </div>
