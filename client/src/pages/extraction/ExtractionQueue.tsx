@@ -1620,7 +1620,7 @@ export default function ExtractionQueue() {
                 className="w-full gap-2 text-[13px]"
                 onClick={() => {
                   // Forward amendment files detected by the workflow dialog to the AI Workspace
-                  // via window.history.state (consistent with PipelineReviewGrouping pattern).
+                  // via window.history.state (consistent with PipelineCreateDocumentSet pattern).
                   // Each screen in the chain (Understanding → Strategy → AiWorkspace) reads and
                   // re-forwards the state so it survives multi-step navigation.
                   navigate('/extraction/understanding', {

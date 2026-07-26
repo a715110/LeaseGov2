@@ -1,5 +1,5 @@
 /**
- * PipelineReviewGrouping — FC-1 Screen 1.5
+ * PipelineCreateDocumentSet — FC-1 Screen 1.5
  * Screen key: pipeline-create-document-set
  * Route: /pipeline/create-document-set
  * Role: Document Submitter
@@ -551,7 +551,7 @@ function CreateNewPackageDialog({
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function PipelineReviewGrouping() {
+export default function PipelineCreateDocumentSet() {
   const _screenKey = SCREEN_KEYS.PIPELINE_CREATE_DOCUMENT_SET;
   const [, navigate] = useLocation();
   const searchString = useSearch();

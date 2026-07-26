@@ -35,7 +35,7 @@ import NotFound from './pages/NotFound'
 import PipelineDashboard      from './pages/pipeline/PipelineDashboard'
 import PipelineNewRecordModal from './pages/pipeline/PipelineNewRecordModal'
 import PipelineValidation     from './pages/pipeline/PipelineValidation'
-import PipelineReviewGrouping from './pages/pipeline/PipelineReviewGrouping'
+import PipelineCreateDocumentSet from './pages/pipeline/PipelineCreateDocumentSet'
 
 // ─── FC-2: Extraction and Verification ───────────────────────────────────────
 import ExtractionQueue           from './pages/extraction/ExtractionQueue'
@@ -148,7 +148,7 @@ function Router() {
       </Route>
       <Route path="/pipeline/create-document-set">
         <ScreenGate screenKey={SCREEN_KEYS.PIPELINE_CREATE_DOCUMENT_SET} fallback={<NotFound />}>
-          <PipelineReviewGrouping />
+          <PipelineCreateDocumentSet />
         </ScreenGate>
       </Route>
 
