@@ -6,7 +6,7 @@
  *
  * FC-1  Document Pipeline      → 1.x
  * FC-2  Extraction             → 2.x
- * FC-3  Contract Packages      → 3.x
+ * FC-3  Document Sets      → 3.x
  * FC-4  Approval Workflow      → 4.x
  * FC-5  Contract Records       → 5.x
  * FC-6  Reassessment           → 6.x
@@ -39,7 +39,7 @@ export const SCREEN_NUMBERS: Record<string, string> = {
   'extraction-verification-tracker':  '2.4a',
   'extraction-reprocessing':          '2.1a',
 
-  // ─── FC-3: Contract Packages ─────────────────────────────────────────────
+  // ─── FC-3: Document Sets ─────────────────────────────────────────────
   'packages-composition':   '3.1',
   'packages-flags':         '3.2',
   'packages-reassembly':    '3.2a',

@@ -66,7 +66,7 @@ function buildInitialSteps(taskId: string, recordId: string): PreflightStep[] {
     {
       id:"s4",
       title:"No unresolved blocking package flags",
-      description:"ContractPackage must have zero blocking flags in unresolved state",
+      description:"DocumentSet must have zero blocking flags in unresolved state",
       status:"pass",
       detail:"0 blocking flags",
     },

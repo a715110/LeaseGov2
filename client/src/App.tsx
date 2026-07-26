@@ -47,7 +47,7 @@ import ExtractionVerification    from './pages/extraction/ExtractionVerification
 import ExtractionTracker         from './pages/extraction/ExtractionTracker'
 import ExtractionReprocessing    from './pages/extraction/ExtractionReprocessing'
 
-// ─── FC-3: Contract Packages ──────────────────────────────────────────────────
+// ─── FC-3: Document Sets ──────────────────────────────────────────────────
 import PackagesComposition from './pages/packages/PackagesComposition'
 import PackagesFlags       from './pages/packages/PackagesFlags'
 import PackagesReassembly  from './pages/packages/PackagesReassembly'
@@ -194,7 +194,7 @@ function Router() {
         </ScreenGate>
       </Route>
 
-      {/* ── FC-3: Contract Packages ─────────────────────────────────────── */}
+      {/* ── FC-3: Document Sets ─────────────────────────────────────── */}
       {/* Bare /packages — now opens as inline dialog from ApprovalsQueue; redirect there */}
       <Route path="/packages">
         <Redirect to="/approvals/queue" />

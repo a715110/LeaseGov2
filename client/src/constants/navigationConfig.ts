@@ -44,7 +44,7 @@ export const NAV_GROUPS: NavGroupConfig[] = [
     key: 'packages', label: 'Packages', icon: 'Layers', sortOrder: 3, phase: 'phase_2',
     allowedRoles: ['preparer', 'reviewer', 'approver', 'auditor', 'system_admin'],
     roleLabels: {
-      reviewer: 'Contract Packages',
+      reviewer: 'Document Sets',
       approver: 'Packages for Approval',
     },
   },
@@ -133,7 +133,7 @@ export const ROUTE_PATHS: Record<string, string> = {
   extractionTracker:        '/extraction/tracker',
   extractionReprocess:      '/extraction/reprocess',
 
-  // FC-3: Contract Packages
+  // FC-3: Document Sets
   packagesComposition:      '/packages/:contractId',
   packagesFlags:            '/packages/:packageId/flags',
   packagesReassembly:       '/packages/:packageId/reassembly',

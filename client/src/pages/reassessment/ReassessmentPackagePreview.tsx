@@ -7,7 +7,7 @@
  * and evidence bundled for the approver. Read-only summary.
  * "Submit for Approval" primary CTA.
  *
- * Data model refs: ReassessmentCase, ContractPackage (document list)
+ * Data model refs: ReassessmentCase, DocumentSet (document list)
  */
 
 import { useState } from "react";

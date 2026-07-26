@@ -38,7 +38,7 @@ const ROLE_LABEL_MAP: Record<string, Partial<Record<string, string>>> = {
 
   // ── Packages ─────────────────────────────────────────────────────────────
   '/packages': {
-    reviewer: 'Contract Packages',
+    reviewer: 'Document Sets',
     approver: 'Packages for Approval',
   },
 

@@ -19,7 +19,7 @@
  * BR4: Six flag types.
  * BR5: Change Role / Remove from Package triggers re-assembly navigation.
  *
- * Data model refs: ContractPackage (auto_promoted, status, document_count),
+ * Data model refs: DocumentSet (auto_promoted, status, document_count),
  *   PackageDocument (document_role, chronological_order, effective_date),
  *   PackageFlag (status, severity)
  */
@@ -345,7 +345,7 @@ export default function PackagesComposition() {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="page-title">Contract Package</h1>
+              <h1 className="page-title">Document Set</h1>
               <ScreenNumberBadge screenKey="packages-composition" />
             </div>
             <span className="badge-valid inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold">

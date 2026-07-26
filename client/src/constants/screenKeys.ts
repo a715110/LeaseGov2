@@ -15,7 +15,7 @@
  * Feature Cluster groupings:
  *   FC-1  Document Pipeline         (MVP — 6 screens)
  *   FC-2  Extraction & Verification (MVP — 8 screens)
- *   FC-3  Contract Packages         (MVP — 3 screens)
+ *   FC-3  Document Sets         (MVP — 3 screens)
  *   FC-4  Approval Workflow         (MVP — 5 screens)
  *   FC-5  Contract Records          (MVP — 4 screens, Phase 2 — 3 screens)
  *   FC-6  Reassessment              (Phase 2 — 14 screens)

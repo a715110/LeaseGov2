@@ -235,7 +235,7 @@ function SubmissionDetailPanel({
   onClose: () => void;
   onConfirm: () => void;
 }) {
-  const mode = extractionFiles.length >= 2 ? 'Contract Package' : 'Single Contract';
+  const mode = extractionFiles.length >= 2 ? 'Document Set' : 'Single Contract';
   // Generate a stable batch ID for preview — matches the real ID generated on confirm
   const previewBatchId = `BATCH-${new Date().getFullYear()}-${String(extractionFiles.length).padStart(4, '0')}-PREVIEW`;
   const warningCount = extractionFiles.filter(f => f.status === 'invalid').length;
@@ -267,7 +267,7 @@ function SubmissionDetailPanel({
               <Layers className="w-3.5 h-3.5 text-primary shrink-0" />
               <span className="text-[12px] font-semibold text-foreground truncate">{mode}</span>
             </div>
-            {mode === 'Contract Package' && (
+            {mode === 'Document Set' && (
               <p className="text-[11px] text-muted-foreground mt-0.5 truncate" title={packageName}>{packageName}</p>
             )}
           </div>
@@ -626,9 +626,9 @@ export default function PipelineReviewGrouping() {
     // Fresh navigation → reset package name
     if (histState?.navToken) {
       const saved = loadSession();
-      if (!saved || (histState.navToken > (saved.navToken ?? 0))) return 'Contract Package';
+      if (!saved || (histState.navToken > (saved.navToken ?? 0))) return 'Document Set';
     }
-    return loadSession()?.packageName ?? 'Contract Package';
+    return loadSession()?.packageName ?? 'Document Set';
   });
   const [filterRole, setFilterRole] = useState<string>(() => {
     const histState = window.history.state as { navToken?: number } | null;
@@ -701,7 +701,7 @@ export default function PipelineReviewGrouping() {
     filterRole === 'all' || f.document_role === filterRole
   );
 
-  const derivedMode = extractionFiles.length >= 2 ? 'Contract Package' : 'Single Contract';
+  const derivedMode = extractionFiles.length >= 2 ? 'Document Set' : 'Single Contract';
   const submissionMode =
     urlMode === 'attach' ? 'Attach to Existing' :
     urlMode === 'create' ? 'Create New' :

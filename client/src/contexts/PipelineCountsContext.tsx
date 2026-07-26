@@ -27,7 +27,7 @@ function seedPipelineReadyCount(): number {
 }
 
 function seedApprovalsCount(): number {
-  // Mirrors: contractPackages.filter(p => p.status === 'Ready').length
+  // Mirrors: documentSets.filter(p => p.status === 'Ready').length
   // Initial MOCK has 1 package in Ready state (PKG-2026-001)
   return 1
 }

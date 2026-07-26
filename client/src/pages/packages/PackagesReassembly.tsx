@@ -11,7 +11,7 @@
  *   Results: new flags raised (error badge), preserved resolutions (success badge).
  *   "Dismiss and Review Flags" primary button.
  *
- * Data model refs: ContractPackage (status), PackageDocument, PackageFlag
+ * Data model refs: DocumentSet (status), PackageDocument, PackageFlag
  */
 
 import { useLocation, useParams } from "wouter";

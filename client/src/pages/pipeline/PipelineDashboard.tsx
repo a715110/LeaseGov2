@@ -9,7 +9,7 @@
  *   S1a — DocumentDetailPanel (FlagSlidingPanel) opened from Eye button on doc rows
  *   S1b — BatchDetailPanel (FlagSlidingPanel) opened from Eye button on batch rows
  *   S1c — Bulk Action Bar (checkbox per row, floating bar with Remove/Group actions)
- *   S1d — Three-table layout: Stage Documents → Contract Packages → Submissions
+ *   S1d — Three-table layout: Stage Documents → Document Sets → Submissions
  *         Grouping Dialog with per-file role assignment
  *         Submit Package workflow with isPackageReady guard
  *         Unsubmit from Submission Detail panel (inline confirmation)
@@ -105,7 +105,7 @@ interface StagedDocument {
 interface IntakeBatch {
   id: string;
   batch_reference: string;
-  submission_mode: 'single_contract' | 'contract_package' | 'bulk_batch';
+  submission_mode: 'single_contract' | 'document_set' | 'bulk_batch';
   document_count: number;
   status: 'assembling' | 'submitted' | 'processing' | 'completed' | 'failed';
   submitted_at: string;
@@ -132,7 +132,7 @@ interface PackageFile {
   assignee_id?: string | null;
 }
 
-interface ContractPackage {
+interface DocumentSet {
   id: string;
   packageNum: string;
   packageName?: string;
@@ -159,7 +159,7 @@ interface Submission {
   workspace: string;
   submittedBy: string;
   submitDate: string;
-  /** Assignee carried from ContractPackage */
+  /** Assignee carried from DocumentSet */
   assignee_id?: string | null;
   status: 'Pending' | 'In Progress' | 'Completed' | 'Failed' | 'Declined';
   declineReason?: string;
@@ -359,14 +359,14 @@ const MOCK_DOCUMENTS: StagedDocument[] = [
 
 // MOCK_BATCHES retained for BatchDetailPanel compatibility (not shown in V3 tables)
 const MOCK_BATCHES: IntakeBatch[] = [
-  { id: 'b1', batch_reference: 'BATCH-2026-0041', submission_mode: 'contract_package', document_count: 2, status: 'submitted',  submitted_at: '2026-06-10 11:05' },
-  { id: 'b2', batch_reference: 'BATCH-2026-0040', submission_mode: 'contract_package', document_count: 1, status: 'assembling', submitted_at: '2026-06-11 14:22' },
+  { id: 'b1', batch_reference: 'BATCH-2026-0041', submission_mode: 'document_set', document_count: 2, status: 'submitted',  submitted_at: '2026-06-10 11:05' },
+  { id: 'b2', batch_reference: 'BATCH-2026-0040', submission_mode: 'document_set', document_count: 1, status: 'assembling', submitted_at: '2026-06-11 14:22' },
 ];
 
 // V3 §1c — Table 2 seed: 2 packages
 // PKG-2026-001: Acme Corp Retail Package (Ready)
 // PKG-2026-002: Globex Ground Lease Package (Pending)
-const INITIAL_PACKAGES: ContractPackage[] = [
+const INITIAL_PACKAGES: DocumentSet[] = [
   {
     id: 'mock-pkg-001-local',
     packageNum: 'PKG-2026-001',
@@ -454,7 +454,7 @@ function getMimeLabel(mime: string): string {
 }
 
 function getBatchModeLabel(mode: IntakeBatch['submission_mode']): string {
-  return { single_contract: 'Single', contract_package: 'Package', bulk_batch: 'Bulk' }[mode];
+  return { single_contract: 'Single', document_set: 'Package', bulk_batch: 'Bulk' }[mode];
 }
 
 function formatDate(iso: string): string {
@@ -465,7 +465,7 @@ function formatDate(iso: string): string {
   }
 }
 
-const isPackageReady = (pkg: ContractPackage): boolean =>
+const isPackageReady = (pkg: DocumentSet): boolean =>
   pkg.files.every(f => f.role !== 'Undefined');
 
 let pkgCounter = 4; // starts after seed data
@@ -976,7 +976,7 @@ function SubmissionDetailPanel({ submission, isReadOnly, onClose, onUnsubmit }: 
               <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4">
                 <p className="text-[13px] font-semibold text-destructive mb-1">Confirm Unsubmit</p>
                 <p className="text-[12px] text-muted-foreground mb-3">
-                  This will return the package to Contract Packages for editing.
+                  This will return the package to Document Sets for editing.
                 </p>
                 <div className="flex gap-2">
                   <Button size="sm" variant="outline" onClick={() => setConfirming(false)} className="text-[12px]">
@@ -1103,12 +1103,12 @@ const ROLE_BADGE: Record<DocumentRole, string> = {
 };
 
 interface PackageDetailPanelProps {
-  pkg: ContractPackage;
+  pkg: DocumentSet;
   isReadOnly: boolean;
   onClose: () => void;
   onSaveRoles: (pkgId: string, updatedFiles: PackageFile[]) => void;
-  onSubmit: (pkg: ContractPackage) => void;
-  onUngroup: (pkg: ContractPackage) => void;
+  onSubmit: (pkg: DocumentSet) => void;
+  onUngroup: (pkg: DocumentSet) => void;
   onRemoveFile: (pkgId: string, docId: string) => void;
   onRename: (pkgId: string, newName: string) => void;
 }
@@ -1390,7 +1390,7 @@ function AddToPackageDialog({
   onCancel,
 }: {
   docs: StagedDocument[];
-  packages: ContractPackage[];
+  packages: DocumentSet[];
   onConfirm: (targetPkgId: string) => void;
   onCancel: () => void;
 }) {
@@ -1698,7 +1698,7 @@ export default function PipelineDashboard() {
   // Bulk reassign dialog state for Stage Documents
   const [bulkReassignOpen, setBulkReassignOpen] = useState(false);
   const [bulkReassignTargetId, setBulkReassignTargetId] = useState<string>('');
-  // Reassign dialog state for Contract Packages
+  // Reassign dialog state for Document Sets
   const [reassignPkgId, setReassignPkgId] = useState<string | null>(null);
   const [reassignPkgTargetId, setReassignPkgTargetId] = useState<string>('');
   // Tab: 'active' = staging pipeline, 'committed' = audit view
@@ -1717,8 +1717,8 @@ export default function PipelineDashboard() {
   // Add-to-package dialog
   const [addToPackageDocs, setAddToPackageDocs] = useState<StagedDocument[] | null>(null);
 
-  // ── Contract Packages state ──
-  const [contractPackages, setContractPackages] = useState<ContractPackage[]>(INITIAL_PACKAGES);
+  // ── Document Sets state ──
+  const [documentSets, setDocumentSets] = useState<DocumentSet[]>(INITIAL_PACKAGES);
   const [pkgColFilters, setPkgColFilters] = useState({ packageNum: '', name: '', workspace: '', createdBy: '' });
   const [pkgStatusFilter, setPkgStatusFilter] = useState<'all' | 'Ready' | 'Incomplete'>('all');
   const [pkgSort, setPkgSort] = useState<{ col: string; dir: 'asc' | 'desc' } | null>(() => {
@@ -1728,7 +1728,7 @@ export default function PipelineDashboard() {
     } catch { return null; }
   });
   const [confirmSubmitAll, setConfirmSubmitAll] = useState(false);
-  const [detailPkg, setDetailPkg] = useState<ContractPackage | null>(null);
+  const [detailPkg, setDetailPkg] = useState<DocumentSet | null>(null);
   // Expandable rows — Set of pkg/sub/doc ids that are currently expanded
   const [expandedPkgs, setExpandedPkgs] = useState<Set<string>>(new Set());
   const [expandedSubs, setExpandedSubs] = useState<Set<string>>(new Set());
@@ -1769,13 +1769,13 @@ export default function PipelineDashboard() {
 
   useEffect(() => {
     // Approvals badge = packages that are Ready (awaiting submission/approval)
-    const readyPkgs = contractPackages.filter(p => p.status === 'Ready').length;
+    const readyPkgs = documentSets.filter(p => p.status === 'Ready').length;
     setApprovalsCount(readyPkgs);
-  }, [contractPackages, setApprovalsCount]);
+  }, [documentSets, setApprovalsCount]);
 
   // DEMO ONLY: React to cross-role events (PIPELINE_BATCH_CLEARED, DECLINE_SUBMITTED).
   // PRODUCTION: replace with real-time backend subscriptions (WebSocket/SSE) or polling queries.
-  //   PIPELINE_BATCH_CLEARED → invalidate ['stagedDocs'] and ['contractPackages'] queries
+  //   PIPELINE_BATCH_CLEARED → invalidate ['stagedDocs'] and ['documentSets'] queries
   //   DECLINE_SUBMITTED      → invalidate ['submissions'] query; backend sends push notification
   useEffect(() => {
     const unsub = subscribeToEvents((event) => {
@@ -1784,7 +1784,7 @@ export default function PipelineDashboard() {
         const clearedNames = new Set(payload.fileNames ?? []);
         if (clearedNames.size === 0) return;
         setStagedDocs(prev => prev.filter(d => !clearedNames.has(d.display_name)));
-        setContractPackages(prev =>
+        setDocumentSets(prev =>
           prev.filter(pkg => !pkg.files.every(f => clearedNames.has(f.name)))
         );
       }
@@ -1941,7 +1941,7 @@ export default function PipelineDashboard() {
       sessionStorage.removeItem(PENDING_DECLINE_EVENTS_KEY);
       sessionStorage.removeItem('leasegov_staged_docs');
       setStagedDocs(MOCK_DOCUMENTS);
-      setContractPackages(INITIAL_PACKAGES);
+      setDocumentSets(INITIAL_PACKAGES);
       setSubmissions(INITIAL_SUBMISSIONS);
       setSearchQuery('');
       setColFilters({ name: '', uploader: '', workspace: '' });
@@ -2044,7 +2044,7 @@ export default function PipelineDashboard() {
   });
 
   const filteredPkgs = (() => {
-    const filtered = contractPackages.filter(pkg => {
+    const filtered = documentSets.filter(pkg => {
       const matchesStatus = pkgStatusFilter === 'all' ||
         (pkgStatusFilter === 'Ready' && isPackageReady(pkg)) ||
         (pkgStatusFilter === 'Incomplete' && !isPackageReady(pkg));
@@ -2248,7 +2248,7 @@ export default function PipelineDashboard() {
       const srcDoc = groupingDocs.find(d => d.id === f.docId);
       return { ...f, assignee_id: srcDoc?.assignee_id ?? null };
     });
-    const pkg: ContractPackage = {
+    const pkg: DocumentSet = {
       id: `pkg-${Date.now()}`,
       packageNum: nextPackageNum(),
       mode: filesWithAssignee.length >= 2 ? 'Package' : 'Single',
@@ -2260,20 +2260,20 @@ export default function PipelineDashboard() {
       assignee_id: groupingDocs[0].assignee_id ?? null,
     };
     setStagedDocs(prev => prev.filter(d => !docIds.has(d.id)));
-    setContractPackages(prev => [pkg, ...prev]);
+    setDocumentSets(prev => [pkg, ...prev]);
     setSelectedIds(new Set());
     setGroupingDocs(null);
     toast.success(`Package ${pkg.packageNum} created`);
   }
 
   // ── Submit package workflow ──
-  function submitPackage(pkg: ContractPackage) {
+  function submitPackage(pkg: DocumentSet) {
     if (!isPackageReady(pkg)) return;
     const subId = `sub-${Date.now()}`;
     // batchRef is derived the same way ExtractionQueue derives batch_ref from BATCH_SUBMITTED payload
     const batchRef = `BATCH-${subId.slice(-6).toUpperCase()}`;
     // Carry resubmit metadata if the package was restored from a declined submission
-    const pkgMeta = pkg as ContractPackage & { _correctionNote?: string; _attemptNumber?: number };
+    const pkgMeta = pkg as DocumentSet & { _correctionNote?: string; _attemptNumber?: number };
     const sub: Submission = {
       id: subId,
       batchRef,
@@ -2294,7 +2294,7 @@ export default function PipelineDashboard() {
         correctionNote: pkgMeta._correctionNote,
       }),
     };
-    setContractPackages(prev => prev.filter(p => p.id !== pkg.id));
+    setDocumentSets(prev => prev.filter(p => p.id !== pkg.id));
     setSubmissions(prev => [sub, ...prev]);
     toast.success(`${pkg.packageNum} submitted successfully`);
     // DEMO ONLY: notify Preparer tab that a new batch is ready for extraction.
@@ -2327,7 +2327,7 @@ export default function PipelineDashboard() {
   // ── Ungroup package workflow (with 10s undo countdown) ──
   const ungroupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  function ungroupPackage(pkg: ContractPackage) {
+  function ungroupPackage(pkg: DocumentSet) {
       const restoredDocs: StagedDocument[] = pkg.files.map(f => {
       const orig: 'valid' | 'invalid' = (f as { originalStatus?: 'valid' | 'invalid' }).originalStatus ?? 'valid';
       return {
@@ -2351,7 +2351,7 @@ export default function PipelineDashboard() {
         assignee_id: null, // DEMO ONLY — restored from ungroup
       };
     });
-    setContractPackages(prev => prev.filter(p => p.id !== pkg.id));
+    setDocumentSets(prev => prev.filter(p => p.id !== pkg.id));
     setStagedDocs(prev => [...restoredDocs, ...prev]);
 
     // Undo toast with 15-second countdown
@@ -2367,7 +2367,7 @@ export default function PipelineDashboard() {
           // Reverse: remove restored docs, re-add package
           const restoredIds = new Set(restoredDocs.map(d => d.id));
           setStagedDocs(prev => prev.filter(d => !restoredIds.has(d.id)));
-          setContractPackages(prev => [pkg, ...prev]);
+          setDocumentSets(prev => [pkg, ...prev]);
           toast.success(`Undo successful — ${pkg.packageNum} restored`);
         }}
         onDismiss={() => {
@@ -2396,7 +2396,7 @@ export default function PipelineDashboard() {
             toast.dismiss(toastId);
             const restoredIds = new Set(restoredDocs.map(d => d.id));
             setStagedDocs(prev => prev.filter(d => !restoredIds.has(d.id)));
-            setContractPackages(prev => [pkg, ...prev]);
+            setDocumentSets(prev => [pkg, ...prev]);
             toast.success(`Undo successful — ${pkg.packageNum} restored`);
           }}
           onDismiss={() => {
@@ -2413,12 +2413,12 @@ export default function PipelineDashboard() {
   const removeFileTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function removeFileFromPackage(pkgId: string, docId: string) {
-    const pkg = contractPackages.find(p => p.id === pkgId);
+    const pkg = documentSets.find(p => p.id === pkgId);
     if (!pkg || pkg.files.length <= 1) return;
     const removedFile = pkg.files.find(f => f.docId === docId);
     if (!removedFile) return;
     const updatedFiles = pkg.files.filter(f => f.docId !== docId);
-    const updatedPkg: ContractPackage = {
+    const updatedPkg: DocumentSet = {
       ...pkg,
       files: updatedFiles,
       mode: updatedFiles.length >= 2 ? 'Package' : 'Single',
@@ -2444,7 +2444,7 @@ export default function PipelineDashboard() {
       document_job_status: 'staged' as const,
       assignee_id: null, // DEMO ONLY — restored from remove-file action
     };
-    setContractPackages(prev => prev.map(p => p.id === pkgId ? updatedPkg : p));
+    setDocumentSets(prev => prev.map(p => p.id === pkgId ? updatedPkg : p));
     setStagedDocs(prev => [restoredDoc, ...prev]);
     setDetailPkg(prev => prev?.id === pkgId ? updatedPkg : prev);
 
@@ -2460,7 +2460,7 @@ export default function PipelineDashboard() {
           toast.dismiss(toastId);
           // Reverse: remove restored doc, restore original package
           setStagedDocs(prev => prev.filter(d => d.id !== restoredDoc.id));
-          setContractPackages(prev => prev.map(p => p.id === pkgId ? pkg : p));
+          setDocumentSets(prev => prev.map(p => p.id === pkgId ? pkg : p));
           setDetailPkg(prev => prev?.id === pkgId ? pkg : prev);
           toast.success(`Undo successful — "${removedFile.name}" restored to ${pkg.packageNum}`);
         }}
@@ -2488,7 +2488,7 @@ export default function PipelineDashboard() {
             if (removeFileTimerRef.current) clearInterval(removeFileTimerRef.current);
             toast.dismiss(toastId);
             setStagedDocs(prev => prev.filter(d => d.id !== restoredDoc.id));
-            setContractPackages(prev => prev.map(p => p.id === pkgId ? pkg : p));
+            setDocumentSets(prev => prev.map(p => p.id === pkgId ? pkg : p));
             setDetailPkg(prev => prev?.id === pkgId ? pkg : prev);
             toast.success(`Undo successful — "${removedFile.name}" restored to ${pkg.packageNum}`);
           }}
@@ -2504,7 +2504,7 @@ export default function PipelineDashboard() {
 
   // ── Unsubmit workflow ──
   function unsubmitPackage(sub: Submission) {
-    const restored: ContractPackage = {
+    const restored: DocumentSet = {
       id: `pkg-restored-${Date.now()}`,
       packageNum: sub.packageNum,
       packageName: sub.packageName,
@@ -2516,13 +2516,13 @@ export default function PipelineDashboard() {
       status: sub.files.every(f => f.role !== 'Undefined') ? 'Ready' : 'Pending',
     };
     setSubmissions(prev => prev.filter(s => s.id !== sub.id));
-    setContractPackages(prev => [restored, ...prev]);
-    toast.success('Package unsubmitted — returned to Contract Packages');
+    setDocumentSets(prev => [restored, ...prev]);
+    toast.success('Package unsubmitted — returned to Document Sets');
   }
 
   // ── Resubmit workflow — restore declined submission as a fresh package in Table 2 ──
   function resubmitPackage(sub: Submission, correctionNote: string) {
-    const restoredPkg: ContractPackage = {
+    const restoredPkg: DocumentSet = {
       id: `pkg-resubmit-${Date.now()}`,
       packageNum: sub.packageNum,
       packageName: sub.packageName,
@@ -2548,26 +2548,26 @@ export default function PipelineDashboard() {
       setStagedDocs(prev => prev.filter(d => !subFileNames.has(d.display_name)));
     }
     // Place the package back in Table 2
-    setContractPackages(prev => [restoredPkg, ...prev]);
+    setDocumentSets(prev => [restoredPkg, ...prev]);
     // Store the correction note and attempt metadata on the package so that
     // when submitPackage() is called next it can carry them into the new Submission row.
     // We do this by tagging the package object with a transient field.
-    (restoredPkg as ContractPackage & { _correctionNote?: string; _attemptNumber?: number })._correctionNote = correctionNote.trim() || undefined;
-    (restoredPkg as ContractPackage & { _correctionNote?: string; _attemptNumber?: number })._attemptNumber = (sub.attemptNumber ?? 1) + 1;
+    (restoredPkg as DocumentSet & { _correctionNote?: string; _attemptNumber?: number })._correctionNote = correctionNote.trim() || undefined;
+    (restoredPkg as DocumentSet & { _correctionNote?: string; _attemptNumber?: number })._attemptNumber = (sub.attemptNumber ?? 1) + 1;
     toast.success(
-      `${sub.packageNum} returned to Contract Packages — review and resubmit when ready`,
+      `${sub.packageNum} returned to Document Sets — review and resubmit when ready`,
       { duration: 5000 }
     );
   }
 
   // ── Inline rename ──
-  function startRename(pkg: ContractPackage) {
+  function startRename(pkg: DocumentSet) {
     setRenamingPkgId(pkg.id);
     setRenameValue(pkg.packageName ?? '');
     setTimeout(() => renameInputRef.current?.focus(), 30);
   }
   function commitRename(pkgId: string) {
-    setContractPackages(prev => prev.map(p => p.id === pkgId ? { ...p, packageName: renameValue.trim() || undefined } : p));
+    setDocumentSets(prev => prev.map(p => p.id === pkgId ? { ...p, packageName: renameValue.trim() || undefined } : p));
     setRenamingPkgId(null);
     toast.success('Package name updated');
   }
@@ -3114,12 +3114,12 @@ export default function PipelineDashboard() {
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════════
-          TABLE 2 — Contract Packages
+          TABLE 2 — Document Sets
       ══════════════════════════════════════════════════════════════════════ */}
       <div className="rounded-lg bg-card border border-border shadow-sm overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <div>
-            <h2 className="text-base font-semibold text-foreground">Contract Packages</h2>
+            <h2 className="text-base font-semibold text-foreground">Document Sets</h2>
             <p className="text-[12px] text-muted-foreground mt-0.5">Group staged documents into packages, then submit for processing.</p>
           </div>
           <div className="flex items-center gap-3">
@@ -3144,20 +3144,20 @@ export default function PipelineDashboard() {
               ))}
             </div>
             {/* Submit All Ready */}
-            {!isReadOnly && contractPackages.some(p => isPackageReady(p)) && (
+            {!isReadOnly && documentSets.some(p => isPackageReady(p)) && (
               <button
                 onClick={() => setConfirmSubmitAll(true)}
                 className="flex items-center gap-1.5 px-3 py-1 rounded text-[12px] font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
               >
                 <Send className="w-3 h-3" />
-                Submit All Ready ({contractPackages.filter(p => isPackageReady(p)).length})
+                Submit All Ready ({documentSets.filter(p => isPackageReady(p)).length})
               </button>
             )}
-            <span className="text-[12px] text-muted-foreground">{filteredPkgs.length}{filteredPkgs.length !== contractPackages.length ? ` / ${contractPackages.length}` : ''} package{contractPackages.length !== 1 ? 's' : ''}</span>
+            <span className="text-[12px] text-muted-foreground">{filteredPkgs.length}{filteredPkgs.length !== documentSets.length ? ` / ${documentSets.length}` : ''} package{documentSets.length !== 1 ? 's' : ''}</span>
           </div>
         </div>
 
-        {contractPackages.length === 0 ? (
+        {documentSets.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-14 gap-3">
             <div className="w-12 h-12 rounded-full bg-accent flex items-center justify-center">
               <Package className="w-6 h-6 text-accent-foreground" />
@@ -3643,7 +3643,7 @@ export default function PipelineDashboard() {
                             <button
                               onClick={() => setResubmitTarget(sub)}
                               className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold border border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100 transition-colors"
-                              title="Restore package to Contract Packages for resubmission"
+                              title="Restore package to Document Sets for resubmission"
                             >
                               <RotateCcw className="w-3 h-3" />
                               Resubmit
@@ -3964,7 +3964,7 @@ export default function PipelineDashboard() {
           isReadOnly={isReadOnly}
           onClose={() => setDetailPkg(null)}
           onSaveRoles={(pkgId, updatedFiles) => {
-            setContractPackages(prev => prev.map(p =>
+            setDocumentSets(prev => prev.map(p =>
               p.id === pkgId
                 ? { ...p, files: updatedFiles, status: updatedFiles.every(f => f.role !== 'Undefined') ? 'Ready' : 'Pending' }
                 : p
@@ -3976,7 +3976,7 @@ export default function PipelineDashboard() {
           onUngroup={(pkg) => ungroupPackage(pkg)}
           onRemoveFile={(pkgId, docId) => removeFileFromPackage(pkgId, docId)}
           onRename={(pkgId, newName) => {
-            setContractPackages(prev => prev.map(p => p.id === pkgId ? { ...p, packageName: newName || undefined } : p));
+            setDocumentSets(prev => prev.map(p => p.id === pkgId ? { ...p, packageName: newName || undefined } : p));
             setDetailPkg(prev => prev ? { ...prev, packageName: newName || undefined } : null);
             toast.success('Package name updated');
           }}
@@ -3992,7 +3992,7 @@ export default function PipelineDashboard() {
       )}
       {/* Confirm Submit All Ready dialog */}
       {confirmSubmitAll && (() => {
-        const readyPkgs = contractPackages.filter(p => isPackageReady(p));
+        const readyPkgs = documentSets.filter(p => isPackageReady(p));
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center">
             <div className="absolute inset-0 bg-black/40" onClick={() => setConfirmSubmitAll(false)} />
@@ -4104,9 +4104,9 @@ export default function PipelineDashboard() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Reassign Package (Contract Packages) ─────────────────────────── */}
+      {/* ── Reassign Package (Document Sets) ─────────────────────────── */}
       {(() => {
-        const pkg = reassignPkgId ? contractPackages.find(p => p.id === reassignPkgId) : null;
+        const pkg = reassignPkgId ? documentSets.find(p => p.id === reassignPkgId) : null;
         if (!pkg) return null;
         return (
           <Dialog open={!!reassignPkgId} onOpenChange={open => { if (!open) { setReassignPkgId(null); setReassignPkgTargetId(''); } }}>
@@ -4148,7 +4148,7 @@ export default function PipelineDashboard() {
                     if (!reassignPkgTargetId || !reassignPkgId) return;
                     const prevAssignee = pkg.assignee_id ? MOCK_ASSIGNEES.find(a => a.id === pkg.assignee_id) : null;
                     const newAssignee = MOCK_ASSIGNEES.find(a => a.id === reassignPkgTargetId);
-                    setContractPackages(prev => prev.map(p =>
+                    setDocumentSets(prev => prev.map(p =>
                       p.id === reassignPkgId ? { ...p, assignee_id: reassignPkgTargetId } : p
                     ));
                     // Notify original assignee
@@ -4197,9 +4197,9 @@ export default function PipelineDashboard() {
       {addToPackageDocs && (
         <AddToPackageDialog
           docs={addToPackageDocs}
-          packages={contractPackages}
+          packages={documentSets}
           onConfirm={(targetPkgId) => {
-            const targetPkg = contractPackages.find(p => p.id === targetPkgId);
+            const targetPkg = documentSets.find(p => p.id === targetPkgId);
             if (!targetPkg || !addToPackageDocs) return;
             const newFiles: PackageFile[] = addToPackageDocs.map(d => ({
               docId: d.id,
@@ -4207,13 +4207,13 @@ export default function PipelineDashboard() {
               role: 'Undefined' as DocumentRole,
             }));
             const updatedFiles = [...targetPkg.files, ...newFiles];
-            const updatedPkg: ContractPackage = {
+            const updatedPkg: DocumentSet = {
               ...targetPkg,
               files: updatedFiles,
               mode: updatedFiles.length >= 2 ? 'Package' : 'Single',
               status: updatedFiles.every(f => f.role !== 'Undefined') ? 'Ready' : 'Pending',
             };
-            setContractPackages(prev => prev.map(p => p.id === targetPkgId ? updatedPkg : p));
+            setDocumentSets(prev => prev.map(p => p.id === targetPkgId ? updatedPkg : p));
             setStagedDocs(prev => prev.filter(d => !addToPackageDocs.some(ad => ad.id === d.id)));
             setSelectedIds(new Set());
             setAddToPackageDocs(null);

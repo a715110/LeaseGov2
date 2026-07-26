@@ -1,5 +1,5 @@
 /**
- * PackageDetailDialog — inline dialog version of the Contract Package detail view.
+ * PackageDetailDialog — inline dialog version of the Document Set detail view.
  *
  * Contains all the same content, layout, and role-aware elements as the
  * former /packages/:id standalone page. Opens as a full-height Sheet from
@@ -610,7 +610,7 @@ export function PackageDetailDialog({
             <div className="flex items-center justify-between gap-4 flex-wrap">
               <div>
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
-                  <SheetTitle className="page-title text-[18px]">Contract Package</SheetTitle>
+                  <SheetTitle className="page-title text-[18px]">Document Set</SheetTitle>
                   <span className="badge-valid inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold">
                     <CheckCircle2 className="w-3.5 h-3.5" /> Validated
                   </span>

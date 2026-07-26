@@ -153,7 +153,7 @@ export default function RecordsAddDocument() {
         <div className="rounded-lg border px-4 py-3 flex items-start gap-3" style={{ background:"var(--color-lg-info-subtle)", borderColor:"var(--color-lg-info)" }}>
           <Info className="w-4 h-4 mt-0.5 shrink-0" style={{ color:"var(--color-lg-info)" }} />
           <p className="text-[12px]" style={{ color:"var(--color-lg-info)" }}>
-            <strong>Auto-package promotion:</strong> After upload, the document will be automatically added to the existing Contract Package for this record and queued for extraction. You will be redirected to the Extraction Queue.
+            <strong>Auto-package promotion:</strong> After upload, the document will be automatically added to the existing Document Set for this record and queued for extraction. You will be redirected to the Extraction Queue.
           </p>
         </div>
 

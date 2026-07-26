@@ -6,7 +6,7 @@
  *
  * Exports:
  *   MOCK_CONTRACT_RECORDS   — 4 seed ContractRecords (Acme Corp, Globex LLC, Initech, Office Tower Partners)
- *   MOCK_PACKAGES           — 2 seed ContractPackages (PKG-2026-001 submitted, PKG-2026-002 assembly)
+ *   MOCK_PACKAGES           — 2 seed DocumentSets (PKG-2026-001 submitted, PKG-2026-002 assembly)
  *   MOCK_WORKSPACES         — workspace list for upload modal dropdown
  *   MOCK_ASSIGNEES          — users with Preparer / System Admin role for routing context
  *   MOCK_EQUIPMENT_RECORDS  — 3 seed EquipmentLease records (IT Hardware, Manufacturing, Vehicles)
@@ -83,7 +83,7 @@ export const MOCK_CONTRACT_RECORDS: ContractRecord[] = [
   },
 ];
 
-// ─── ContractPackage ──────────────────────────────────────────────────────────
+// ─── DocumentSet ──────────────────────────────────────────────────────────
 
 export type PackageStatus =
   | 'assembly'
@@ -109,7 +109,7 @@ export interface PackageDocument {
   role: DocumentRole;
 }
 
-export interface ContractPackageV3 {
+export interface DocumentSetV3 {
   id: string;
   packageNumber: string;
   target_record_id: string | null;
@@ -122,11 +122,11 @@ export interface ContractPackageV3 {
 }
 
 /**
- * V3 §1c — 2 seed ContractPackages.
+ * V3 §1c — 2 seed DocumentSets.
  * PKG-2026-001: submitted (appears in Table 3 — Submissions as Pending)
- * PKG-2026-002: assembly (appears in Table 2 — Contract Packages)
+ * PKG-2026-002: assembly (appears in Table 2 — Document Sets)
  */
-export const MOCK_PACKAGES: ContractPackageV3[] = [
+export const MOCK_PACKAGES: DocumentSetV3[] = [
   {
     id: 'mock-pkg-001',
     packageNumber: 'PKG-2026-001',
@@ -310,7 +310,7 @@ export const CONTRACT_RECORD_STATUS_LABEL: Record<ContractRecordStatus, string> 
   rejected: 'Rejected', expired: 'Expired',
 };
 
-/** Status badge styles for ContractPackageV3 status */
+/** Status badge styles for DocumentSetV3 status */
 export const PACKAGE_STATUS_BADGE: Record<PackageStatus, string> = {
   assembly:    'bg-slate-100 text-slate-600 border border-slate-200',
   validated:   'bg-blue-50 text-blue-700 border border-blue-200',
