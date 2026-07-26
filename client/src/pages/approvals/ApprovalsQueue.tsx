@@ -42,7 +42,7 @@ import { PackageDetailDialog } from '@/components/packages/PackageDetailDialog';
 
 type SubjectType = "contract_record" | "reassessment_case";
 type ApprovalStage = "review" | "final_approval";
-type TaskStatus = "pending" | "opened" | "approved" | "rejected" | "rework_in_progress" | "resubmitted";
+type TaskStatus = "pending" | "opened" | "reviewed" | "approved" | "rejected" | "rework_in_progress" | "resubmitted";
 type Priority = "standard" | "high" | "escalated";
 
 interface ApprovalTask {
@@ -139,6 +139,7 @@ function StatusBadge({ status, opened_at }: { status: TaskStatus; opened_at: str
   const map: Record<TaskStatus, { label: string; cls: string }> = {
     pending:            { label: 'Pending',     cls: 'bg-gray-100 text-gray-600 border border-gray-200' },
     opened:             { label: 'Opened',      cls: 'bg-blue-50 text-blue-700 border border-blue-200' },
+    reviewed:           { label: 'Reviewed',    cls: 'bg-green-50 text-green-700 border border-green-300' },
     approved:           { label: 'Approved',    cls: 'badge-valid' },
     rejected:           { label: 'Rejected',    cls: 'badge-invalid' },
     rework_in_progress: { label: 'Rework',      cls: 'badge-warning' },
@@ -149,6 +150,9 @@ function StatusBadge({ status, opened_at }: { status: TaskStatus; opened_at: str
     <Tooltip>
       <TooltipTrigger asChild>
         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold cursor-default ${cls}`}>
+          {status === 'reviewed' && (
+            <CheckCircle2 className="w-3 h-3 text-green-600 shrink-0" />
+          )}
           {status === 'opened' && (
             <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse shrink-0" />
           )}
