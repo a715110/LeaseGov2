@@ -262,16 +262,18 @@ export const MOCK_REVIEWERS: Reviewer[] = [
  * (e.g. tracked corrections, comment authors, reassignment dialogs).
  * Production: replace with JWT token claims (given_name + family_name).
  */
-export const ROLE_PERSONAS: Record<string, { name: string; initials: string; email: string }> = {
-  document_submitter: { name: 'J. Martinez',   initials: 'JM', email: 'j.martinez@leasegov.com' },
-  preparer:           { name: 'L. Nguyen',      initials: 'LN', email: 'l.nguyen@leasegov.com' },
+export const ROLE_PERSONAS: Record<string, { name: string; initials: string; email: string; assignedWorkspaceId?: string }> = {
+  // assignedWorkspaceId — set at onboarding; used as the default workspace in the Upload modal.
+  // Production: sourced from the user directory / JWT claims (workspace_id claim).
+  document_submitter: { name: 'J. Martinez',   initials: 'JM', email: 'j.martinez@leasegov.com',  assignedWorkspaceId: 'ws-002' },
+  preparer:           { name: 'L. Nguyen',      initials: 'LN', email: 'l.nguyen@leasegov.com',   assignedWorkspaceId: 'ws-002' },
   reviewer:           { name: 'M. Rodriguez',   initials: 'MR', email: 'm.rodriguez@leasegov.com' },
   approver:           { name: 'D. Chen',         initials: 'DC', email: 'd.chen@leasegov.com' },
   accountant:         { name: 'P. Okonkwo',     initials: 'PO', email: 'p.okonkwo@leasegov.com' },
   controller:         { name: 'S. Patel',        initials: 'SP', email: 's.patel@leasegov.com' },
-  business_submitter: { name: 'A. Kim',          initials: 'AK', email: 'a.kim@leasegov.com' },
+  business_submitter: { name: 'A. Kim',          initials: 'AK', email: 'a.kim@leasegov.com',     assignedWorkspaceId: 'ws-003' },
   auditor:            { name: 'R. Thompson',     initials: 'RT', email: 'r.thompson@leasegov.com' },
-  lease_admin:        { name: 'C. Williams',     initials: 'CW', email: 'c.williams@leasegov.com' },
+  lease_admin:        { name: 'C. Williams',     initials: 'CW', email: 'c.williams@leasegov.com', assignedWorkspaceId: 'ws-001' },
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

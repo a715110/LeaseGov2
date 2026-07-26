@@ -34,12 +34,14 @@ import {
   MOCK_CONTRACT_RECORDS,
   MOCK_WORKSPACES,
   MOCK_ASSIGNEES,
+  ROLE_PERSONAS,
   searchContractRecords,
   findContractRecord,
   CONTRACT_RECORD_STATUS_BADGE,
   CONTRACT_RECORD_STATUS_LABEL,
   type ContractRecord,
 } from '@/lib/mockData';
+import { useRole } from '@/contexts/RoleContext';
 
 // Re-export types so existing importers of UploadDialog continue to work
 export type { ValidationStatus, ValidationCategory, StagedFile };
@@ -334,21 +336,23 @@ function RecordSearchPanel({ selected, onSelect }: RecordSearchPanelProps) {
 const WORKSPACE_STORAGE_KEY = 'leasegov_user_workspace';
 
 export function UploadDialog({ open, onClose, onConfirm, initialRecord }: UploadDialogProps) {
+  const { activeRole } = useRole();
   // ── File state ──
   const [files, setFiles] = useState<StagedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const progressTimers = useRef<Map<string, ReturnType<typeof setInterval>>>(new Map());
-
   // ── Drag-to-reorder state ──
   const dragItemId = useRef<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
-
   // ── Section 3 — Target Context ──
-  // Default workspace from localStorage (user profile preference)
-  const [workspaceId, setWorkspaceId] = useState<string>(() => {
-    return localStorage.getItem(WORKSPACE_STORAGE_KEY) ?? '';
-  });
+  // Priority: 1) localStorage user preference, 2) persona's assigned workspace (set at onboarding)
+  const getDefaultWorkspace = () => {
+    const saved = localStorage.getItem(WORKSPACE_STORAGE_KEY);
+    if (saved) return saved;
+    return ROLE_PERSONAS[activeRole]?.assignedWorkspaceId ?? '';
+  };
+  const [workspaceId, setWorkspaceId] = useState<string>(() => getDefaultWorkspace());
   const [recordDest, setRecordDest] = useState<RecordDestination>(null);
   const [selectedRecord, setSelectedRecord] = useState<ContractRecord | null>(null);
   // New Record form
@@ -422,11 +426,12 @@ export function UploadDialog({ open, onClose, onConfirm, initialRecord }: Upload
       setNewRecordType('Property Lease');
       progressTimers.current.forEach(t => clearInterval(t));
       progressTimers.current.clear();
-      // Re-read workspace preference on each open (may have changed from dashboard)
+      // Re-read workspace preference on each open.
+      // Priority: 1) user's saved localStorage preference, 2) persona's onboarding workspace.
       const saved = localStorage.getItem(WORKSPACE_STORAGE_KEY);
-      if (saved) setWorkspaceId(saved);
+      setWorkspaceId(saved ?? ROLE_PERSONAS[activeRole]?.assignedWorkspaceId ?? '');
     }
-  }, [open]);
+  }, [open, activeRole]);
 
   // Cleanup timers on unmount
   useEffect(() => {
@@ -736,7 +741,11 @@ export function UploadDialog({ open, onClose, onConfirm, initialRecord }: Upload
                 <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground block mb-1.5">
                   Workspace <span className="text-red-500">*</span>
                   {selectedWorkspace && (
-                    <span className="ml-2 normal-case font-normal text-muted-foreground/60">(saved as default)</span>
+                    <span className="ml-2 normal-case font-normal text-muted-foreground/60">
+                      {localStorage.getItem(WORKSPACE_STORAGE_KEY)
+                        ? '(saved as default)'
+                        : '(assigned workspace)'}
+                    </span>
                   )}
                 </label>
                 <Select value={workspaceId} onValueChange={handleWorkspaceChange}>
@@ -763,7 +772,10 @@ export function UploadDialog({ open, onClose, onConfirm, initialRecord }: Upload
                 </Select>
                 {selectedWorkspace && (
                   <p className="text-[10px] text-muted-foreground mt-1">
-                    All files assigned to <span className="font-medium text-foreground">{selectedWorkspace.name}</span> workspace. Selection saved to your profile.
+                    All files assigned to <span className="font-medium text-foreground">{selectedWorkspace.name}</span> workspace.
+                    {localStorage.getItem(WORKSPACE_STORAGE_KEY)
+                      ? ' Selection saved to your profile.'
+                      : ' Assigned at onboarding — change to override.'}
                   </p>
                 )}
               </div>
