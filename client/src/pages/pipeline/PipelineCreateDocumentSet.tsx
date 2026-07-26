@@ -1142,7 +1142,7 @@ export default function PipelineCreateDocumentSet() {
             title={extractionFiles.length === 0 ? 'Add at least one file to Extraction first' : undefined}
           >
             <Package className="w-4 h-4" />
-            Save as New Document Set
+            Save Document Set Only
           </Button>
           {/* Submit Package — governed submission path */}
           <Button
@@ -1152,7 +1152,7 @@ export default function PipelineCreateDocumentSet() {
             title={extractionFiles.length === 0 ? 'Add at least one file to Extraction before submitting' : undefined}
           >
             <ChevronRight className="w-4 h-4" />
-            Submit Document Set
+            Save & Submit Document Set
           </Button>
         </div>
       </div>
