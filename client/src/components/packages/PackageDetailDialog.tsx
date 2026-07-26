@@ -405,7 +405,7 @@ export function PackageDetailDialog({
 
   const isReviewer = activeRole === 'reviewer';
   const isApprover = activeRole === 'approver';
-  const canEdit    = activeRole === 'preparer' || activeRole === 'lease_admin';
+  const canEdit    = activeRole === 'preparer' || activeRole === 'system_admin';
   const isReadOnly = !canEdit;
 
   // Resolve package data
@@ -638,7 +638,7 @@ export function PackageDetailDialog({
                   </span>
                 )}
 
-                {/* Add Document — Preparer / Lease Admin only */}
+                {/* Add Document — Preparer / System Admin only */}
                 {canEdit && (
                   <Button variant="outline" size="sm" className="gap-1.5"
                     onClick={() => {

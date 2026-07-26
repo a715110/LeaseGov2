@@ -34,15 +34,15 @@ export interface NavGroupConfig {
 export const NAV_GROUPS: NavGroupConfig[] = [
   {
     key: 'document-pipeline', label: 'Document Pipeline', icon: 'UploadCloud', sortOrder: 1, phase: 'mvp',
-    allowedRoles: ['document_submitter', 'auditor', 'lease_admin'],
+    allowedRoles: ['document_submitter', 'auditor', 'system_admin'],
   },
   {
     key: 'extraction', label: 'Extraction', icon: 'Scan', sortOrder: 2, phase: 'mvp',
-    allowedRoles: ['preparer', 'auditor', 'lease_admin'],
+    allowedRoles: ['preparer', 'auditor', 'system_admin'],
   },
   {
     key: 'packages', label: 'Packages', icon: 'Layers', sortOrder: 3, phase: 'phase_2',
-    allowedRoles: ['preparer', 'reviewer', 'approver', 'auditor', 'lease_admin'],
+    allowedRoles: ['preparer', 'reviewer', 'approver', 'auditor', 'system_admin'],
     roleLabels: {
       reviewer: 'Contract Packages',
       approver: 'Packages for Approval',
@@ -50,7 +50,7 @@ export const NAV_GROUPS: NavGroupConfig[] = [
   },
   {
     key: 'approvals', label: 'Approvals', icon: 'CheckCircle', sortOrder: 4, phase: 'mvp',
-    allowedRoles: ['preparer', 'reviewer', 'approver', 'auditor', 'lease_admin'],
+    allowedRoles: ['preparer', 'reviewer', 'approver', 'auditor', 'system_admin'],
     roleLabels: {
       reviewer: 'Reviews',
       approver: 'Approvals',
@@ -59,7 +59,7 @@ export const NAV_GROUPS: NavGroupConfig[] = [
   },
   {
     key: 'records', label: 'Records', icon: 'Folder', sortOrder: 5, phase: 'mvp',
-    allowedRoles: ['preparer', 'reviewer', 'approver', 'accountant', 'controller', 'auditor', 'lease_admin'],
+    allowedRoles: ['preparer', 'reviewer', 'approver', 'accountant', 'controller', 'auditor', 'system_admin'],
     roleLabels: {
       accountant: 'Lease Ledger',
       controller: 'Financial Records',
@@ -68,7 +68,7 @@ export const NAV_GROUPS: NavGroupConfig[] = [
   },
   {
     key: 'export', label: 'Governed Export', icon: 'CloudUpload', sortOrder: 6, phase: 'mvp',
-    allowedRoles: ['controller', 'auditor', 'lease_admin'],
+    allowedRoles: ['controller', 'auditor', 'system_admin'],
     roleLabels: {
       controller: 'Export & Reporting',
       auditor: 'Export & Audit',
@@ -76,11 +76,11 @@ export const NAV_GROUPS: NavGroupConfig[] = [
   },
   {
     key: 'admin', label: 'Admin', icon: 'Settings', sortOrder: 7, phase: 'mvp',
-    allowedRoles: ['lease_admin'],
+    allowedRoles: ['system_admin'],
   },
   {
     key: 'reassessment', label: 'Reassessment', icon: 'RefreshCw', sortOrder: 8, phase: 'mvp',
-    allowedRoles: ['preparer', 'reviewer', 'approver', 'accountant', 'controller', 'auditor', 'lease_admin'],
+    allowedRoles: ['preparer', 'reviewer', 'approver', 'accountant', 'controller', 'auditor', 'system_admin'],
     roleLabels: {
       accountant: 'Lease Reassessment',
       controller: 'Portfolio Review',
@@ -89,7 +89,7 @@ export const NAV_GROUPS: NavGroupConfig[] = [
   },
   {
     key: 'agents', label: 'Agents', icon: 'Bot', sortOrder: 9, phase: 'mvp',
-    allowedRoles: ['lease_admin', 'auditor'],
+    allowedRoles: ['system_admin', 'auditor'],
   },
   {
     key: 'superadmin', label: 'SuperAdmin', icon: 'Shield', sortOrder: 10, phase: 'mvp',

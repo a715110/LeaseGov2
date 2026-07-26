@@ -2,7 +2,7 @@
  * ReassessmentUpdate — FC-6 Workflow Screen
  * Screen key: reassessment-update
  * Route: /workflows/reassessment/update
- * Role: Business Submitter / Lease Admin
+ * Role: Business Submitter / System Admin
  *
  * Captures triggering event data and queues the case for classification.
  * Event type selector, effective date, description, validation rules.
@@ -192,7 +192,7 @@ export default function ReassessmentUpdatePage() {
           <div className="border-t border-border pt-4">
             <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">Required Role</p>
             <div className="flex flex-wrap gap-1">
-              {['Business Submitter', 'Lease Admin'].map(r => (
+              {['Business Submitter', 'System Admin'].map(r => (
                 <span key={r} className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">{r}</span>
               ))}
             </div>

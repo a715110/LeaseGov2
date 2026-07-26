@@ -3,7 +3,7 @@
  * Screen key: admin-onboarding
  * Route: /admin/onboarding
  *
- * Allows Lease Admins to view all users and set or change their assigned workspace.
+ * Allows System Admins to view all users and set or change their assigned workspace.
  * The assigned workspace is used as the default in the Upload Files modal when
  * a user has not yet manually selected a workspace preference.
  *
@@ -146,7 +146,7 @@ const MOCK_ONBOARDING_USERS: OnboardingUser[] = [
     full_name: "Samuel Patel",
     email: "s.patel@leasegov.com",
     status: "active",
-    roles: ["preparer", "lease_admin"],
+    roles: ["preparer", "system_admin"],
     assignedWorkspaceId: "ws-005",
     workspaceAssignedAt: "2026-02-28T08:00:00Z",
     workspaceAssignedBy: "System (Onboarding)",
@@ -403,7 +403,7 @@ export default function AdminOnboarding() {
               <SelectItem value="preparer" className="text-[12px]">Preparer</SelectItem>
               <SelectItem value="reviewer" className="text-[12px]">Reviewer</SelectItem>
               <SelectItem value="approver" className="text-[12px]">Approver</SelectItem>
-              <SelectItem value="lease_admin" className="text-[12px]">Lease Admin</SelectItem>
+              <SelectItem value="system_admin" className="text-[12px]">System Admin</SelectItem>
               <SelectItem value="auditor" className="text-[12px]">Auditor</SelectItem>
             </SelectContent>
           </Select>

@@ -4,7 +4,7 @@
  *
  * Sub-nav items: Users · Schema · Templates · Thresholds · Audit Log ·
  *   Appearance & Notifications · Automation Config (Phase 2 — greyed)
- * Role gate: visible to lease_admin and auditor only.
+ * Role gate: visible to system_admin and auditor only.
  * auditor sees all screens read-only (enforced per-screen, not here).
  */
 
@@ -34,12 +34,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const [location, navigate] = useLocation();
   const { activeRole } = useRole();
 
-  const allowed = activeRole === "lease_admin" || activeRole === "auditor";
+  const allowed = activeRole === "system_admin" || activeRole === "auditor";
 
   useEffect(() => {
     if (!allowed) {
       toast.warning("Access restricted", {
-        description: "Administration screens require the Lease Admin or Auditor role. Switch roles in the demo switcher.",
+        description: "Administration screens require the System Admin or Auditor role. Switch roles in the demo switcher.",
         duration: 5000,
       });
       navigate("/pipeline/dashboard");

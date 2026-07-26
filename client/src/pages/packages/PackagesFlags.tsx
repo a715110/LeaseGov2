@@ -2,7 +2,7 @@
  * PackagesFlags — FC-3 Screen 3.2
  * Screen key: packages-flags
  * Route: /packages/:packageId/flags
- * Role: Preparer / Lease Admin
+ * Role: Preparer / System Admin
  *
  * Design: Structured Authority
  * Prompt 3.2: Header "Package Flags" with "2 Open" error badge.

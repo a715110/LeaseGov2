@@ -473,7 +473,7 @@ function simCardToTaskCard(c: SimActivityCard): AgentTaskCard {
 // ─── Main screen ──────────────────────────────────────────────────────────────
 export default function AgentActivityMonitor() {
   const { activeRole } = useRole()
-  const allowedRoles = ['lease_admin', 'controller', 'preparer', 'reviewer', 'approver']
+  const allowedRoles = ['system_admin', 'controller', 'preparer', 'reviewer', 'approver']
   if (!allowedRoles.includes(activeRole)) return <NotFound />
 
   // Live simulation — all 11 agent scenarios cycling through the state machine

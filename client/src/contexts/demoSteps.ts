@@ -14,7 +14,7 @@
  *   Controller          : steps 29–34  FC-5 Records + FC-6 Reassessment (sweep + watchlist)
  *   Business Submitter  : steps 35–38  FC-6 Survey + Trigger
  *   Auditor             : steps 39–41  FC-5 Snapshot Viewer + FC-8 Audit Log
- *   Lease Admin         : steps 42–46  FC-8 Administration + FC-9 AI Agents
+ *   System Admin         : steps 42–46  FC-8 Administration + FC-9 AI Agents
  */
 import type { UserRole } from '@/lib/types';
 
@@ -494,61 +494,61 @@ export const DEMO_STEPS: DemoStep[] = [
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // FC-8 + FC-9 — ADMINISTRATION & AI AGENTS  (Lease Admin, steps 41–46)
+  // FC-8 + FC-9 — ADMINISTRATION & AI AGENTS  (System Admin, steps 41–46)
   // ═══════════════════════════════════════════════════════════════════════════
   {
-    id: 'step-45', stepNumber: 45, role: 'lease_admin',
-    roleLabel: 'Lease Admin', roleColor: '#1F3864',
+    id: 'step-45', stepNumber: 45, role: 'system_admin',
+    roleLabel: 'System Admin', roleColor: '#1F3864',
     screenNumber: '8.1',
     title: 'User & Role Management',
-    description: 'The Lease Admin manages all platform users and their role assignments. The role assignment UI enforces Segregation of Duties — assigning a user to both Reviewer and Approver on the same contract triggers a warning. Invite flow sends a provisioning email.',
+    description: 'The System Admin manages all platform users and their role assignments. The role assignment UI enforces Segregation of Duties — assigning a user to both Reviewer and Approver on the same contract triggers a warning. Invite flow sends a provisioning email.',
     instruction: 'Navigate to /admin/users. Show the user table and role assignment dropdowns. Attempt to assign a user to both Reviewer and Approver to trigger the SoD warning.',
-    route: '/admin/users', tabHint: 'Tab 9 — Lease Admin',
+    route: '/admin/users', tabHint: 'Tab 9 — System Admin',
   },
   {
-    id: 'step-46', stepNumber: 46, role: 'lease_admin',
-    roleLabel: 'Lease Admin', roleColor: '#1F3864',
+    id: 'step-46', stepNumber: 46, role: 'system_admin',
+    roleLabel: 'System Admin', roleColor: '#1F3864',
     screenNumber: '8.3',
     title: 'Template Management — Field Mapping Editor',
-    description: 'The Template Management screen allows the Lease Admin to create and version extraction templates. The field mapping editor uses drag-to-sort ordering. Templates are version-locked once in use — a new version must be created for changes. The schema dependency graph prevents breaking changes.',
+    description: 'The Template Management screen allows the System Admin to create and version extraction templates. The field mapping editor uses drag-to-sort ordering. Templates are version-locked once in use — a new version must be created for changes. The schema dependency graph prevents breaking changes.',
     instruction: 'Navigate to /admin/templates. Open a template and show the field mapping editor. Drag a field to reorder it. Point out the version lock indicator and the "Create New Version" button.',
-    route: '/admin/templates', tabHint: 'Tab 9 — Lease Admin',
+    route: '/admin/templates', tabHint: 'Tab 9 — System Admin',
   },
   {
-    id: 'step-47', stepNumber: 47, role: 'lease_admin',
-    roleLabel: 'Lease Admin', roleColor: '#1F3864',
+    id: 'step-47', stepNumber: 47, role: 'system_admin',
+    roleLabel: 'System Admin', roleColor: '#1F3864',
     screenNumber: '8.4',
     title: 'Threshold Configuration — SLA & Confidence',
     description: 'The Threshold Configuration screen manages confidence thresholds, SLA deadlines, and automation policy parameters across five accordion groups: Onboarding, Reassessment, Approval, Watchlist, and Automation. Version history shows the last 5 configurations with a Restore button.',
     instruction: 'Navigate to /admin/thresholds. Expand the Onboarding accordion. Adjust the confidence threshold. Show the version history panel and the Restore button on a previous version.',
-    route: '/admin/thresholds', tabHint: 'Tab 9 — Lease Admin',
+    route: '/admin/thresholds', tabHint: 'Tab 9 — System Admin',
   },
   {
-    id: 'step-48', stepNumber: 48, role: 'lease_admin',
-    roleLabel: 'Lease Admin', roleColor: '#1F3864',
+    id: 'step-48', stepNumber: 48, role: 'system_admin',
+    roleLabel: 'System Admin', roleColor: '#1F3864',
     screenNumber: '8.6',
     title: 'Appearance & Notifications — Theme & Branding',
-    description: 'The Appearance screen lets the Lease Admin select from four design themes (Structured Authority, Modern Violet, Gradient Pro, Executive Slate), set the colour mode (Light / Dark / System), and configure branding (logo, accent colour) for Professional and Enterprise tiers. Notification preferences are managed per category with In-App and Email toggles.',
+    description: 'The Appearance screen lets the System Admin select from four design themes (Structured Authority, Modern Violet, Gradient Pro, Executive Slate), set the colour mode (Light / Dark / System), and configure branding (logo, accent colour) for Professional and Enterprise tiers. Notification preferences are managed per category with In-App and Email toggles.',
     instruction: 'Navigate to /admin/notifications. Show the four theme cards. Switch to Modern Violet and observe the live preview. Toggle a notification category off and show the save confirmation.',
-    route: '/admin/notifications', tabHint: 'Tab 9 — Lease Admin',
+    route: '/admin/notifications', tabHint: 'Tab 9 — System Admin',
   },
   {
-    id: 'step-49', stepNumber: 49, role: 'lease_admin',
-    roleLabel: 'Lease Admin', roleColor: '#1F3864',
+    id: 'step-49', stepNumber: 49, role: 'system_admin',
+    roleLabel: 'System Admin', roleColor: '#1F3864',
     screenNumber: '9.1',
     title: 'AI Checkpoint Queue — Human-in-the-Loop',
     description: 'The Checkpoint Queue shows all pending human checkpoints raised by AI agents across every workflow domain. Tabs filter by checkpoint type (extraction review, classification confirm, assessment confirm, export attest, etc.). Checkpoints are sorted by deadline ascending — overdue items appear first. Auto-refreshes every 30 seconds.',
     instruction: 'Navigate to /approvals/checkpoints. Show the tab filter by checkpoint type. Open an extraction_review checkpoint and show the navigation to the Verification Gate. Point out the overdue indicator on expired checkpoints.',
-    route: '/approvals/checkpoints', tabHint: 'Tab 9 — Lease Admin',
+    route: '/approvals/checkpoints', tabHint: 'Tab 9 — System Admin',
   },
   {
-    id: 'step-50', stepNumber: 50, role: 'lease_admin',
-    roleLabel: 'Lease Admin', roleColor: '#1F3864',
+    id: 'step-50', stepNumber: 50, role: 'system_admin',
+    roleLabel: 'System Admin', roleColor: '#1F3864',
     screenNumber: '9.2',
     title: 'Agent Activity Monitor — Real-Time Oversight',
     description: 'The Agent Activity Monitor provides a real-time Kanban view of all AI agent tasks: Running, Awaiting Checkpoint, Completed Today, and Failed. The Intervene button pauses a running agent (sets status to paused_by_human). Failed tasks can be retried, creating a new AgentTask for the same subject. Auto-refreshes every 15 seconds.',
     instruction: 'Navigate to /agents/monitor. Show the four status columns. Click Intervene on a Running task to pause it. Show the Retry button on a Failed task. Point out the auto-refresh pulse animation on count badges.',
-    route: '/agents/monitor', tabHint: 'Tab 9 — Lease Admin',
+    route: '/agents/monitor', tabHint: 'Tab 9 — System Admin',
   },
 ];
 

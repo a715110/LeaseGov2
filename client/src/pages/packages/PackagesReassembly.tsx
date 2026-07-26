@@ -2,7 +2,7 @@
  * PackagesReassembly — FC-3 Screen 3.3
  * Screen key: packages-reassembly
  * Route: /packages/:packageId/reassembly
- * Role: Preparer / Lease Admin
+ * Role: Preparer / System Admin
  *
  * Design: Structured Authority
  * Prompt 3.3: Full-width warning banner (warning-subtle background, 4px warning left border).

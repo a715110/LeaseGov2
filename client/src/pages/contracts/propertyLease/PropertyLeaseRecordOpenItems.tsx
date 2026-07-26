@@ -36,7 +36,7 @@ const MOCK_ACTION_ITEMS: ActionItem[] = [
   {
     id: "ai-001",
     title: "Confirm Renewal Option Exercise Deadline",
-    description: "Tenant must provide written notice by Sep 30, 2031. Lease Admin to confirm with legal team.",
+    description: "Tenant must provide written notice by Sep 30, 2031. System Admin to confirm with legal team.",
     status: "open",
     priority: "high",
     assigned_to: "J. Martinez",

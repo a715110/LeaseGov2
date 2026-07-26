@@ -2,7 +2,7 @@
  * PackagesComposition — FC-3 Screen 3.1
  * Screen key: packages-composition
  * Route: /packages/:contractId
- * Role: Preparer / Lease Admin
+ * Role: Preparer / System Admin
  *
  * Design: Structured Authority
  * Prompt 3.1: Header with "Validated" badge and document count.
@@ -192,12 +192,12 @@ export default function PackagesComposition() {
   const [, navigate] = useLocation();
   const { activeRole } = useRole();
   // Role-aware permissions:
-  //   Preparer / Lease Admin → full edit surface
+  //   Preparer / System Admin → full edit surface
   //   Reviewer               → read-only; action bar shows "Review Package"
   //   All others             → read-only
   const isReviewer = activeRole === 'reviewer';
   const isApprover = activeRole === 'approver';
-  const canEdit = activeRole === 'preparer' || activeRole === 'lease_admin';
+  const canEdit = activeRole === 'preparer' || activeRole === 'system_admin';
   const isReadOnly = !canEdit;
   const params = useParams<{ contractId: string }>();
   // Resolve the package from the route param; fall back to the default mock if unknown
@@ -374,7 +374,7 @@ export default function PackagesComposition() {
             </span>
           )}
 
-          {/* Add Document — Preparer / Lease Admin only */}
+          {/* Add Document — Preparer / System Admin only */}
           {canEdit && (
             <Button
               variant="outline" size="sm" className="gap-1.5"
@@ -476,7 +476,7 @@ export default function PackagesComposition() {
               <span className="text-muted-foreground ml-1">
                 Only one Base Contract is allowed per package. Found {baseContracts.length}. Reclassify the duplicate to resolve this flag.
               </span>
-              {/* Quick-action: one reclassify button per duplicate Base Contract — Preparer / Lease Admin only */}
+              {/* Quick-action: one reclassify button per duplicate Base Contract — Preparer / System Admin only */}
               {canEdit && (
                 <div className="flex flex-wrap gap-2 mt-2.5">
                   {baseContracts.map((dupeDoc, idx) => (
@@ -597,7 +597,7 @@ export default function PackagesComposition() {
                     <td className="text-muted-foreground text-[12px]">{doc.file_size}</td>
                     <td className="text-right">
                       {canEdit ? (
-                        // Preparer / Lease Admin: full action dropdown
+                        // Preparer / System Admin: full action dropdown
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="sm" className="h-7 w-7 p-0">

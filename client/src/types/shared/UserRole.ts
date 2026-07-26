@@ -18,7 +18,7 @@ export type UserRole =
   | 'controller'
   | 'business_submitter'
   | 'auditor'
-  | 'lease_admin'
+  | 'system_admin'
   | 'super_admin';
 
 /** Human-readable label for each role. */
@@ -31,7 +31,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   controller:         'Controller',
   business_submitter: 'Business Submitter',
   auditor:            'Auditor',
-  lease_admin:        'Lease Admin',
+  system_admin:        'System Admin',
   super_admin:        'Super Admin',
 };
 
@@ -45,7 +45,7 @@ export const ROLE_COLORS: Record<UserRole, string> = {
   controller:         '#dc2626',
   business_submitter: '#ec4899',
   auditor:            '#6b7280',
-  lease_admin:        '#1F3864',
+  system_admin:        '#1F3864',
   super_admin:        '#0f172a',
 };
 

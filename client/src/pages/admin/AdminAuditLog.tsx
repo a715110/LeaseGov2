@@ -13,7 +13,7 @@
  * Row expand: before_state vs after_state JSON diff with changed keys in amber
  * Immutable: no edit, no delete, no bulk actions
  * "Export CSV" button: async export with progress indicator
- * auditor: full read access · lease_admin: own-org entries only
+ * auditor: full read access · system_admin: own-org entries only
  *
  * Data model refs: AuditLog (Part 2.10)
  */

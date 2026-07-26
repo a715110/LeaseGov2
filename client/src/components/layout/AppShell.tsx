@@ -82,7 +82,7 @@ const ALL_ROLES: UserRole[] = [
   'controller',
   'business_submitter',
   'auditor',
-  'lease_admin',
+  'system_admin',
   'super_admin',
 ]
 

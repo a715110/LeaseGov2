@@ -15,7 +15,7 @@
  *   Controller          : steps 28–37  FC-5 Records + FC-6 Reassessment
  *   Business Submitter  : steps 32–33  FC-6 Survey + Trigger
  *   Auditor             : steps 38–40  FC-5 Deferred Tracker + FC-8 Audit Log + Snapshot Viewer
- *   Lease Admin         : steps 41–46  FC-8 Administration + FC-9 AI Agents
+ *   System Admin         : steps 41–46  FC-8 Administration + FC-9 AI Agents
  */
 import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
 import type { UserRole } from '@/lib/types';

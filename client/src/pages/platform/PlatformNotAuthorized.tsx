@@ -24,7 +24,7 @@ type NotAuthorizedState = 'screen_inactive' | 'role_not_permitted';
 
 // In production these come from router state / query params
 const DEMO_STATE: NotAuthorizedState = 'role_not_permitted';
-const DEMO_PERMITTED_ROLES: UserRole[] = ['lease_admin', 'auditor', 'controller'];
+const DEMO_PERMITTED_ROLES: UserRole[] = ['system_admin', 'auditor', 'controller'];
 
 const ROLE_BADGE_COLOR: Record<UserRole, string> = {
   document_submitter: 'badge-muted',
@@ -35,7 +35,7 @@ const ROLE_BADGE_COLOR: Record<UserRole, string> = {
   controller:         'badge-warning',
   business_submitter: 'badge-muted',
   auditor:            'badge-processing',
-  lease_admin:        'badge-valid',
+  system_admin:        'badge-valid',
   super_admin:        'badge-valid',
 };
 

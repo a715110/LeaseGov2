@@ -224,7 +224,7 @@ function ConfidenceBar({ value }: { value: number }) {
 // ─── Main screen ──────────────────────────────────────────────────────────────
 export default function AgentCheckpointQueue() {
   const { activeRole } = useRole()
-  const allowedRoles = ['preparer', 'reviewer', 'approver', 'lease_admin', 'controller']
+  const allowedRoles = ['preparer', 'reviewer', 'approver', 'system_admin', 'controller']
   if (!allowedRoles.includes(activeRole)) return <NotFound />
 
   const [, navigate] = useLocation()

@@ -1,7 +1,7 @@
 /**
  * AutomationPolicyBadge — AG.6
  * Small pill badge shown in ContractRecordHeader and workflow screens.
- * Three variants × three sizes. Clickable for lease_admin (level switcher popover).
+ * Three variants × three sizes. Clickable for system_admin (level switcher popover).
  * TODO: Backend integration required — PUT /automation/policy (for override)
  */
 

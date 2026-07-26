@@ -45,7 +45,7 @@ const MOCK_TENANT_T1 = {
   users: [
     { id:'u1', name:'Jordan Martinez',  email:'j.martinez@meridian.com',  roles:['preparer','reviewer'],    status:'active',   last_login:'2026-05-16' },
     { id:'u2', name:'Aisha Chen',       email:'a.chen@meridian.com',      roles:['approver'],               status:'active',   last_login:'2026-05-15' },
-    { id:'u3', name:'Samuel Patel',     email:'s.patel@meridian.com',     roles:['lease_admin'],            status:'active',   last_login:'2026-05-16' },
+    { id:'u3', name:'Samuel Patel',     email:'s.patel@meridian.com',     roles:['system_admin'],            status:'active',   last_login:'2026-05-16' },
     { id:'u4', name:'Fatima Okonkwo',   email:'f.okonkwo@meridian.com',   roles:['document_submitter'],     status:'active',   last_login:'2026-05-14' },
     { id:'u5', name:'Carlos Reyes',     email:'c.reyes@meridian.com',     roles:['accountant','controller'],'status':'inactive', last_login:'2026-03-22' },
   ],
@@ -68,7 +68,7 @@ TENANTS_BY_ID['t2'] = {
   records_count: 64,
   last_activity: '2026-05-15 14:22',
   users: [
-    { id:'u6', name:'Priya Nair',     email:'p.nair@vantage.com',    roles:['lease_admin'],   status:'active',   last_login:'2026-05-15' },
+    { id:'u6', name:'Priya Nair',     email:'p.nair@vantage.com',    roles:['system_admin'],   status:'active',   last_login:'2026-05-15' },
     { id:'u7', name:'Derek Huang',    email:'d.huang@vantage.com',   roles:['preparer'],      status:'active',   last_login:'2026-05-14' },
   ],
   screen_overrides: [],

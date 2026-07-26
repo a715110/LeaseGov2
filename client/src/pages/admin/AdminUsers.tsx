@@ -46,7 +46,7 @@ const MOCK_USERS: AdminUser[] = [
   { id:"u2", full_name:"Aisha Chen",        email:"a.chen@acme.com",      status:"active",             roles:["approver"],                     scope_level:"global",    workspace_tags:[],                          last_login_at:"2026-05-16 08:55" },
   { id:"u3", full_name:"Samuel Patel",      email:"s.patel@acme.com",     status:"active",             roles:["accountant","controller"],      scope_level:"global",    workspace_tags:[],                          last_login_at:"2026-05-15 17:30" },
   { id:"u4", full_name:"Fatima Okonkwo",    email:"f.okonkwo@acme.com",   status:"active",             roles:["document_submitter"],           scope_level:"own",       workspace_tags:[],                          last_login_at:"2026-05-15 14:22" },
-  { id:"u5", full_name:"Marcus Webb",       email:"m.webb@acme.com",      status:"active",             roles:["lease_admin"],                  scope_level:"global",    workspace_tags:[],                          last_login_at:"2026-05-16 07:45" },
+  { id:"u5", full_name:"Marcus Webb",       email:"m.webb@acme.com",      status:"active",             roles:["system_admin"],                  scope_level:"global",    workspace_tags:[],                          last_login_at:"2026-05-16 07:45" },
   { id:"u6", full_name:"Priya Nair",        email:"p.nair@acme.com",      status:"active",             roles:["auditor"],                      scope_level:"global",    workspace_tags:[],                          last_login_at:"2026-05-14 16:10" },
   { id:"u7", full_name:"Carlos Reyes",      email:"c.reyes@acme.com",     status:"inactive",           roles:["preparer"],                     scope_level:"workspace", workspace_tags:["Warehouse"],               last_login_at:"2026-04-30 11:05" },
   { id:"u8", full_name:"Diane Hoffman",     email:"d.hoffman@acme.com",   status:"pending_activation", roles:["business_submitter"],           scope_level:"own",       workspace_tags:[],                          last_login_at:null },
@@ -66,7 +66,7 @@ const SCOPE_BADGE: Record<ScopeLevel, { label: string; cls: string }> = {
 
 const ALL_ROLES: UserRole[] = [
   "document_submitter","preparer","reviewer","approver",
-  "accountant","controller","business_submitter","auditor","lease_admin",
+  "accountant","controller","business_submitter","auditor","system_admin",
 ];
 
 // SoD incompatibility pairs (warn but don't block)

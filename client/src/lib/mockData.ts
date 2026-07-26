@@ -8,7 +8,7 @@
  *   MOCK_CONTRACT_RECORDS   — 4 seed ContractRecords (Acme Corp, Globex LLC, Initech, Office Tower Partners)
  *   MOCK_PACKAGES           — 2 seed ContractPackages (PKG-2026-001 submitted, PKG-2026-002 assembly)
  *   MOCK_WORKSPACES         — workspace list for upload modal dropdown
- *   MOCK_ASSIGNEES          — users with Preparer / Lease Admin role for routing context
+ *   MOCK_ASSIGNEES          — users with Preparer / System Admin role for routing context
  *   MOCK_EQUIPMENT_RECORDS  — 3 seed EquipmentLease records (IT Hardware, Manufacturing, Vehicles)
  */
 import type { EquipmentLease } from '@/types/contracts/equipmentLease/EquipmentLease'
@@ -209,12 +209,12 @@ export const MOCK_WORKSPACES: Workspace[] = [
   { id: 'ws-005', name: 'Land',         team: 'Land & Ground Leases' },
 ];
 
-// ─── Assignees (Preparer / Lease Admin roles) ─────────────────────────────────
+// ─── Assignees (Preparer / System Admin roles) ─────────────────────────────────
 
 export interface Assignee {
   id: string;
   name: string;
-  role: 'Preparer' | 'Lease Admin';
+  role: 'Preparer' | 'System Admin';
   workspaceId: string;
   avatarColor?: string;
   /** Work email — shown in avatar tooltip; PRODUCTION: from user directory */
@@ -227,10 +227,10 @@ export const MOCK_ASSIGNEES: Assignee[] = [
   { id: 'user-prep-003', name: 'M. Okonkwo',   role: 'Preparer',    workspaceId: 'ws-003', avatarColor: '#f59e0b', email: 'm.okonkwo@leasegov.internal' },
   { id: 'user-prep-004', name: 'S. Patel',     role: 'Preparer',    workspaceId: 'ws-004', avatarColor: '#10b981', email: 's.patel@leasegov.internal' },
   { id: 'user-prep-005', name: 'D. Hartley',   role: 'Preparer',    workspaceId: 'ws-005', avatarColor: '#6366f1', email: 'd.hartley@leasegov.internal' },
-  { id: 'user-admin-001', name: 'C. Reyes',    role: 'Lease Admin', workspaceId: 'ws-001', avatarColor: '#ec4899', email: 'c.reyes@leasegov.internal' },
-  { id: 'user-admin-002', name: 'F. Andersen', role: 'Lease Admin', workspaceId: 'ws-004', avatarColor: '#14b8a6', email: 'f.andersen@leasegov.internal' },
-  { id: 'user-admin-003', name: 'J. Moreau',   role: 'Lease Admin', workspaceId: 'ws-002', avatarColor: '#f97316', email: 'j.moreau@leasegov.internal' },
-  { id: 'user-admin-004', name: 'T. Osei',     role: 'Lease Admin', workspaceId: 'ws-005', avatarColor: '#64748b', email: 't.osei@leasegov.internal' },
+  { id: 'user-admin-001', name: 'C. Reyes',    role: 'System Admin', workspaceId: 'ws-001', avatarColor: '#ec4899', email: 'c.reyes@leasegov.internal' },
+  { id: 'user-admin-002', name: 'F. Andersen', role: 'System Admin', workspaceId: 'ws-004', avatarColor: '#14b8a6', email: 'f.andersen@leasegov.internal' },
+  { id: 'user-admin-003', name: 'J. Moreau',   role: 'System Admin', workspaceId: 'ws-002', avatarColor: '#f97316', email: 'j.moreau@leasegov.internal' },
+  { id: 'user-admin-004', name: 'T. Osei',     role: 'System Admin', workspaceId: 'ws-005', avatarColor: '#64748b', email: 't.osei@leasegov.internal' },
 ];
 
 // ─── Reviewers / Approvers ────────────────────────────────────────────────
@@ -273,7 +273,7 @@ export const ROLE_PERSONAS: Record<string, { name: string; initials: string; ema
   controller:         { name: 'S. Patel',        initials: 'SP', email: 's.patel@leasegov.com' },
   business_submitter: { name: 'A. Kim',          initials: 'AK', email: 'a.kim@leasegov.com',     assignedWorkspaceId: 'ws-003' },
   auditor:            { name: 'R. Thompson',     initials: 'RT', email: 'r.thompson@leasegov.com' },
-  lease_admin:        { name: 'C. Williams',     initials: 'CW', email: 'c.williams@leasegov.com', assignedWorkspaceId: 'ws-001' },
+  system_admin:        { name: 'C. Williams',     initials: 'CW', email: 'c.williams@leasegov.com', assignedWorkspaceId: 'ws-001' },
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

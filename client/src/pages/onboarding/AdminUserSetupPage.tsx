@@ -1,7 +1,7 @@
 /**
  * AdminUserSetupPage — FC-10 ON.2
  * Route: /onboarding/admin-user
- * Step 2 of 5 — create the first lease_admin user.
+ * Step 2 of 5 — create the first system_admin user.
  */
 
 import { useState } from 'react';
@@ -68,7 +68,7 @@ export default function AdminUserSetupPage() {
             </div>
             <div>
               <h1 className="text-[18px] font-bold text-foreground">Admin User</h1>
-              <p className="text-[12px] text-muted-foreground">Step 2 of 5 — First lease_admin for this tenant</p>
+              <p className="text-[12px] text-muted-foreground">Step 2 of 5 — First system_admin for this tenant</p>
             </div>
           </div>
 
@@ -105,7 +105,7 @@ export default function AdminUserSetupPage() {
               </div>
             )}
             <div className="bg-muted/20 rounded-xl px-4 py-3 text-[12px] text-muted-foreground">
-              This user will be assigned the <span className="font-semibold text-foreground">lease_admin</span> role and can invite additional users after setup.
+              This user will be assigned the <span className="font-semibold text-foreground">system_admin</span> role and can invite additional users after setup.
             </div>
           </div>
 
