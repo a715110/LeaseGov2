@@ -98,7 +98,7 @@ export default function PipelineValidation() {
       <div className="page-header">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => navigate('/pipeline/upload')}
+            onClick={() => navigate('/pipeline/dashboard')}
             className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />

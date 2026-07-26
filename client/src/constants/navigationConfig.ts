@@ -118,7 +118,6 @@ export interface StaticNavItem {
 export const ROUTE_PATHS: Record<string, string> = {
   // FC-1: Document Pipeline
   pipelineDashboard:        '/pipeline/dashboard',
-  pipelineUpload:           '/pipeline/upload',
   pipelineNewRecord:        '/pipeline/new-record',
   pipelineValidation:       '/pipeline/validation',
   pipelineReview:           '/pipeline/review',

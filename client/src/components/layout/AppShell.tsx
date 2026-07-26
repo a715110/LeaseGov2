@@ -97,7 +97,6 @@ interface StaticNavEntry {
 const STATIC_NAV: StaticNavEntry[] = [
   // FC-1
   { label: 'Pipeline',            path: ROUTE_PATHS.pipelineDashboard,   navGroup: 'document-pipeline', phase: 'mvp' },
-  { label: 'Upload',              path: ROUTE_PATHS.pipelineUpload,       navGroup: 'document-pipeline', phase: 'mvp' },
   // FC-2
   { label: 'Queue',               path: ROUTE_PATHS.extractionQueue,      navGroup: 'extraction',        phase: 'mvp' },
   { label: 'AI Workspace',        path: ROUTE_PATHS.extractionAi,         navGroup: 'extraction',        phase: 'mvp' },

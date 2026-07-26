@@ -45,13 +45,13 @@ export default function PipelineNewRecordModal() {
   function handleCreate() {
     if (!canCreate) return;
     // TODO: Backend integration required — POST /api/contract-records
-    navigate('/pipeline/upload');
+    navigate('/pipeline/dashboard');
   }
 
   return (
     <div className="min-h-screen bg-[var(--color-lg-page-bg)] flex items-center justify-center p-6">
       {/* Modal backdrop */}
-      <div className="fixed inset-0 bg-black/40" onClick={() => navigate('/pipeline/upload')} />
+      <div className="fixed inset-0 bg-black/40" onClick={() => navigate('/pipeline/dashboard')} />
 
       {/* Modal */}
       <div className="relative z-10 w-full max-w-[500px] rounded-xl bg-card border border-border shadow-xl animate-fade-in-up">
@@ -59,7 +59,7 @@ export default function PipelineNewRecordModal() {
         <div className="flex items-center justify-between px-6 py-5 border-b border-border">
           <h2 className="text-[18px] font-semibold text-foreground">Create New Contract Record</h2>
           <button
-            onClick={() => navigate('/pipeline/upload')}
+            onClick={() => navigate('/pipeline/dashboard')}
             className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
           >
             <X className="w-4 h-4" />
@@ -160,7 +160,7 @@ export default function PipelineNewRecordModal() {
 
         {/* Footer */}
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border bg-muted/20">
-          <Button variant="outline" onClick={() => navigate('/pipeline/upload')}>Cancel</Button>
+          <Button variant="outline" onClick={() => navigate('/pipeline/dashboard')}>Cancel</Button>
           <Button
             disabled={!canCreate}
             onClick={handleCreate}

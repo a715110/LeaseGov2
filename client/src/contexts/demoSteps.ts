@@ -58,7 +58,7 @@ export const DEMO_STEPS: DemoStep[] = [
     title: 'Upload & Validate Documents',
     description: 'The operator drags and drops lease documents. The system immediately validates file format, page count, and readability. Each file receives a binary status badge — Valid or Invalid — in real time. Invalid files show a specific error reason.',
     instruction: 'Observe the drag-and-drop zone and the inline validation status badges on each uploaded file. Point out that Invalid files are excluded from submission automatically.',
-    route: '/pipeline/upload', tabHint: 'Tab 1 — Document Submitter',
+    route: '/pipeline/dashboard', tabHint: 'Tab 1 — Document Submitter',
   },
   {
     id: 'step-3', stepNumber: 3, role: 'document_submitter',

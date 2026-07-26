@@ -27,9 +27,8 @@
 
 export const SCREEN_KEYS = {
 
-  // ─── FC-1: DOCUMENT PIPELINE (MVP — 6 screens) ──────────────────────────────
+  // ─── FC-1: DOCUMENT PIPELINE (MVP — 5 screens) ──────────────────────────────
   PIPELINE_DASHBOARD:           'pipeline-dashboard',
-  PIPELINE_UPLOAD:              'pipeline-upload',
   PIPELINE_NEW_RECORD_MODAL:    'pipeline-new-record-modal',
   PIPELINE_VALIDATION:          'pipeline-validation',
   PIPELINE_REVIEW_GROUPING:     'pipeline-review-grouping',

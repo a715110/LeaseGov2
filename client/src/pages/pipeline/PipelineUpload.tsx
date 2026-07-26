@@ -146,7 +146,7 @@ function FileCard({ file, onRemove, onRetry }: FileCardProps) {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function PipelineUpload() {
-  const _screenKey = SCREEN_KEYS.PIPELINE_UPLOAD;
+  const _screenKey = 'pipeline-upload'; // retired standalone route — screen key kept for reference
 
   const [, navigate] = useLocation();
   const [files, setFiles] = useState<StagedFile[]>([

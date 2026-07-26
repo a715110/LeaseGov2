@@ -42,7 +42,6 @@ const PARAM_BACK_PATHS: Array<{ pattern: RegExp; parentHref: string }> = [
 // Ordered most-specific first.
 const STATIC_BACK_PATHS: Array<{ prefix: string; parentHref: string }> = [
   // Pipeline sub-pages → Pipeline Dashboard
-  { prefix: '/pipeline/upload',           parentHref: '/pipeline/dashboard' },
   { prefix: '/pipeline/review',           parentHref: '/pipeline/dashboard' },
   { prefix: '/pipeline/validation',       parentHref: '/pipeline/dashboard' },
   // Extraction sub-pages → Extraction Queue (/extraction bare has no route)

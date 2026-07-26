@@ -33,7 +33,6 @@ import NotFound from './pages/NotFound'
 
 // ─── FC-1: Document Pipeline ─────────────────────────────────────────────────
 import PipelineDashboard      from './pages/pipeline/PipelineDashboard'
-import PipelineUpload         from './pages/pipeline/PipelineUpload'
 import PipelineNewRecordModal from './pages/pipeline/PipelineNewRecordModal'
 import PipelineValidation     from './pages/pipeline/PipelineValidation'
 import PipelineReviewGrouping from './pages/pipeline/PipelineReviewGrouping'
@@ -134,11 +133,6 @@ function Router() {
       <Route path="/pipeline/dashboard">
         <ScreenGate screenKey={SCREEN_KEYS.PIPELINE_DASHBOARD} fallback={<NotFound />}>
           <PipelineDashboard />
-        </ScreenGate>
-      </Route>
-      <Route path="/pipeline/upload">
-        <ScreenGate screenKey={SCREEN_KEYS.PIPELINE_UPLOAD} fallback={<NotFound />}>
-          <PipelineUpload />
         </ScreenGate>
       </Route>
       <Route path="/pipeline/new-record">
