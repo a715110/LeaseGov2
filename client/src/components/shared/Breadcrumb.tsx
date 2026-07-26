@@ -26,7 +26,7 @@ const ROUTE_LABELS: Array<{ prefix: string; label: string }> = [
   // Packages (bare root only — sub-routes handled by PARAM_ROUTE_PATTERNS)
   { prefix: '/packages',                 label: 'Packages' },
   // Pipeline
-  { prefix: '/pipeline/review',          label: 'Review Grouping' },
+  { prefix: '/pipeline/review',          label: 'Create Document Set' },
   { prefix: '/pipeline/validation',      label: 'Validation' },
   // /pipeline/confirm removed in V3 — BATCH_SUBMITTED fires from /pipeline/review
   { prefix: '/pipeline',                 label: 'Pipeline' },

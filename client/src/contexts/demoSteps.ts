@@ -64,7 +64,7 @@ export const DEMO_STEPS: DemoStep[] = [
     id: 'step-3', stepNumber: 3, role: 'document_submitter',
     roleLabel: 'Document Submitter', roleColor: '#64748b',
     screenNumber: '1.4',
-    title: 'Review & Group Documents',
+    title: 'Create Document Set',
     description: 'Valid documents are grouped into contract packages using drag-and-drop. The operator assigns each document to a workspace and verifies the grouping before submission. Amendment files trigger an amber banner identifying the specific amendment documents.',
     instruction: 'Review the document groupings. Drag a document between groups to demonstrate re-assignment. Point out the amendment banner on the Office-Tower-Amendment-3.pdf row.',
     route: '/pipeline/review', tabHint: 'Tab 1 — Document Submitter',
