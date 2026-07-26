@@ -33,7 +33,7 @@ import { toast } from 'sonner';
 import { SCREEN_KEYS } from '@/constants/screenKeys';
 import { ScreenNumberBadge } from '@/components/dev/ScreenNumberBadge';
 import { publishEvent } from '@/lib/eventBus';
-import { MOCK_CONTRACT_RECORDS, searchContractRecords, MOCK_PACKAGES } from '@/lib/mockData';
+import { MOCK_CONTRACT_RECORDS, searchContractRecords, MOCK_PACKAGES, MOCK_ASSIGNEES, MOCK_WORKSPACES } from '@/lib/mockData';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -657,6 +657,9 @@ export default function PipelineCreateDocumentSet() {
   const [targetRecordSearch, setTargetRecordSearch] = useState('');
   const [showRecordDropdown, setShowRecordDropdown] = useState(false);
   const [workingTitle, setWorkingTitle] = useState('');
+  // ── Routing Context (moved from Upload Files modal) ──
+  const [contextNotes, setContextNotes] = useState('');
+  const [assigneeId, setAssigneeId] = useState<string>('');
   // Inline mock records (duplicated to avoid circular import from RecordsSearch)
   // Use shared MOCK_CONTRACT_RECORDS from mockData.ts (replaces inline mock)
   const filteredRecords = searchContractRecords(targetRecordSearch.length >= 1 ? targetRecordSearch : ' ').concat(
@@ -1073,6 +1076,109 @@ export default function PipelineCreateDocumentSet() {
         </div>
       </div>
 
+      {/* ── ROUTING CONTEXT PANEL (moved from Upload Files modal) ── */}
+      <div className="border-t border-border bg-muted/30 px-6 py-5">
+        <div className="max-w-3xl">
+          <p className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground mb-4">Routing Context</p>
+          <div className="grid grid-cols-2 gap-5">
+            {/* Comments / Instructions */}
+            <div>
+              <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground block mb-1.5">
+                Comments / Instructions
+                <span className="text-muted-foreground/60 ml-1">(optional)</span>
+              </label>
+              <textarea
+                value={contextNotes}
+                onChange={e => setContextNotes(e.target.value)}
+                rows={3}
+                placeholder="Describe what these documents are and any context that helps the person processing them…"
+                className="w-full px-3 py-2 text-[12px] rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-ring resize-none"
+              />
+            </div>
+            {/* Assign To */}
+            <div>
+              <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground block mb-1.5">
+                Assign to <span className="text-muted-foreground/60">(optional)</span>
+              </label>
+              <Select value={assigneeId} onValueChange={v => setAssigneeId(v === '__auto__' ? '' : v)}>
+                <SelectTrigger className="h-9 text-[13px]">
+                  <SelectValue>
+                    {assigneeId ? (() => {
+                      const a = MOCK_ASSIGNEES.find(x => x.id === assigneeId);
+                      return a ? (
+                        <span className="flex items-center gap-1.5">
+                          <span className="font-medium text-foreground">{a.name}</span>
+                          <span className="text-muted-foreground text-[11px]">{a.role}</span>
+                        </span>
+                      ) : null;
+                    })() : (
+                      <span className="text-muted-foreground text-[13px]">System auto-routes to workspace Preparer</span>
+                    )}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__auto__" className="text-[13px] text-muted-foreground italic">
+                    System auto-routes (default)
+                  </SelectItem>
+                  {(() => {
+                    const wsName = extractionFiles[0]?.display_name?.split('-')[0] ?? '';
+                    const wsObj = MOCK_WORKSPACES.find(w => w.name === wsName);
+                    const wsAssignees = wsObj ? MOCK_ASSIGNEES.filter(a => a.workspaceId === wsObj.id) : [];
+                    const others = wsObj ? MOCK_ASSIGNEES.filter(a => a.workspaceId !== wsObj.id) : MOCK_ASSIGNEES;
+                    return (
+                      <>
+                        {wsAssignees.length > 0 && (
+                          <>
+                            <div className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground border-t border-border mt-1">
+                              {wsName || 'Workspace'} team
+                            </div>
+                            {wsAssignees.map(a => (
+                              <SelectItem key={a.id} value={a.id} className="text-[13px]">
+                                <span className="flex items-center gap-2">
+                                  <span className="font-medium">{a.name}</span>
+                                  <span className="text-muted-foreground text-[11px]">{a.role}</span>
+                                </span>
+                              </SelectItem>
+                            ))}
+                          </>
+                        )}
+                        {others.length > 0 && (
+                          <>
+                            <div className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground border-t border-border mt-1">
+                              Other teams
+                            </div>
+                            {others.map(a => {
+                              const ws = MOCK_WORKSPACES.find(w => w.id === a.workspaceId);
+                              return (
+                                <SelectItem key={a.id} value={a.id} className="text-[13px]">
+                                  <span className="flex items-center gap-2">
+                                    <span className="font-medium">{a.name}</span>
+                                    <span className="text-muted-foreground text-[11px]">{a.role}</span>
+                                    {ws && <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{ws.name}</span>}
+                                  </span>
+                                </SelectItem>
+                              );
+                            })}
+                          </>
+                        )}
+                      </>
+                    );
+                  })()}
+                </SelectContent>
+              </Select>
+              {assigneeId && (
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Overriding default routing.{' '}
+                  <button type="button" onClick={() => setAssigneeId('')} className="text-primary underline hover:no-underline">
+                    Revert to auto-route
+                  </button>
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Bottom action bar */}
       <div className="sticky bottom-0 border-t border-border bg-card px-6 py-4 flex items-center justify-between gap-4">
         <p className="text-[13px] text-muted-foreground shrink-0">
@@ -1186,8 +1292,10 @@ export default function PipelineCreateDocumentSet() {
                   page_count: f.page_count ?? null,
                   file_size_bytes: f.file_size_bytes ?? null,
                   contract_type: null,
-                  assignee_id: null,
+                  assignee_id: assigneeId || null,
                 })),
+                contextNotes: contextNotes.trim() || null,
+                assigneeId: assigneeId || null,
               },
             });
             setShowCreateNewDialog(false);
@@ -1242,8 +1350,10 @@ export default function PipelineCreateDocumentSet() {
                   page_count: f.page_count ?? null,
                   file_size_bytes: f.file_size_bytes ?? null,
                   contract_type: null,
-                  assignee_id: null,
+                  assignee_id: assigneeId || null,
                 })),
+                contextNotes: contextNotes.trim() || null,
+                assigneeId: assigneeId || null,
               },
             });
             clearSession();

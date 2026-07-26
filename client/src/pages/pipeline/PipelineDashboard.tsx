@@ -2263,12 +2263,10 @@ export default function PipelineDashboard() {
     });
   };
 
-  // ── Upload confirm handler (V4 — 6-argument callback, includes optional assignee override) ──
+  // ── Upload confirm handler (V4 — workspace-only, routing context captured on Create Document Set screen) ──
   function handleUploadConfirm(
     uploadedFiles: UploadedFile[],
     workspaceTag: string,
-    contextNotes: string | null,
-    _assigneeId: string | null, // DEMO ONLY — PRODUCTION: pass to POST /api/v1/pipeline/staged as assignee_id
   ) {
     const now = new Date();
     const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -2289,10 +2287,10 @@ export default function PipelineDashboard() {
         workspace_tag: workspaceTag,
         target_record_id: null,
         submission_path: null,
-        submitter_context_notes: contextNotes,
+        submitter_context_notes: null,
         contract_type: null,
         document_job_status: 'staged' as const,
-        assignee_id: _assigneeId, // DEMO ONLY — PRODUCTION: pass to POST /api/v1/pipeline/staged
+        assignee_id: null, // DEMO ONLY — PRODUCTION: pass to POST /api/v1/pipeline/staged
       }));
     const invalidCount = uploadedFiles.filter(f => f.status === 'invalid').length;
     setStagedDocs(prev => [...newDocs, ...prev]);

@@ -32,7 +32,6 @@ import {
 } from '@/lib/uploadSimulation';
 import {
   MOCK_WORKSPACES,
-  MOCK_ASSIGNEES,
   ROLE_PERSONAS,
 } from '@/lib/mockData';
 import { useRole } from '@/contexts/RoleContext';
@@ -50,12 +49,10 @@ export { WorkspaceBadge } from '@/components/shared/WorkspaceBadge';
 export interface UploadDialogProps {
   open: boolean;
   onClose: () => void;
-  /** V4 callback — passes workspace and routing context for StagedDocument creation */
+  /** V4 callback — passes files and workspace for StagedDocument creation */
   onConfirm: (
     files: StagedFile[],
     workspaceTag: string,
-    contextNotes: string | null,
-    assigneeId: string | null,
   ) => void;
 }
 
@@ -253,7 +250,6 @@ export function UploadDialog({ open, onClose, onConfirm }: UploadDialogProps) {
   const validFiles   = files.filter(f => f.status === 'valid');
   const invalidFiles = files.filter(f => f.status === 'invalid');
   const workspaceTag = MOCK_WORKSPACES.find(w => w.id === workspaceId)?.name ?? workspaceId;
-  const assigneesForWorkspace = MOCK_ASSIGNEES.filter(a => a.workspaceId === workspaceId);
 
   const canConfirm =
     pendingCount === 0 &&
@@ -368,20 +364,17 @@ export function UploadDialog({ open, onClose, onConfirm }: UploadDialogProps) {
     onConfirm(
       validFiles,
       workspaceTag,
-      contextNotes.trim() || null,
-      assigneeId || null,
     );
 
     setConfirmedCount(validFiles.length);
     setConfirmedRejected(invalidFiles.length);
     setConfirmedBatchId(batchId);
     setConfirmed(true);
-  }, [validFiles, workspaceTag, contextNotes, onConfirm]);
+  }, [validFiles, workspaceTag, onConfirm]);
 
   const handleUploadMore = () => {
     setFiles([]);
     setConfirmed(false);
-    setContextNotes('');
     progressTimers.current.forEach(t => clearInterval(t));
     progressTimers.current.clear();
   };
@@ -437,17 +430,7 @@ export function UploadDialog({ open, onClose, onConfirm }: UploadDialogProps) {
                 <WorkspaceBadge name={workspaceTag} />
               </div>
 
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Assigned to</span>
-                <span className="font-medium text-foreground">
-                  {(() => {
-                    const a = MOCK_ASSIGNEES.find(x => x.id === assigneeId);
-                    return a
-                      ? <span className="inline-flex items-center gap-1.5">{a.name}<span className="text-muted-foreground text-[11px]">{a.role}</span></span>
-                      : <span className="text-muted-foreground italic">System auto-routes</span>;
-                  })()}
-                </span>
-              </div>
+
             </div>
             <div className="flex gap-3">
               <button onClick={handleUploadMore} className="px-4 py-2 rounded text-[13px] font-medium border border-border bg-background text-foreground hover:bg-muted transition-colors">
@@ -621,108 +604,7 @@ export function UploadDialog({ open, onClose, onConfirm }: UploadDialogProps) {
 
             </div>
 
-            {/* ── SECTION 4 — ROUTING CONTEXT ── */}
-            <div className="flex flex-col gap-4 pt-5 border-t border-border">
-              <div className="flex items-center gap-2 pb-1 border-b border-border">
-                <p className="text-[13px] font-semibold text-foreground">Routing Context</p>
-              </div>
 
-              <div>
-                <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground block mb-1.5">
-                  Comments / Instructions
-                  <span className="text-muted-foreground/60 ml-1">(optional)</span>
-                </label>
-                <textarea
-                  value={contextNotes}
-                  onChange={e => setContextNotes(e.target.value)}
-                  rows={3}
-                  placeholder="Describe what these documents are and any context that helps the person processing them…"
-                  className="w-full px-3 py-2 text-[12px] rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-ring resize-none"
-                />
-
-              </div>
-
-              <div>
-                <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground block mb-1.5">
-                  Assign to <span className="text-muted-foreground/60">(optional)</span>
-                </label>
-                <Select value={assigneeId} onValueChange={v => setAssigneeId(v === '__auto__' ? '' : v)}>
-                  <SelectTrigger className="h-9 text-[13px]">
-                    <SelectValue>
-                      {assigneeId ? (() => {
-                        const a = MOCK_ASSIGNEES.find(x => x.id === assigneeId);
-                        return a ? (
-                          <span className="flex items-center gap-1.5">
-                            <span className="font-medium text-foreground">{a.name}</span>
-                            <span className="text-muted-foreground text-[11px]">{a.role}</span>
-                          </span>
-                        ) : null;
-                      })() : (
-                        <span className="text-muted-foreground text-[13px]">System auto-routes to workspace Preparer</span>
-                      )}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {/* Default — system routing */}
-                    <SelectItem value="__auto__" className="text-[13px] text-muted-foreground italic">
-                      System auto-routes (default)
-                    </SelectItem>
-                    {/* Workspace assignees */}
-                    {assigneesForWorkspace.length > 0 && (
-                      <>
-                        <div className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground border-t border-border mt-1">
-                          {workspaceTag || 'Workspace'} team
-                        </div>
-                        {assigneesForWorkspace.map(a => (
-                          <SelectItem key={a.id} value={a.id} className="text-[13px]">
-                            <span className="flex items-center gap-2">
-                              <span className="font-medium">{a.name}</span>
-                              <span className="text-muted-foreground text-[11px]">{a.role}</span>
-                            </span>
-                          </SelectItem>
-                        ))}
-                      </>
-                    )}
-                    {/* All other assignees (override) */}
-                    {(() => {
-                      const others = MOCK_ASSIGNEES.filter(a => a.workspaceId !== workspaceId);
-                      if (others.length === 0) return null;
-                      return (
-                        <>
-                          <div className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground border-t border-border mt-1">
-                            Other teams
-                          </div>
-                          {others.map(a => {
-                            const ws = MOCK_WORKSPACES.find(w => w.id === a.workspaceId);
-                            return (
-                              <SelectItem key={a.id} value={a.id} className="text-[13px]">
-                                <span className="flex items-center gap-2">
-                                  <span className="font-medium">{a.name}</span>
-                                  <span className="text-muted-foreground text-[11px]">{a.role}</span>
-                                  {ws && <WorkspaceBadge name={ws.name} size="xs" />}
-                                </span>
-                              </SelectItem>
-                            );
-                          })}
-                        </>
-                      );
-                    })()}
-                  </SelectContent>
-                </Select>
-                {assigneeId && (
-                  <p className="text-[10px] text-muted-foreground mt-1">
-                    Overriding default routing.{' '}
-                    <button
-                      type="button"
-                      onClick={() => setAssigneeId('')}
-                      className="text-primary underline hover:no-underline"
-                    >
-                      Revert to auto-route
-                    </button>
-                  </p>
-                )}
-              </div>
-            </div>
           </div>
         </div>
 
