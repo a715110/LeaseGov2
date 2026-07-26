@@ -395,7 +395,7 @@ function AddToExistingPackageDialog({
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <div>
-            <h2 className="text-[15px] font-semibold text-foreground">Add to Existing Package</h2>
+            <h2 className="text-[15px] font-semibold text-foreground">Add to Saved Package</h2>
             <p className="text-[12px] text-muted-foreground mt-0.5">
               Adding {files.length} file{files.length !== 1 ? 's' : ''} to a package
             </p>
@@ -496,7 +496,7 @@ function CreateNewPackageDialog({
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <div>
-            <h2 className="text-[15px] font-semibold text-foreground">Create New Package</h2>
+            <h2 className="text-[15px] font-semibold text-foreground">Save as New Package only</h2>
             <p className="text-[12px] text-muted-foreground mt-0.5">
               Group {files.length} file{files.length !== 1 ? 's' : ''} into a new package
             </p>
@@ -1131,7 +1131,7 @@ export default function PipelineReviewGrouping() {
             title={extractionFiles.length === 0 ? 'Add at least one file to Extraction first' : undefined}
           >
             <Layers className="w-4 h-4" />
-            Add to Existing Package
+            Add to Saved Package
           </Button>
           {/* Create New Package */}
           <Button
@@ -1142,9 +1142,9 @@ export default function PipelineReviewGrouping() {
             title={extractionFiles.length === 0 ? 'Add at least one file to Extraction first' : undefined}
           >
             <Package className="w-4 h-4" />
-            Create New Package
+            Save as New Package only
           </Button>
-          {/* Review & Submit — governed submission path */}
+          {/* Submit Package — governed submission path */}
           <Button
             className="gap-2"
             disabled={extractionFiles.length === 0}
@@ -1152,7 +1152,7 @@ export default function PipelineReviewGrouping() {
             title={extractionFiles.length === 0 ? 'Add at least one file to Extraction before submitting' : undefined}
           >
             <ChevronRight className="w-4 h-4" />
-            Review &amp; Submit
+            Submit Package
           </Button>
         </div>
       </div>
