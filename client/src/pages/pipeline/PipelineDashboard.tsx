@@ -47,7 +47,7 @@ import { UploadDialog, WorkspaceBadge, getWorkspaceColour } from '@/components/p
 import type { StagedFile as UploadedFile } from '@/components/pipeline/UploadDialog';
 import { toast } from 'sonner';
 import { SCREEN_KEYS } from '@/constants/screenKeys';
-import { publishEvent, subscribeToEvents, PENDING_DECLINE_EVENTS_KEY } from '@/lib/eventBus';
+import { publishEvent, subscribeToEvents, PENDING_DECLINE_EVENTS_KEY, PENDING_BATCH_SUBMITTED_KEY } from '@/lib/eventBus';
 import type { DemoEvent } from '@/lib/types';
 import { useRole } from '@/contexts/RoleContext';
 import { useNotifications } from '@/contexts/NotificationContext';
@@ -1779,6 +1779,79 @@ export default function PipelineDashboard() {
   //   DECLINE_SUBMITTED      → invalidate ['submissions'] query; backend sends push notification
   useEffect(() => {
     const unsub = subscribeToEvents((event) => {
+      // BATCH_SUBMITTED — fired by PipelineCreateDocumentSet when the submitter clicks
+      // "Save & Submit Document Set" or "Save Document Set Only".
+      // submitDirect=true  → skip Table 2, go straight to Table 3 (Submissions)
+      // submitDirect=false → add to Table 2 (Document Sets) for manual submit later
+      if (event.type === 'BATCH_SUBMITTED') {
+        const p = event.payload as {
+          batchId: string;
+          batchRef?: string;
+          packageNum?: string;
+          packageName?: string;
+          fileCount?: number;
+          workspaceTag?: string;
+          workspace?: string;
+          targetRecordId?: string | null;
+          submissionMode?: string;
+          submitDirect?: boolean;
+          files?: Array<{ docId: string; name: string; role: string; page_count?: number | null; file_size_bytes?: number | null; contract_type?: string | null; assignee_id?: string | null }>;
+          sourceRole?: string;
+        };
+        const submitterName = event.sourceRole === 'document_submitter' ? 'J. Martinez' : (event.sourceRole ?? 'Unknown');
+        const workspace = p.workspaceTag ?? p.workspace ?? 'General';
+        const pkgFiles: PackageFile[] = (p.files ?? []).map(f => ({
+          docId: f.docId,
+          name: f.name,
+          role: (f.role as DocumentRole) ?? 'Unassigned',
+          page_count: f.page_count ?? null,
+          file_size_bytes: f.file_size_bytes ?? undefined,
+          contract_type: f.contract_type ?? null,
+          assignee_id: f.assignee_id ?? null,
+        }));
+        const pkgNum = p.packageNum ?? nextPackageNum();
+        const pkgName = p.packageName ?? 'Document Set';
+        if (p.submitDirect !== false) {
+          // Save & Submit — create a Submission directly in Table 3
+          const subId = `sub-${Date.now()}`;
+          const sub: Submission = {
+            id: subId,
+            batchRef: p.batchRef ?? p.batchId,
+            packageNum: pkgNum,
+            packageName: pkgName,
+            mode: pkgFiles.length >= 2 ? 'Package' : 'Single',
+            fileCount: pkgFiles.length,
+            fileNames: pkgFiles.map(f => f.name),
+            files: pkgFiles,
+            workspace,
+            submittedBy: submitterName,
+            submitDate: new Date().toISOString(),
+            status: 'Pending',
+            record_id: p.targetRecordId ?? null,
+          };
+          setSubmissions(prev => [sub, ...prev]);
+          // Remove staged docs that are now submitted
+          const submittedNames = new Set(pkgFiles.map(f => f.name.toLowerCase()));
+          setStagedDocs(prev => prev.filter(d => !submittedNames.has(d.display_name.toLowerCase())));
+        } else {
+          // Save Only — add a new Document Set to Table 2
+          const newPkg: DocumentSet = {
+            id: `pkg-ext-${Date.now()}`,
+            packageNum: pkgNum,
+            packageName: pkgName,
+            mode: pkgFiles.length >= 2 ? 'Package' : 'Single',
+            files: pkgFiles,
+            workspace,
+            createdBy: submitterName,
+            createdAt: new Date().toISOString(),
+            status: pkgFiles.every(f => (f.role as string) !== 'Unassigned' && (f.role as string) !== 'Undefined') ? 'Ready' : 'Pending',
+          };
+          setDocumentSets(prev => [newPkg, ...prev]);
+          // Remove staged docs that are now grouped
+          const groupedNames = new Set(pkgFiles.map(f => f.name.toLowerCase()));
+          setStagedDocs(prev => prev.filter(d => !groupedNames.has(d.display_name.toLowerCase())));
+        }
+      }
       if (event.type === 'PIPELINE_BATCH_CLEARED') {
         const payload = event.payload as { fileNames?: string[]; batchId?: string };
         const clearedNames = new Set(payload.fileNames ?? []);
@@ -1909,6 +1982,28 @@ export default function PipelineDashboard() {
     return () => unsub();
   }, [addNotification]);
 
+  // ── DEMO ONLY: Mount-time drain for BATCH_SUBMITTED events ───────────────────
+  // Processes any BATCH_SUBMITTED events that fired while PipelineDashboard was
+  // unmounted (e.g. the submitter was on the Create Document Set screen).
+  // PRODUCTION: remove — backend persists the submission; dashboard fetches via GET /api/v1/submissions.
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(PENDING_BATCH_SUBMITTED_KEY);
+      if (raw) {
+        const pending: DemoEvent[] = JSON.parse(raw);
+        if (pending.length > 0) {
+          pending.forEach(event => {
+            // Re-dispatch as a same-tab event so the existing BATCH_SUBMITTED
+            // handler (which is already mounted) processes it exactly once.
+            window.dispatchEvent(new CustomEvent('leasegov_same_tab_event', { detail: event }));
+          });
+          sessionStorage.removeItem(PENDING_BATCH_SUBMITTED_KEY);
+        }
+      }
+    } catch { /* ignore parse errors */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ── DEMO ONLY: Mount-time drain for DECLINE_SUBMITTED events ───────────────────
   // Processes any DECLINE_SUBMITTED events that fired while PipelineDashboard was
   // unmounted (e.g. the submitter was on a different screen when the preparer declined).
@@ -1937,8 +2032,9 @@ export default function PipelineDashboard() {
   useEffect(() => {
     const unsub = subscribeToEvents((event) => {
       if (event.type !== 'DEMO_RESET') return;
-      // Clear the pending decline queue and staged docs cache so reset starts clean
+      // Clear the pending decline queue, batch-submitted queue, and staged docs cache so reset starts clean
       sessionStorage.removeItem(PENDING_DECLINE_EVENTS_KEY);
+      sessionStorage.removeItem(PENDING_BATCH_SUBMITTED_KEY);
       sessionStorage.removeItem('leasegov_staged_docs');
       setStagedDocs(MOCK_DOCUMENTS);
       setDocumentSets(INITIAL_PACKAGES);

@@ -53,6 +53,17 @@ export const PENDING_EXTRACTION_JOBS_KEY = 'leasegov_pending_extraction_jobs';
 export const PENDING_DECLINE_EVENTS_KEY = 'leasegov_pending_decline_events';
 
 /**
+ * sessionStorage key for BATCH_SUBMITTED events that have not yet been consumed
+ * by PipelineDashboard. Bridges the timing gap where the event fires while
+ * PipelineDashboard is unmounted (submitter navigated away before dashboard mounted).
+ * PipelineDashboard drains this on mount.
+ *
+ * PRODUCTION UPGRADE: Remove entirely — the backend persists the submission record
+ * and PipelineDashboard fetches it via GET /api/v1/submissions on mount.
+ */
+export const PENDING_BATCH_SUBMITTED_KEY = 'leasegov_pending_batch_submitted';
+
+/**
  * sessionStorage key for SUBMIT_FOR_REVIEW events that have not yet been consumed
  * by ApprovalsQueue. Bridges the timing gap where the event fires while
  * ApprovalsQueue is unmounted (reviewer is on a different screen).
@@ -87,6 +98,14 @@ export function publishEvent(event: Omit<DemoEvent, 'timestamp'>): void {
       const pending: DemoEvent[] = raw ? JSON.parse(raw) : [];
       pending.push(fullEvent);
       sessionStorage.setItem(PENDING_EXTRACTION_JOBS_KEY, JSON.stringify(pending));
+    } catch { /* quota exceeded — ignore */ }
+    // Also persist for PipelineDashboard to drain on mount so Table 2/3 updates
+    // even when the dashboard was unmounted during the Create Document Set flow.
+    try {
+      const raw2 = sessionStorage.getItem(PENDING_BATCH_SUBMITTED_KEY);
+      const pending2: DemoEvent[] = raw2 ? JSON.parse(raw2) : [];
+      pending2.push(fullEvent);
+      sessionStorage.setItem(PENDING_BATCH_SUBMITTED_KEY, JSON.stringify(pending2));
     } catch { /* quota exceeded — ignore */ }
   }
 

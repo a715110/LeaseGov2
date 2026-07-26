@@ -1178,16 +1178,43 @@ export default function PipelineCreateDocumentSet() {
         />
       )}
 
-      {/* Create New Package Dialog */}
+      {/* Create New Package Dialog (Save Document Set Only) */}
       {showCreateNewDialog && (
         <CreateNewPackageDialog
           files={extractionFiles}
           defaultName={packageName}
           onConfirm={(newPkgName) => {
-            const pkgNum = `PKG-${Date.now().toString(36).toUpperCase()}`;
+            const batchId = `BATCH-${Date.now().toString(36).toUpperCase()}`;
+            const wsTag = extractionFiles[0]?.display_name?.split('-')[0] ?? 'General';
+            // Fire BATCH_SUBMITTED with submitDirect=false so PipelineDashboard adds to Table 2
+            publishEvent({
+              type: 'BATCH_SUBMITTED',
+              sourceRole: 'document_submitter',
+              payload: {
+                batchId,
+                batchRef: batchId,
+                packageNum: newPkgName,
+                packageName: newPkgName,
+                fileCount: extractionFiles.length,
+                workspaceTag: wsTag,
+                workspace: wsTag,
+                targetRecordId,
+                submissionMode,
+                submitDirect: false,
+                files: extractionFiles.map(f => ({
+                  docId: f.id,
+                  name: f.display_name,
+                  role: f.document_role,
+                  page_count: f.page_count ?? null,
+                  file_size_bytes: f.file_size_bytes ?? null,
+                  contract_type: null,
+                  assignee_id: null,
+                })),
+              },
+            });
             setShowCreateNewDialog(false);
             clearSession();
-            toast.success(`Document Set ${pkgNum} created — ${extractionFiles.length} file${extractionFiles.length !== 1 ? 's' : ''} staged for review.`, {
+            toast.success(`Document Set "${newPkgName}" saved — ${extractionFiles.length} file${extractionFiles.length !== 1 ? 's' : ''} ready for submission.`, {
               duration: 5000,
             });
             navigate('/pipeline/dashboard');
@@ -1207,7 +1234,13 @@ export default function PipelineCreateDocumentSet() {
             // DEMO ONLY: notify Preparer tab that a new batch is ready for extraction.
             // PRODUCTION: replace with: await api.post('/api/v1/submissions', { batchId, files, ... })
             const batchId = `BATCH-${Date.now().toString(36).toUpperCase()}`;
-            const pkgNum = `PKG-${Date.now().toString(36).toUpperCase()}`;
+            // Use a sequential PKG number consistent with the dashboard counter
+            const pkgNum = packageName && packageName !== 'Document Set'
+              ? packageName
+              : `PKG-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`;
+            // Derive workspace from the first file's workspace_tag (stored in display_name prefix)
+            // or fall back to the first word of the file name
+            const wsTag = extractionFiles[0]?.display_name?.split('-')[0] ?? 'General';
             publishEvent({
               type: 'BATCH_SUBMITTED',
               sourceRole: 'document_submitter',
@@ -1217,11 +1250,13 @@ export default function PipelineCreateDocumentSet() {
                 packageNum: pkgNum,
                 packageName,
                 fileCount: extractionFiles.length,
-                workspaceTag: extractionFiles[0]?.display_name?.split('-')[0] ?? 'General',
-                workspace: extractionFiles[0]?.display_name?.split('-')[0] ?? 'General',
+                workspaceTag: wsTag,
+                workspace: wsTag,
                 targetRecordId,
                 submissionMode,
-                // Per-file data so ExtractionQueue can create one job row per file
+                // submitDirect=true tells PipelineDashboard to skip Table 2 and go straight to Table 3
+                submitDirect: true,
+                // Per-file data so ExtractionQueue and PipelineDashboard can create rows
                 files: extractionFiles.map(f => ({
                   docId: f.id,
                   name: f.display_name,
