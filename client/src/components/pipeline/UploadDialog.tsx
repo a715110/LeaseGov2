@@ -42,9 +42,14 @@ import {
   type ContractRecord,
 } from '@/lib/mockData';
 import { useRole } from '@/contexts/RoleContext';
+import { getWorkspaceColour } from '@/lib/workspaceColours';
+import { WorkspaceBadge } from '@/components/shared/WorkspaceBadge';
 
 // Re-export types so existing importers of UploadDialog continue to work
 export type { ValidationStatus, ValidationCategory, StagedFile };
+// Re-export shared utilities so existing importers continue to work
+export { getWorkspaceColour } from '@/lib/workspaceColours';
+export { WorkspaceBadge } from '@/components/shared/WorkspaceBadge';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -69,30 +74,7 @@ export interface UploadDialogProps {
   ) => void;
 }
 
-// ─── Workspace colour map ─────────────────────────────────────────────────────
-// Keyed by workspace name (lowercase) for easy lookup
-const WORKSPACE_COLOURS: Record<string, { bg: string; text: string; ring: string; dot: string }> = {
-  'retail':            { bg: 'bg-blue-100',   text: 'text-blue-800',   ring: 'ring-blue-300',   dot: 'bg-blue-500'   },
-  'office':            { bg: 'bg-violet-100', text: 'text-violet-800', ring: 'ring-violet-300', dot: 'bg-violet-500' },
-  'industrial':        { bg: 'bg-amber-100',  text: 'text-amber-800',  ring: 'ring-amber-300',  dot: 'bg-amber-500'  },
-  'land':              { bg: 'bg-green-100',  text: 'text-green-800',  ring: 'ring-green-300',  dot: 'bg-green-500'  },
-  'corporate leasing': { bg: 'bg-slate-100',  text: 'text-slate-700',  ring: 'ring-slate-300',  dot: 'bg-slate-500'  },
-};
-
-export function getWorkspaceColour(name: string) {
-  return WORKSPACE_COLOURS[name.toLowerCase()] ?? { bg: 'bg-muted', text: 'text-foreground', ring: 'ring-border', dot: 'bg-muted-foreground' };
-}
-
-// ─── WorkspaceBadge ───────────────────────────────────────────────────────────
-export function WorkspaceBadge({ name, size = 'sm' }: { name: string; size?: 'xs' | 'sm' }) {
-  const c = getWorkspaceColour(name);
-  return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold ring-1 ${c.bg} ${c.text} ${c.ring} ${size === 'xs' ? 'text-[10px]' : 'text-[11px]'}`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${c.dot}`} />
-      {name}
-    </span>
-  );
-}
+// ─── Workspace colour helpers are in @/lib/workspaceColours and @/components/shared/WorkspaceBadge ──
 
 // ─── BouncingDots ─────────────────────────────────────────────────────────────
 
