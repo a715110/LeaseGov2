@@ -147,7 +147,7 @@ function Router() {
         </ScreenGate>
       </Route>
       <Route path="/pipeline/create-document-set">
-        <ScreenGate screenKey={SCREEN_KEYS.PIPELINE_REVIEW_GROUPING} fallback={<NotFound />}>
+        <ScreenGate screenKey={SCREEN_KEYS.PIPELINE_CREATE_DOCUMENT_SET} fallback={<NotFound />}>
           <PipelineReviewGrouping />
         </ScreenGate>
       </Route>

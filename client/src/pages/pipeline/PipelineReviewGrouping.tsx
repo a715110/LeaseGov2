@@ -1,6 +1,6 @@
 /**
  * PipelineReviewGrouping — FC-1 Screen 1.5
- * Screen key: pipeline-review-grouping
+ * Screen key: pipeline-create-document-set
  * Route: /pipeline/create-document-set
  * Role: Document Submitter
  *
@@ -552,7 +552,7 @@ function CreateNewPackageDialog({
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function PipelineReviewGrouping() {
-  const _screenKey = SCREEN_KEYS.PIPELINE_REVIEW_GROUPING;
+  const _screenKey = SCREEN_KEYS.PIPELINE_CREATE_DOCUMENT_SET;
   const [, navigate] = useLocation();
   const searchString = useSearch();
   // ── URL param mode ────────────────────────────────────────────────────────────────────────
@@ -780,7 +780,7 @@ export default function PipelineReviewGrouping() {
         <div>
           <div className="flex items-center gap-3 flex-wrap">
             <h1 className="page-title">Create Document Set</h1>
-            <ScreenNumberBadge screenKey="pipeline-review-grouping" />
+            <ScreenNumberBadge screenKey="pipeline-create-document-set" />
           </div>
           <p className="page-subtitle">
             Assign document roles and group files into a Document Set before submission.

@@ -27,7 +27,7 @@ export const SCREEN_NUMBERS: Record<string, string> = {
   'pipeline-upload':            '1.2',
   'pipeline-new-record-modal':  '1.2a',
   'pipeline-validation':        '1.3',
-  'pipeline-review-grouping':   '1.4',
+  'pipeline-create-document-set':   '1.4',
 
   // ─── FC-2: Extraction and Verification ───────────────────────────────────
   'extraction-processing-queue':      '2.1',

@@ -675,7 +675,7 @@ function GroupingDialog({ docs, onConfirm, onCancel }: GroupingDialogProps) {
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-[15px] font-bold text-foreground">Group into Package</h2>
-              <ScreenNumberBadge screenKey="pipeline-review-grouping" />
+              <ScreenNumberBadge screenKey="pipeline-create-document-set" />
             </div>
             <p className="text-[12px] text-muted-foreground mt-0.5">Assign a document role to each file before grouping.</p>
           </div>
