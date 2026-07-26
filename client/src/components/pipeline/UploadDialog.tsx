@@ -1,8 +1,8 @@
 /**
- * UploadDialog — V4 two-column upload modal (FC-1 Screen 1.2)
+ * UploadDialog — V4 single-column upload modal (FC-1 Screen 1.2)
  *
  * V4 Changes:
- *   - Two-column layout: left = drop zone + file list, right = Target Context + Routing Context
+ *   - Single-column layout: drop zone + file list + workspace selector inline
  *   - Workspace colour badges (Retail=blue, Office=violet, Industrial=amber, Land=green)
  *   - Drag-to-reorder file list (HTML5 drag API, no extra deps)
  *   - Default workspace auto-selected from localStorage (leasegov_user_workspace)
@@ -13,7 +13,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import {
   UploadCloud, FileText, CheckCircle2, XCircle, X, RotateCcw,
-  Loader2, AlertTriangle, Tag,
+  Loader2, AlertTriangle,
   ChevronDown, ChevronUp, Info, GripVertical,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -469,11 +469,11 @@ export function UploadDialog({ open, onClose, onConfirm }: UploadDialogProps) {
           </button>
         </div>
 
-        {/* ── TWO-COLUMN BODY ── */}
+        {/* ── SINGLE-COLUMN BODY ── */}
         <div className="flex flex-1 min-h-0 overflow-hidden">
 
-          {/* ── LEFT COLUMN — Drop zone + File list ── */}
-          <div className="flex-1 flex flex-col gap-0 px-6 py-5 overflow-y-auto border-r border-border">
+          {/* ── Drop zone + File list + Workspace ── */}
+          <div className="flex-1 flex flex-col gap-0 px-6 py-5 overflow-y-auto">
 
             {/* Accepted formats hint */}
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-accent border border-border text-[11px] text-accent-foreground mb-4">
@@ -546,20 +546,10 @@ export function UploadDialog({ open, onClose, onConfirm }: UploadDialogProps) {
                 <p className="text-[12px] text-muted-foreground">No files added yet</p>
               </div>
             )}
-          </div>
 
-          {/* ── RIGHT COLUMN — Target Context + Routing Context ── */}
-          <div className="w-[380px] shrink-0 flex flex-col gap-0 px-6 py-5 overflow-y-auto bg-card/40">
-
-            {/* ── SECTION 3 — TARGET CONTEXT ── */}
-            <div className="flex flex-col gap-4 pb-6">
-              <div className="flex items-center gap-2 pb-1 border-b border-border">
-                <Tag className="w-4 h-4 text-primary" />
-                <p className="text-[13px] font-semibold text-foreground">Target Context</p>
-              </div>
-
-              {/* 3a — Workspace */}
-              <div>
+            {/* ── Workspace selector — inline below file list ── */}
+            <div className="border-t border-border pt-4 mt-4">
+              <div className="max-w-sm">
                 <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground block mb-1.5">
                   Workspace <span className="text-red-500">*</span>
                   {selectedWorkspace && (
@@ -601,10 +591,7 @@ export function UploadDialog({ open, onClose, onConfirm }: UploadDialogProps) {
                   </p>
                 )}
               </div>
-
             </div>
-
-
           </div>
         </div>
 
