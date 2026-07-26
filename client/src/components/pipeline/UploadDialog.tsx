@@ -1030,13 +1030,6 @@ export function UploadDialog({ open, onClose, onConfirm, initialRecord }: Upload
               Cancel
             </Button>
             <Button
-              variant="outline"
-              onClick={() => { onClose(); }}
-              className="h-8 text-[13px]"
-            >
-              Save as Draft
-            </Button>
-            <Button
               onClick={handleConfirm}
               disabled={!canConfirm}
               className="h-8 text-[13px] gap-1.5"
