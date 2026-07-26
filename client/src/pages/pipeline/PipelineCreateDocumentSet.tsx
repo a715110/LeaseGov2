@@ -20,7 +20,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useLocation, useSearch } from 'wouter';
 import {
-  FileText, CheckSquare, Square, ChevronDown, Edit2, Check,
+  FileText, ChevronDown, Edit2, Check,
   X, ZoomIn, ZoomOut, Layers, Package, Info, Save, Send,
   ArrowDown, ArrowUp, Lock, Filter, ChevronRight, CheckCircle2, AlertTriangle
 } from 'lucide-react';
@@ -87,10 +87,8 @@ function formatBytes(bytes: number): string {
 
 interface FileRowProps {
   file: ReviewFile;
-  selected: boolean;
   active: boolean;
   section: 'extraction' | 'no-extraction';
-  onSelect: (id: string) => void;
   onActivate: (id: string) => void;
   onRename: (id: string, name: string) => void;
   onRoleChange: (id: string, role: DocumentRole) => void;
@@ -98,8 +96,8 @@ interface FileRowProps {
 }
 
 function FileRow({
-  file, selected, active, section,
-  onSelect, onActivate, onRename, onRoleChange, onMove,
+  file, active, section,
+  onActivate, onRename, onRoleChange, onMove,
 }: FileRowProps) {
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(file.display_name);
@@ -126,14 +124,6 @@ function FileRow({
       style={section === 'no-extraction' && isInvalid ? { borderLeft: '2px solid var(--color-lg-error)' } : undefined}
       onClick={() => onActivate(file.id)}
     >
-      <button
-        onClick={e => { e.stopPropagation(); onSelect(file.id); }}
-        className="shrink-0 text-muted-foreground hover:text-primary transition-colors"
-        disabled={isInvalid}
-      >
-        {selected ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4" />}
-      </button>
-
       <div className="w-8 h-10 rounded bg-muted border border-border flex items-center justify-center shrink-0">
         <FileText className="w-4 h-4 text-muted-foreground" />
       </div>
@@ -645,7 +635,7 @@ export default function PipelineCreateDocumentSet() {
   const [zoom, setZoom] = useState<number>(() => loadSession()?.zoom ?? 100);
 
   const [lastRename, setLastRename] = useState<{ id: string; prev: string } | null>(null);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
   const [editingPackageName, setEditingPackageName] = useState(false);
   const [packageNameEdit, setPackageNameEdit] = useState(packageName);
   const [showSubmissionPanel, setShowSubmissionPanel] = useState(false);
@@ -706,14 +696,6 @@ export default function PipelineCreateDocumentSet() {
     urlMode === 'attach' ? 'Attach to Existing' :
     urlMode === 'create' ? 'Create New' :
     derivedMode;
-
-  function toggleSelect(id: string) {
-    setSelectedIds(prev => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  }
 
   const handleRename = useCallback((id: string, name: string) => {
     setFiles(prev => {
@@ -841,7 +823,7 @@ export default function PipelineCreateDocumentSet() {
                   <span className="ml-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">1</span>
                 )}
               </button>
-              <span className="text-[12px] text-muted-foreground">{selectedIds.size} selected</span>
+
             </div>
           </div>
 
@@ -990,10 +972,8 @@ export default function PipelineCreateDocumentSet() {
                   <FileRow
                     key={file.id}
                     file={file}
-                    selected={selectedIds.has(file.id)}
                     active={activeFileId === file.id}
                     section="extraction"
-                    onSelect={toggleSelect}
                     onActivate={setActiveFileId}
                     onRename={handleRename}
                     onRoleChange={handleRoleChange}
@@ -1028,10 +1008,8 @@ export default function PipelineCreateDocumentSet() {
                     <FileRow
                       key={file.id}
                       file={file}
-                      selected={selectedIds.has(file.id)}
                       active={activeFileId === file.id}
                       section="no-extraction"
-                      onSelect={toggleSelect}
                       onActivate={setActiveFileId}
                       onRename={handleRename}
                       onRoleChange={handleRoleChange}

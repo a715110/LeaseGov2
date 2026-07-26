@@ -13,7 +13,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import {
   UploadCloud, FileText, CheckCircle2, XCircle, X, RotateCcw,
-  Plus, Search, HelpCircle, Loader2, AlertTriangle, Tag,
+  Loader2, AlertTriangle, Tag,
   ChevronDown, ChevronUp, Info, GripVertical,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -31,15 +31,9 @@ import {
   simulateFileLifecycle,
 } from '@/lib/uploadSimulation';
 import {
-  MOCK_CONTRACT_RECORDS,
   MOCK_WORKSPACES,
   MOCK_ASSIGNEES,
   ROLE_PERSONAS,
-  searchContractRecords,
-  findContractRecord,
-  CONTRACT_RECORD_STATUS_BADGE,
-  CONTRACT_RECORD_STATUS_LABEL,
-  type ContractRecord,
 } from '@/lib/mockData';
 import { useRole } from '@/contexts/RoleContext';
 import { getWorkspaceColour } from '@/lib/workspaceColours';
@@ -53,24 +47,15 @@ export { WorkspaceBadge } from '@/components/shared/WorkspaceBadge';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type RecordDestination = 'new_record' | 'existing_record' | 'unknown' | null;
-
 export interface UploadDialogProps {
   open: boolean;
   onClose: () => void;
-  /** FC-3 BR1: pre-selected record from PackagesComposition "Add Document" flow.
-   * When provided, the dialog opens with 'existing_record' pre-selected and the record pre-populated. */
-  initialRecord?: ContractRecord | null;
-  /** V4 callback — passes all context fields for StagedDocument creation, including optional assignee override */
+  /** V4 callback — passes workspace and routing context for StagedDocument creation */
   onConfirm: (
     files: StagedFile[],
     workspaceTag: string,
-    targetRecordId: string | null,
-    submissionPath: RecordDestination,
     contextNotes: string | null,
     assigneeId: string | null,
-    /** Contract type from the New Record form — used downstream to pre-select an extraction template */
-    contractType: string | null,
   ) => void;
 }
 
@@ -231,93 +216,11 @@ function FileCard({ file, index, onRemove, onRetry, isDragOver, onDragStart, onD
   );
 }
 
-// ─── RecordSearchPanel ────────────────────────────────────────────────────────
-
-interface RecordSearchPanelProps {
-  selected: ContractRecord | null;
-  onSelect: (record: ContractRecord | null) => void;
-}
-
-function RecordSearchPanel({ selected, onSelect }: RecordSearchPanelProps) {
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState<ContractRecord[]>([]);
-  const [showDropdown, setShowDropdown] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (query.length >= 2) {
-      setResults(searchContractRecords(query));
-      setShowDropdown(true);
-    } else {
-      setResults([]);
-      setShowDropdown(false);
-    }
-  }, [query]);
-
-  if (selected) {
-    return (
-      <div className="flex items-center gap-2 mt-2">
-        <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg bg-accent border border-primary/30">
-          <span className="font-mono text-[11px] font-semibold text-primary">{selected.contractNumber}</span>
-          <span className="text-[12px] font-medium text-foreground">{selected.counterparty}</span>
-          <span className="text-[11px] text-muted-foreground truncate">{selected.address}</span>
-          <span className={`ml-auto inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold ${CONTRACT_RECORD_STATUS_BADGE[selected.status]}`}>
-            {CONTRACT_RECORD_STATUS_LABEL[selected.status]}
-          </span>
-        </div>
-        <button onClick={() => onSelect(null)} className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title="Clear selection">
-          <X className="w-4 h-4" />
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="mt-2 relative">
-      <div className="relative">
-        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-        <input
-          ref={inputRef}
-          type="text"
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-          onFocus={() => query.length >= 2 && setShowDropdown(true)}
-          onBlur={() => setTimeout(() => setShowDropdown(false), 150)}
-          placeholder="Counterparty name, address, or contract number…"
-          className="w-full pl-8 pr-3 py-2 text-[12px] rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-ring"
-        />
-      </div>
-      {showDropdown && (
-        <div className="absolute z-20 top-full mt-1 w-full rounded-lg border border-border bg-card shadow-lg overflow-hidden">
-          {results.length === 0 ? (
-            <div className="px-3 py-3 text-[12px] text-muted-foreground text-center">No records found</div>
-          ) : (
-            results.map(rec => (
-              <button
-                key={rec.id}
-                onMouseDown={() => { onSelect(rec); setQuery(''); }}
-                className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-accent transition-colors"
-              >
-                <span className="font-mono text-[11px] font-semibold text-primary shrink-0">{rec.contractNumber}</span>
-                <span className="text-[12px] font-medium text-foreground">{rec.counterparty}</span>
-                <span className="text-[11px] text-muted-foreground truncate flex-1">{rec.address}</span>
-                <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold ${CONTRACT_RECORD_STATUS_BADGE[rec.status]}`}>
-                  {CONTRACT_RECORD_STATUS_LABEL[rec.status]}
-                </span>
-              </button>
-            ))
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ─── UploadDialog (V4) ────────────────────────────────────────────────────────
 
 const WORKSPACE_STORAGE_KEY = 'leasegov_user_workspace';
 
-export function UploadDialog({ open, onClose, onConfirm, initialRecord }: UploadDialogProps) {
+export function UploadDialog({ open, onClose, onConfirm }: UploadDialogProps) {
   const { activeRole } = useRole();
   // ── File state ──
   const [files, setFiles] = useState<StagedFile[]>([]);
@@ -334,15 +237,7 @@ export function UploadDialog({ open, onClose, onConfirm, initialRecord }: Upload
     if (saved) return saved;
     return ROLE_PERSONAS[activeRole]?.assignedWorkspaceId ?? '';
   };
-  const [workspaceId, setWorkspaceId] = useState<string>(() => getDefaultWorkspace());
-  const [recordDest, setRecordDest] = useState<RecordDestination>(null);
-  const [selectedRecord, setSelectedRecord] = useState<ContractRecord | null>(null);
-  // New Record form
-  const [newRecordName, setNewRecordName] = useState('');
-  const [newRecordCounterparty, setNewRecordCounterparty] = useState('');
-  const [newRecordAddress, setNewRecordAddress] = useState('');
-  const [newRecordType, setNewRecordType] = useState('Property Lease');
-
+    const [workspaceId, setWorkspaceId] = useState<string>(() => getDefaultWorkspace());
   // ── Section 4 — Routing Context ──
   const [contextNotes, setContextNotes] = useState('');
   const [assigneeId, setAssigneeId] = useState<string>('');
@@ -360,13 +255,10 @@ export function UploadDialog({ open, onClose, onConfirm, initialRecord }: Upload
   const workspaceTag = MOCK_WORKSPACES.find(w => w.id === workspaceId)?.name ?? workspaceId;
   const assigneesForWorkspace = MOCK_ASSIGNEES.filter(a => a.workspaceId === workspaceId);
 
-  // Notes required when "Not sure" is selected
-  const notesRequired = recordDest === 'unknown';
   const canConfirm =
     pendingCount === 0 &&
     validFiles.length > 0 &&
-    workspaceId !== '' &&
-    (!notesRequired || contextNotes.trim().length > 0);
+    workspaceId !== '';
 
   // Persist workspace selection to localStorage as user preference
   const handleWorkspaceChange = (id: string) => {
@@ -392,20 +284,8 @@ export function UploadDialog({ open, onClose, onConfirm, initialRecord }: Upload
       setConfirmed(false);
       setConfirmedCount(0);
       setConfirmedBatchId('');
-      // FC-3 BR1: pre-populate with initialRecord if provided
-      if (initialRecord) {
-        setRecordDest('existing_record');
-        setSelectedRecord(initialRecord);
-      } else {
-        setRecordDest(null);
-        setSelectedRecord(null);
-      }
       setContextNotes('');
       setAssigneeId('');
-      setNewRecordName('');
-      setNewRecordCounterparty('');
-      setNewRecordAddress('');
-      setNewRecordType('Property Lease');
       progressTimers.current.forEach(t => clearInterval(t));
       progressTimers.current.clear();
       // Re-read workspace preference on each open.
@@ -483,34 +363,24 @@ export function UploadDialog({ open, onClose, onConfirm, initialRecord }: Upload
 
   // ── Confirm handler ──
   const handleConfirm = useCallback(() => {
-    const targetRecordId =
-      recordDest === 'existing_record' ? (selectedRecord?.id ?? null) :
-      recordDest === 'new_record' ? `draft-${Date.now()}` :
-      null;
-
     const batchId = `BATCH-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9000) + 1000)}`;
 
     onConfirm(
       validFiles,
       workspaceTag,
-      targetRecordId,
-      recordDest,
       contextNotes.trim() || null,
       assigneeId || null,
-      recordDest === 'new_record' ? newRecordType : null,
     );
 
     setConfirmedCount(validFiles.length);
     setConfirmedRejected(invalidFiles.length);
     setConfirmedBatchId(batchId);
     setConfirmed(true);
-  }, [validFiles, workspaceTag, recordDest, selectedRecord, contextNotes, onConfirm]);
+  }, [validFiles, workspaceTag, contextNotes, onConfirm]);
 
   const handleUploadMore = () => {
     setFiles([]);
     setConfirmed(false);
-    setRecordDest(null);
-    setSelectedRecord(null);
     setContextNotes('');
     progressTimers.current.forEach(t => clearInterval(t));
     progressTimers.current.clear();
@@ -520,7 +390,6 @@ export function UploadDialog({ open, onClose, onConfirm, initialRecord }: Upload
 
   // ── Confirmation view ──
   if (confirmed) {
-    const rec = recordDest === 'existing_record' ? selectedRecord : null;
     const wsCols = getWorkspaceColour(workspaceTag);
     return (
       <div className="fixed inset-0 z-50 flex items-start justify-center pt-16 pb-6 px-4 overflow-y-auto">
@@ -567,17 +436,7 @@ export function UploadDialog({ open, onClose, onConfirm, initialRecord }: Upload
                 <span className="text-muted-foreground">Workspace</span>
                 <WorkspaceBadge name={workspaceTag} />
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Record</span>
-                <span className="font-medium text-foreground">
-                  {rec
-                    ? <span className="inline-flex items-center gap-1.5"><span className="font-mono text-primary text-[11px]">{rec.contractNumber}</span>{rec.counterparty}</span>
-                    : recordDest === 'unknown' ? 'Awaiting Assignment'
-                    : recordDest === 'new_record' ? 'New Record (Draft)'
-                    : 'Unassigned'
-                  }
-                </span>
-              </div>
+
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">Assigned to</span>
                 <span className="font-medium text-foreground">
@@ -604,8 +463,6 @@ export function UploadDialog({ open, onClose, onConfirm, initialRecord }: Upload
     );
   }
 
-  // ── AI type hint for "Amendment" in filename ──
-  const hasAmendmentHint = files.some(f => f.name.toLowerCase().includes('amendment'));
   const selectedWorkspace = MOCK_WORKSPACES.find(w => w.id === workspaceId);
 
   return (
@@ -762,137 +619,6 @@ export function UploadDialog({ open, onClose, onConfirm, initialRecord }: Upload
                 )}
               </div>
 
-              {/* 3b — Record destination */}
-              <div>
-                <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground block mb-2">
-                  Where should these documents go?
-                </label>
-                <div className="flex flex-col gap-2">
-
-                  {/* Card 1 — New Record */}
-                  <button
-                    type="button"
-                    onClick={() => setRecordDest(recordDest === 'new_record' ? null : 'new_record')}
-                    className={`w-full text-left rounded-lg border px-4 py-3 transition-all duration-150 ${
-                      recordDest === 'new_record'
-                        ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
-                        : 'border-border bg-card hover:border-primary/40 hover:bg-muted/30'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${recordDest === 'new_record' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
-                        <Plus className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <p className="text-[13px] font-semibold text-foreground">New Record</p>
-                        <p className="text-[11px] text-muted-foreground">For a newly executed contract not yet in this system</p>
-                      </div>
-                    </div>
-                  </button>
-
-                  {/* New Record inline form */}
-                  {recordDest === 'new_record' && (
-                    <div className="ml-4 pl-4 border-l-2 border-primary/30 flex flex-col gap-3 py-2">
-                      {hasAmendmentHint && (
-                        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-[12px] text-amber-800">
-                          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                          <span><span className="font-semibold">Amendment detected</span> — pre-selected Property Lease</span>
-                        </div>
-                      )}
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="text-[11px] text-muted-foreground block mb-1">Record Name</label>
-                          <input value={newRecordName} onChange={e => setNewRecordName(e.target.value)} placeholder="Auto-generated if blank" className="w-full px-3 py-1.5 text-[12px] rounded border border-border bg-background focus:outline-none focus:ring-1 focus:ring-ring" />
-                        </div>
-                        <div>
-                          <label className="text-[11px] text-muted-foreground block mb-1">Counterparty <span className="text-red-500">*</span></label>
-                          <input value={newRecordCounterparty} onChange={e => setNewRecordCounterparty(e.target.value)} placeholder="e.g. Acme Corp" className="w-full px-3 py-1.5 text-[12px] rounded border border-border bg-background focus:outline-none focus:ring-1 focus:ring-ring" />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="text-[11px] text-muted-foreground block mb-1">Property Address <span className="text-red-500">*</span></label>
-                        <input value={newRecordAddress} onChange={e => setNewRecordAddress(e.target.value)} placeholder="e.g. 123 Main St, New York NY 10001" className="w-full px-3 py-1.5 text-[12px] rounded border border-border bg-background focus:outline-none focus:ring-1 focus:ring-ring" />
-                      </div>
-                      <div>
-                        <label className="text-[11px] text-muted-foreground block mb-1">Contract Type</label>
-                        <Select value={newRecordType} onValueChange={setNewRecordType}>
-                          <SelectTrigger className="h-8 text-[12px]"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Property Lease" className="text-[12px]">Property Lease</SelectItem>
-                            <SelectItem value="Equipment Lease" className="text-[12px]">Equipment Lease</SelectItem>
-                            <SelectItem value="Service Contract" className="text-[12px]">Service Contract</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Card 2 — Existing Record */}
-                  {recordDest !== 'new_record' && (<>
-                  <button
-                    type="button"
-                    onClick={() => setRecordDest(recordDest === 'existing_record' ? null : 'existing_record')}
-                    className={`w-full text-left rounded-lg border px-4 py-3 transition-all duration-150 ${
-                      recordDest === 'existing_record'
-                        ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
-                        : 'border-border bg-card hover:border-primary/40 hover:bg-muted/30'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${recordDest === 'existing_record' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
-                        <Search className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <p className="text-[13px] font-semibold text-foreground">Existing Record</p>
-                        <p className="text-[11px] text-muted-foreground">Add to a current contract record in this system: an amendment, exhibit, document...etc.</p>
-                      </div>
-                    </div>
-                  </button>
-                  {recordDest === 'existing_record' && (
-                    <div className="ml-4 pl-4 border-l-2 border-primary/30 py-1">
-                      <RecordSearchPanel selected={selectedRecord} onSelect={setSelectedRecord} />
-                    </div>
-                  )}
-                  </>)}
-
-                  {/* Card 3 — Not sure */}
-                  {(!recordDest || recordDest === 'unknown') && (<>
-                  <button
-                    type="button"
-                    onClick={() => setRecordDest(recordDest === 'unknown' ? null : 'unknown')}
-                    className={`w-full text-left rounded-lg border px-4 py-3 transition-all duration-150 ${
-                      recordDest === 'unknown'
-                        ? 'border-amber-400 bg-amber-50/60 ring-1 ring-amber-300/40'
-                        : 'border-border bg-card hover:border-amber-300/60 hover:bg-muted/30'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${recordDest === 'unknown' ? 'bg-amber-500 text-white' : 'bg-muted text-muted-foreground'}`}>
-                        <HelpCircle className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <p className="text-[13px] font-semibold text-foreground">Not sure — leave instructions</p>
-                        <p className="text-[11px] text-muted-foreground">A Preparer will find the right record and may contact you</p>
-                      </div>
-                    </div>
-                  </button>
-                  {recordDest === 'unknown' && (
-                    <div className="ml-4 pl-4 border-l-2 border-amber-400/50 py-1">
-                      <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-amber-50 border border-amber-200 text-[12px] text-amber-800">
-                        <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                        <span>Your files will be held in staging until a Preparer assigns them to the correct record.</span>
-                      </div>
-                    </div>
-                  )}
-                  </>)}
-
-                  {recordDest && (
-                    <button type="button" onClick={() => setRecordDest(null)} className="text-[11px] text-primary hover:underline self-start pl-1">
-                      ← Change selection
-                    </button>
-                  )}
-                </div>
-              </div>
             </div>
 
             {/* ── SECTION 4 — ROUTING CONTEXT ── */}
@@ -904,23 +630,16 @@ export function UploadDialog({ open, onClose, onConfirm, initialRecord }: Upload
               <div>
                 <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground block mb-1.5">
                   Comments / Instructions
-                  {notesRequired && <span className="text-red-500 ml-1">*</span>}
-                  {!notesRequired && <span className="text-muted-foreground/60 ml-1">(optional)</span>}
+                  <span className="text-muted-foreground/60 ml-1">(optional)</span>
                 </label>
                 <textarea
                   value={contextNotes}
                   onChange={e => setContextNotes(e.target.value)}
                   rows={3}
                   placeholder="Describe what these documents are and any context that helps the person processing them…"
-                  className={`w-full px-3 py-2 text-[12px] rounded-lg border bg-background focus:outline-none focus:ring-1 focus:ring-ring resize-none ${
-                    notesRequired && contextNotes.trim().length === 0
-                      ? 'border-amber-400 focus:ring-amber-400'
-                      : 'border-border'
-                  }`}
+                  className="w-full px-3 py-2 text-[12px] rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-ring resize-none"
                 />
-                {notesRequired && contextNotes.trim().length === 0 && (
-                  <p className="text-[11px] text-amber-600 mt-1">Instructions are required when the record destination is unknown.</p>
-                )}
+
               </div>
 
               <div>
@@ -1031,7 +750,6 @@ export function UploadDialog({ open, onClose, onConfirm, initialRecord }: Upload
                 pendingCount > 0 ? 'Wait for validation to complete' :
                 validFiles.length === 0 ? 'Add at least one valid file to continue' :
                 !workspaceId ? 'Select a workspace first' :
-                (notesRequired && contextNotes.trim().length === 0) ? 'Instructions are required for unknown record destination' :
                 undefined
               }
             >

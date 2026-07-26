@@ -2267,11 +2267,8 @@ export default function PipelineDashboard() {
   function handleUploadConfirm(
     uploadedFiles: UploadedFile[],
     workspaceTag: string,
-    targetRecordId: string | null,
-    submissionPath: 'new_record' | 'existing_record' | 'unknown' | null,
     contextNotes: string | null,
     _assigneeId: string | null, // DEMO ONLY — PRODUCTION: pass to POST /api/v1/pipeline/staged as assignee_id
-    contractType: string | null = null, // MOD-3: from New Record form; forwarded to extraction template pre-selection
   ) {
     const now = new Date();
     const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -2290,10 +2287,10 @@ export default function PipelineDashboard() {
         file_size_bytes: f.size,
         page_count: null,
         workspace_tag: workspaceTag,
-        target_record_id: targetRecordId,
-        submission_path: submissionPath,
+        target_record_id: null,
+        submission_path: null,
         submitter_context_notes: contextNotes,
-        contract_type: contractType, // MOD-3: stored so GroupingDialog can carry it into PackageFile
+        contract_type: null,
         document_job_status: 'staged' as const,
         assignee_id: _assigneeId, // DEMO ONLY — PRODUCTION: pass to POST /api/v1/pipeline/staged
       }));
@@ -4279,15 +4276,10 @@ export default function PipelineDashboard() {
           </Dialog>
         );
       })()}
-      {/* Upload dialog — initialRecord pre-populated when navigating from PackagesComposition */}
       <UploadDialog
         open={showUpload}
         onClose={() => { setShowUpload(false); setAddDocumentIntent(null); }}
         onConfirm={handleUploadConfirm}
-        initialRecord={addDocumentIntent ? (() => {
-          const rec = findContractRecord(addDocumentIntent.recordId);
-          return rec ?? null;
-        })() : null}
       />
 
       {addToPackageDocs && (
