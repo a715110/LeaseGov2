@@ -177,11 +177,14 @@ interface Submission {
 }
 
 // ─── Mock data — V3 Change 1 §1a — 8-document seed distribution ─────────────
-// Docs 1–2: valid, unassigned (no target record)
-// Docs 3–4: valid, assigned to Acme Corp (CR-2026-0038), LOCKED (pending review)
-// Docs 5–6: valid, committed to Globex LLC (CR-2026-0039), in-progress
-// Doc  7:   invalid (file integrity check failed)
-// Doc  8:   valid, target record unknown (submission_path = 'unknown')
+// Table 1 shows 8 active docs (document_job_status !== 'committed'):
+//   Docs 1–2: valid, staged, unassigned — 2 unassigned valid
+//   Docs 3–4: valid, staged, assigned to mock-record-001 (Acme Corp), locked — 2 assigned
+//   Doc  7:   invalid (file integrity check failed) — 1 invalid
+//   Doc  8:   valid, staged, submission_path='unknown' (amber dot) — 1 unknown record
+//   Doc  9:   valid, staged, Equipment Lease (teal badge) — 1 equipment
+// Table 4 shows 2 committed docs:
+//   Docs 5–6: valid, committed to mock-record-002 (Globex LLC)
 
 const MOCK_DOCUMENTS: StagedDocument[] = [
   {
@@ -236,9 +239,9 @@ const MOCK_DOCUMENTS: StagedDocument[] = [
     target_record_id: 'mock-record-001',  // Acme Corp — CR-2026-0038
     submission_path: 'existing_record',
     submitter_context_notes: 'Renewal for Acme Corp main location. Please prioritise.',
-    document_job_status: 'committed',
+    document_job_status: 'staged',
     assignee_id: 'user-prep-002', // L. Nguyen
-    locked_for_review: true, // FC-4 AC6: submission is Pending Review
+    locked_for_review: true, // FC-4 AC6: shown in Table 1 with lock icon; assigned to mock-record-001
   },
   {
     id: 'doc-4',
@@ -255,9 +258,9 @@ const MOCK_DOCUMENTS: StagedDocument[] = [
     target_record_id: 'mock-record-001',  // Acme Corp — CR-2026-0038
     submission_path: 'existing_record',
     submitter_context_notes: null,
-    document_job_status: 'committed',
+    document_job_status: 'staged',
     assignee_id: null,
-    locked_for_review: true, // FC-4 AC6: submission is Pending Review
+    locked_for_review: true, // FC-4 AC6: shown in Table 1 with lock icon; assigned to mock-record-001
   },
   {
     id: 'doc-5',
@@ -360,8 +363,25 @@ const MOCK_BATCHES: IntakeBatch[] = [
   { id: 'b2', batch_reference: 'BATCH-2026-0040', submission_mode: 'contract_package', document_count: 1, status: 'assembling', submitted_at: '2026-06-11 14:22' },
 ];
 
-// V3 §1c — Table 2 seed: PKG-2026-002 in Assembly (not yet submitted)
+// V3 §1c — Table 2 seed: 2 packages
+// PKG-2026-001: Acme Corp Retail Package (Ready)
+// PKG-2026-002: Globex Ground Lease Package (Pending)
 const INITIAL_PACKAGES: ContractPackage[] = [
+  {
+    id: 'mock-pkg-001-local',
+    packageNum: 'PKG-2026-001',
+    packageName: 'Acme Corp Retail Package',
+    mode: 'Package',
+    files: [
+      { docId: 'doc-1', name: 'Retail-HQ-Lease-2026.pdf',    role: 'Base Contract' },
+      { docId: 'doc-2', name: 'Office-Tower-Amendment-3.pdf', role: 'Amendment' },
+    ],
+    workspace: 'Retail',
+    createdBy: 'J. Martinez',
+    createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    status: 'Ready',
+    assignee_id: 'user-prep-002',
+  },
   {
     id: 'mock-pkg-002-local',
     packageNum: 'PKG-2026-002',
@@ -377,14 +397,13 @@ const INITIAL_PACKAGES: ContractPackage[] = [
   },
 ];
 
-// V3 §1c — Table 3 seed
-// sub-v3-001: PKG-2026-001 Pending (awaiting extraction)
-// sub-v3-002: PKG-2026-000 In Progress (under Reviewer review — docs 3+4 locked)
+// V3 §1c — Table 3 seed: 1 submission
+// sub-v3-001: PKG-2026-000 Pending (awaiting extraction by Preparer)
 const INITIAL_SUBMISSIONS: Submission[] = [
   {
     id: 'sub-v3-001-local',
     batchRef: 'BATCH-2026-0041',   // matches batch_ref on MOCK_JOBS j4+j5 in ExtractionQueue
-    packageNum: 'PKG-2026-001',
+    packageNum: 'PKG-2026-000',
     packageName: 'Acme Corp Retail Package',
     mode: 'Package',
     fileCount: 2,
@@ -397,24 +416,6 @@ const INITIAL_SUBMISSIONS: Submission[] = [
     submittedBy: 'A. Chen',
     submitDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
     status: 'Pending',
-  },
-  {
-    id: 'sub-v3-002-local',
-    batchRef: 'BATCH-2026-0039',
-    packageNum: 'PKG-2026-000',
-    packageName: 'Globex Retail Renewal',
-    mode: 'Package',
-    fileCount: 2,
-    fileNames: ['Retail-HQ-Lease-2026.pdf', 'Office-Tower-Amendment-3.pdf'],
-    files: [
-      { docId: 'doc-3', name: 'Retail-HQ-Lease-2026.pdf',    role: 'Base Contract' },
-      { docId: 'doc-4', name: 'Office-Tower-Amendment-3.pdf', role: 'Amendment' },
-    ],
-    workspace: 'Retail',
-    submittedBy: 'A. Chen',
-    submitDate: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
-    status: 'In Progress', // FC-4 AC6: under Reviewer review — docs 3+4 are locked
-    assignee_id: 'user-prep-002',
   },
 ];
 
@@ -2877,7 +2878,10 @@ export default function PipelineDashboard() {
                               <TooltipProvider delayDuration={300}>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 cursor-help">Awaiting Assignment</span>
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 cursor-help">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                                      Awaiting Assignment
+                                    </span>
                                   </TooltipTrigger>
                                   <TooltipContent side="top" className="max-w-[260px] text-[12px] leading-relaxed">
                                     <p className="font-semibold mb-1">Awaiting Assignment</p>
