@@ -395,7 +395,7 @@ function AddToExistingPackageDialog({
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <div>
-            <h2 className="text-[15px] font-semibold text-foreground">Add to Existing Document Set</h2>
+            <h2 className="text-[15px] font-semibold text-foreground">Add to Saved Document Set</h2>
             <p className="text-[12px] text-muted-foreground mt-0.5">
               Adding {files.length} file{files.length !== 1 ? 's' : ''} to an existing Document Set
             </p>
@@ -1131,7 +1131,7 @@ export default function PipelineCreateDocumentSet() {
             title={extractionFiles.length === 0 ? 'Add at least one file to Extraction first' : undefined}
           >
             <Layers className="w-4 h-4" />
-            Add to Existing Document Set
+            Add to Saved Document Set
           </Button>
           {/* Create New Package */}
           <Button
