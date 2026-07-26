@@ -1357,9 +1357,8 @@ export default function PipelineCreateDocumentSet() {
               },
             });
             clearSession();
-            toast.success(`Document Set submitted for extraction — ${extractionFiles.length} file${extractionFiles.length !== 1 ? 's' : ''} queued.`, {
-              action: { label: 'View Queue', onClick: () => navigate('/extraction/queue') },
-              duration: 6000,
+            toast.success(`Document Set submitted — ${extractionFiles.length} file${extractionFiles.length !== 1 ? 's' : ''} queued for extraction. Switch to the Preparer role to view the processing queue.`, {
+              duration: 8000,
             });
             navigate('/pipeline/dashboard');
           }}

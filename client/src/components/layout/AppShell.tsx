@@ -47,6 +47,7 @@ import { MOCK_CONTRACT_RECORDS, MOCK_EQUIPMENT_RECORDS } from '../../lib/mockDat
 import { useDevMode } from '../../contexts/DevModeContext'
 import { LeaseGovThemeContext } from '../../contexts/LeaseGovThemeContext'
 import { computeSlaStatus, getSlaOverdueTasks } from '../../lib/mockApprovalsData'
+import { subscribeToEvents, PENDING_EXTRACTION_JOBS_KEY } from '../../lib/eventBus'
 import type { UserRole } from '../../lib/types'
 import { ROLE_LABELS } from '../../lib/types'
 import type { ThemeKey, ColorMode } from '../../types/shared/ThemeMode'
@@ -484,7 +485,29 @@ export default function AppShell({
   const backPath = useBackPath()
   const { activeRole } = useRole()
   const { addNotification, unreadCount } = useNotifications()
-  const { pipelineReadyCount, approvalsCount, extractionQueueCount, watchlistCount, setWatchlistCount } = usePipelineCounts()
+  const { pipelineReadyCount, approvalsCount, extractionQueueCount, setExtractionQueueCount, watchlistCount, setWatchlistCount } = usePipelineCounts()
+
+  // ── BATCH_SUBMITTED: increment extraction queue badge from any role ──
+  useEffect(() => {
+    // Drain any pending events that arrived before this mount
+    try {
+      const pending: Array<{ payload?: { fileCount?: number } }> = JSON.parse(sessionStorage.getItem(PENDING_EXTRACTION_JOBS_KEY) ?? '[]')
+      if (Array.isArray(pending) && pending.length > 0) {
+        const addCount = pending.reduce((sum, e) => sum + ((e.payload?.fileCount as number) ?? 1), 0)
+        setExtractionQueueCount(extractionQueueCount + addCount)
+        sessionStorage.removeItem(PENDING_EXTRACTION_JOBS_KEY)
+      }
+    } catch { /* ignore */ }
+    // Subscribe to live events
+    const unsub = subscribeToEvents((event) => {
+      if (event.type === 'BATCH_SUBMITTED') {
+        const fileCount = (event.payload?.fileCount as number) ?? 1
+        setExtractionQueueCount(extractionQueueCount + fileCount)
+      }
+    })
+    return unsub
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // ── Compute watchlist badge count from localStorage ──
   const refreshWatchlistCount = useCallback(() => {
